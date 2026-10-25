@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { CalendarDays, Globe, LogOut, Phone } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Globe, LogOut, Phone, Users } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
@@ -66,18 +67,29 @@ async function Tableau({ langue }: { langue: string }) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Agenda du cabinet</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Connecté·e : <strong>{utilisateur}</strong>
+            Connecté·e : <strong>{utilisateur.identifiant}</strong>
           </p>
         </div>
-        <form action={deconnexion.bind(null, langue)}>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Se déconnecter
-          </button>
-        </form>
+        <div className="flex flex-wrap gap-2">
+          {utilisateur.admin && (
+            <Link
+              href={`/${langue}/espace/comptes`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <Users className="h-4 w-4" aria-hidden />
+              Gérer les comptes
+            </Link>
+          )}
+          <form action={deconnexion.bind(null, langue)}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Se déconnecter
+            </button>
+          </form>
+        </div>
       </div>
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">

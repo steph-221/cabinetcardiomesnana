@@ -4,7 +4,16 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { dateLocale, estJour } from "../../agenda/creneaux";
 import { creerRendezvous, supprimerRendezvous } from "../../agenda/google";
-import { fermerSession, ouvrirSession, utilisateurConnecte, verifierIdentifiants } from "../../agenda/session";
+import {
+  enregistrerCompte,
+  estAdmin,
+  fermerSession,
+  identifiantValide,
+  ouvrirSession,
+  supprimerCompte,
+  utilisateurConnecte,
+  verifierIdentifiants,
+} from "../../agenda/session";
 import { cabinet } from "../../cabinet";
 
 type EtatFormulaire = { erreur: string; valeurs: Record<string, string> } | null;
@@ -20,13 +29,13 @@ const echec = (erreur: string, formData: FormData): EtatFormulaire => ({
 
 export async function connexion(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const saisi = String(formData.get("identifiant") ?? "");
-  const identifiant = verifierIdentifiants(saisi, String(formData.get("motDePasse") ?? ""));
-  if (!identifiant) {
+  const compte = await verifierIdentifiants(saisi, String(formData.get("motDePasse") ?? ""));
+  if (!compte) {
     // Ralentit les essais de mots de passe à la chaîne
     await new Promise((r) => setTimeout(r, 1000));
     return { erreur: "Identifiant ou mot de passe incorrect.", valeurs: { identifiant: saisi } };
   }
-  await ouvrirSession(identifiant);
+  await ouvrirSession(compte);
   redirect(`/${langue}/espace`);
 }
 
@@ -68,7 +77,7 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
       telephone,
       motif,
       source: "secretariat",
-      par: utilisateur,
+      par: utilisateur.identifiant,
     });
   } catch (erreur) {
     console.error(erreur);
@@ -76,4 +85,36 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   }
   refresh();
   return null;
+}
+
+// --- Comptes du personnel : réservé à l'administrateur ---
+
+async function exigerAdmin(langue: string) {
+  const utilisateur = await exigerConnexion(langue);
+  if (!utilisateur.admin) redirect(`/${langue}/espace`);
+  return utilisateur;
+}
+
+export async function enregistrer(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
+  const admin = await exigerAdmin(langue);
+  const identifiant = String(formData.get("identifiant") ?? "").trim().toLowerCase();
+  const motDePasse = String(formData.get("motDePasse") ?? "");
+  if (!identifiantValide(identifiant) || estAdmin(identifiant)) {
+    return echec("Identifiant invalide : 2 à 30 caractères, lettres minuscules, chiffres, point ou tiret.", formData);
+  }
+  if (motDePasse.length < 10) return echec("Le mot de passe doit faire au moins 10 caractères.", formData);
+  try {
+    await enregistrerCompte(identifiant, motDePasse, admin.identifiant);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Le compte n'a pas pu être enregistré. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return null;
+}
+
+export async function retirer(langue: string, identifiant: string) {
+  await exigerAdmin(langue);
+  await supprimerCompte(identifiant);
+  refresh();
 }

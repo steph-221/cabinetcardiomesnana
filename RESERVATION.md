@@ -5,7 +5,7 @@ Le site utilise **l'agenda Google du cabinet** comme carnet de rendez-vous :
 - les patients choisissent un créneau libre sur `/fr/rendez-vous` (aussi en arabe, anglais, espagnol) ;
 - le rendez-vous est créé directement dans l'agenda Google ;
 - tout événement déjà présent dans l'agenda (congé, absence, réunion…) rend le créneau indisponible ;
-- le personnel (secrétaire, médecin remplaçant…) se connecte sur `/fr/espace` (lien « Espace cabinet » en bas de
+- le médecin (administrateur) et le personnel qu'il a ajouté (secrétaire, médecin remplaçant…) se connectent sur `/fr/espace` (lien « Espace cabinet » en bas de
   chaque page) pour voir les rendez-vous des 14 prochains jours, en ajouter (pris par téléphone/WhatsApp) et en
   annuler.
 
@@ -45,25 +45,32 @@ Projet Vercel → **Settings → Environment Variables** :
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | `client_email` du fichier JSON |
 | `GOOGLE_PRIVATE_KEY` | `private_key` du fichier JSON (tout le texte, de `-----BEGIN` à `END PRIVATE KEY-----\n`) |
 | `GOOGLE_CALENDAR_ID` | ID de l'agenda (étape 2) |
-| `COMPTES_PERSONNEL` | les comptes de l'espace cabinet, voir ci-dessous |
+| `COMPTE_ADMIN` | le compte administrateur, sous la forme `identifiant:motdepasse` (ex. `taouab:UnMotDePasseLong`) |
 | `SESSION_SECRET` | une longue chaîne aléatoire d'au moins 32 caractères (par exemple générée par un gestionnaire de mots de passe) |
 
 Puis **redéployer** le site pour que les variables soient prises en compte. Tant que les variables Google ne sont
 pas renseignées, la page de rendez-vous affiche simplement le numéro du secrétariat.
 
-## 4. Donner accès à la secrétaire et au médecin remplaçant
+## 4. Activer le stockage des comptes (une seule fois)
 
-`COMPTES_PERSONNEL` contient un compte par personne, sous la forme `identifiant:motdepasse`, séparés par des
-virgules :
+Les comptes du personnel sont enregistrés dans une petite base gratuite, Upstash Redis :
 
-```
-taouab:MotDePasseLong1,secretaire:MotDePasseLong2,remplacant:MotDePasseLong3
-```
+1. Projet Vercel → **Storage** → **Create Database** → **Upstash** (Redis) → offre gratuite.
+2. Le relier au projet **cabinetcardiomesnana** (tous les environnements). Vercel ajoute tout seul les variables
+   `KV_REST_API_URL` et `KV_REST_API_TOKEN`.
+3. Redéployer.
 
-- Choisir des mots de passe longs et différents pour chacun (sans virgule).
-- Pour **retirer un accès** (fin de remplacement), supprimer le compte de la variable et redéployer : la personne
-  est déconnectée immédiatement.
-- Pour un nouveau remplaçant, ajouter une entrée (`remplacant2:…`) et redéployer.
+## 5. Donner accès à la secrétaire et au médecin remplaçant
+
+1. Se connecter sur `/fr/espace` avec le compte administrateur (`COMPTE_ADMIN`).
+2. Cliquer sur **Gérer les comptes**.
+3. Saisir un identifiant (ex. `secretaire`, `remplacant`) et un mot de passe d'au moins 10 caractères, puis
+   **Enregistrer le compte**. Transmettre l'identifiant et le mot de passe à la personne.
+
+- Pour **retirer un accès** (fin de remplacement) : **Supprimer** ; la personne est déconnectée immédiatement.
+- Pour **changer un mot de passe** oublié : ressaisir l'identifiant avec un nouveau mot de passe ; l'ancien ne
+  fonctionne plus.
+- Les mots de passe sont enregistrés chiffrés ; personne ne peut les relire.
 - Une connexion reste ouverte 12 heures.
 
 Chaque rendez-vous ajouté depuis l'espace cabinet indique dans Google Agenda qui l'a créé.
