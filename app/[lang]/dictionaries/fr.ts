@@ -7,6 +7,7 @@ const fr = {
   nom: "Cabinet de Cardiologie Mesnana",
   nomCourt: "Cardio Mesnana",
   nav: {
+    rdv: "Prendre rendez-vous",
     soins: "Soins & examens",
     medecin: "Le médecin",
     cabinet: "Le cabinet",
@@ -104,10 +105,36 @@ const fr = {
   },
   contact: {
     titre: "Prendre rendez-vous",
-    texte: "Contactez le secrétariat par téléphone pour fixer votre rendez-vous.",
+    texte: "Prenez rendez-vous en ligne, ou contactez le secrétariat par téléphone ou WhatsApp.",
     fixe: "Fixe",
     mobile: "Mobile",
     whatsapp: "Écrire sur WhatsApp",
+  },
+  reservation: {
+    titre: "Prendre rendez-vous",
+    intro: "Choisissez un jour puis un horaire libre : votre rendez-vous est enregistré directement dans l'agenda du cabinet.",
+    chargement: "Chargement des disponibilités…",
+    indisponible: "La prise de rendez-vous en ligne n'est pas disponible pour le moment. Merci d'appeler le secrétariat :",
+    choisirJour: "Choisissez un jour",
+    choisirHeure: "Choisissez un horaire",
+    complet: "Plus aucun horaire libre ce jour-là. Choisissez un autre jour.",
+    vosCoordonnees: "Vos coordonnées",
+    nom: "Nom et prénom",
+    telephone: "Téléphone",
+    motif: "Motif de la consultation",
+    facultatif: "facultatif",
+    consentement:
+      "J'accepte que ces informations soient transmises au cabinet pour organiser mon rendez-vous (voir les mentions légales).",
+    confirmer: "Confirmer le rendez-vous",
+    envoi: "Enregistrement…",
+    confirme: "Rendez-vous confirmé",
+    confirmeTexte:
+      "Merci ! Le secrétariat pourra vous appeler pour confirmer. En cas d'empêchement, prévenez le cabinet par téléphone ou WhatsApp.",
+    erreurs: {
+      champs: "Merci de vérifier votre nom, votre numéro de téléphone et de cocher la case d'accord.",
+      creneauPris: "Cet horaire vient d'être réservé. Merci d'en choisir un autre.",
+      technique: "Un problème technique empêche la réservation. Merci d'appeler le secrétariat.",
+    },
   },
   pied: {
     mentions: "Mentions légales",
@@ -123,7 +150,7 @@ const fr = {
       "Les informations présentées sur ce site sont fournies à titre informatif et ne remplacent pas une consultation médicale. En cas d'urgence, appelez le 141 (SAMU) ou le 15 (Protection civile).",
     donnees: "Données personnelles",
     donneesTexte:
-      "Ce site ne contient aucun formulaire, ne collecte aucune donnée personnelle et n'utilise pas de cookies de suivi. Le plan d'accès est fourni par Google Maps, soumis à sa propre politique de confidentialité.",
+      "Lorsque vous prenez rendez-vous en ligne, votre nom, votre téléphone et le motif éventuel sont transmis au cabinet et enregistrés dans son agenda (Google Agenda), uniquement pour organiser votre consultation. Ils ne sont accessibles qu'au médecin et au secrétariat et ne sont jamais utilisés à d'autres fins. Vous pouvez demander leur consultation, rectification ou suppression en contactant le cabinet (loi n° 09-08). Le site n'utilise pas de cookies de suivi. Le plan d'accès est fourni par Google Maps, soumis à sa propre politique de confidentialité.",
   },
 };
 

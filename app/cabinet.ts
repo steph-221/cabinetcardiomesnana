@@ -21,6 +21,11 @@ export const cabinet = {
     "09:30 – 14:00",
     null,
   ] as (string | null)[],
+  // Réservation en ligne
+  fuseau: "Africa/Casablanca",
+  dureeRdv: 30, // minutes par créneau
+  joursReservables: 21, // jusqu'à combien de jours à l'avance
+  delaiMinimum: 2, // heures minimum entre la réservation et le rendez-vous
 };
 
 export const langues = ["fr", "ar", "en", "es"] as const;
