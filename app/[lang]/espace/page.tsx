@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, CalendarDays, Globe, LogOut, Phone, Users } from "lucide-react";
+import { Ban, CalendarDays, FolderOpen, Globe, History, LogOut, Phone, Users } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
@@ -75,6 +75,22 @@ async function Tableau({ langue }: { langue: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/${langue}/espace/patients`}
+            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <FolderOpen className="h-4 w-4" aria-hidden />
+            Patients
+          </Link>
+          {utilisateur.admin && (
+            <Link
+              href={`/${langue}/espace/journal`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <History className="h-4 w-4" aria-hidden />
+              Journal
+            </Link>
+          )}
           {utilisateur.admin && (
             <Link
               href={`/${langue}/espace/comptes`}
@@ -175,6 +191,15 @@ async function Tableau({ langue }: { langue: string }) {
                               <Phone className="h-3 w-3" aria-hidden />
                               {r.telephone}
                             </a>
+                          )}
+                          {r.telephone && !r.fermeture && (
+                            <Link
+                              href={`/${langue}/espace/patients?q=${encodeURIComponent(r.telephone)}`}
+                              className="ms-3 inline-flex items-center gap-1 text-slate-600 hover:text-red-700"
+                            >
+                              <FolderOpen className="h-3 w-3" aria-hidden />
+                              Dossier
+                            </Link>
                           )}
                           {(r.dateNaissance || r.email) && (
                             <p className="mt-1 text-slate-500">

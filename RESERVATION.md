@@ -67,6 +67,8 @@ Les comptes du personnel sont enregistrés dans une petite base gratuite, Upstas
 3. Saisir un identifiant (ex. `secretaire`, `remplacant`) et un mot de passe d'au moins 10 caractères, puis
    **Enregistrer le compte**. Transmettre l'identifiant et le mot de passe à la personne.
 
+- Choisir le **rôle** : « secrétaire » (agenda et identité des patients, sans le contenu médical) ou « médecin »
+  (dossier médical complet). Voir DOSSIER.md.
 - Pour **retirer un accès** (fin de remplacement) : **Supprimer** ; la personne est déconnectée immédiatement.
 - Pour **changer un mot de passe** oublié : ressaisir l'identifiant avec un nouveau mot de passe ; l'ancien ne
   fonctionne plus.

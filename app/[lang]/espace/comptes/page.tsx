@@ -7,7 +7,7 @@ import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { listerComptes, utilisateurConnecte } from "../../../agenda/session";
 import { stockageConfigure } from "../../../agenda/stockage";
-import { BoutonRetirer, FormulaireCompte } from "./formulaires";
+import { BoutonRetirer, ChoixRole, FormulaireCompte } from "./formulaires";
 
 export const metadata: Metadata = {
   title: "Comptes du personnel",
@@ -30,7 +30,7 @@ export default async function Comptes({ params }: PageProps<"/[lang]/espace/comp
       <h1 className="mt-4 text-2xl font-bold text-slate-900">Comptes du personnel</h1>
       <p className="mt-1 text-sm text-slate-500">
         Créez un compte pour la secrétaire, un médecin remplaçant… Supprimez-le à la fin du remplacement : l&apos;accès
-        est coupé immédiatement.
+        est coupé immédiatement. Le rôle « secrétaire » ne donne pas accès au contenu médical des dossiers.
       </p>
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Liste langue={lang} />
@@ -80,7 +80,10 @@ async function Liste({ langue }: { langue: string }) {
                 <span className="font-medium text-slate-900">{c.identifiant}</span>
                 <span className="text-slate-500">depuis le {date(c.creeLe)}</span>
               </div>
-              <BoutonRetirer langue={langue} identifiant={c.identifiant} />
+              <div className="flex items-center gap-2">
+                <ChoixRole langue={langue} identifiant={c.identifiant} role={c.role} />
+                <BoutonRetirer langue={langue} identifiant={c.identifiant} />
+              </div>
             </li>
           ))
         )}
