@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     default: `${cabinet.nom} — ${cabinet.medecin.nom}, cardiologue`,
     template: `%s — ${cabinet.nom}`,
   },
-  description: `${cabinet.nom} : consultations de cardiologie, ECG, échocardiographie, Holter, MAPA et épreuve d'effort. Prise de rendez-vous en ligne.`,
+  description: `${cabinet.nom}, ${cabinet.medecin.nom} à Tanger : consultations de cardiologie, ECG et échocardiographie. Rendez-vous au ${cabinet.telephones[0].numero}.`,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

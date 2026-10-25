@@ -1,42 +1,32 @@
 // Informations du cabinet : modifiez ce fichier pour mettre à jour le site.
-// Les valeurs entre crochets [ ... ] sont à remplacer par les vraies informations.
 
 export const cabinet = {
   nom: "Cabinet de Cardiologie Mesnana",
   nomCourt: "Cardio Mesnana",
-  slogan: "Prévention, diagnostic et suivi des maladies du cœur et des vaisseaux.",
+  slogan: "Spécialiste des maladies du cœur et des artères à Tanger : prévention, diagnostic et suivi.",
   medecin: {
-    nom: "Dr [Prénom Nom]",
+    nom: "Dr Taouab Zogarh Cursoux",
     titre: "Cardiologue",
     presentation:
-      "[Présentation du médecin : formation, parcours, domaines d'intérêt. Exemple : diplômé de la faculté de médecine de ..., ancien chef de clinique, spécialisé dans la prise en charge de l'insuffisance cardiaque et des troubles du rythme.]",
-    secteur: "[Secteur 1 conventionné — carte Vitale acceptée]",
-    rpps: "[Numéro RPPS]",
+      "Le cabinet accueille les patients pour la prévention, le diagnostic et le suivi des maladies cardiovasculaires : hypertension artérielle, douleurs thoraciques, palpitations, essoufflement, insuffisance cardiaque ou bilan avant une intervention ou une reprise du sport. Les examens courants sont réalisés sur place, dans un cabinet récent et équipé.",
   },
   adresse: {
-    rue: "[Numéro et rue]",
-    ville: "[Code postal] [Ville]",
-    complement: "[Étage, bâtiment, interphone…]",
-    // Lien Google Maps vers le cabinet
-    carte: "https://maps.google.com/?q=[adresse+du+cabinet]",
+    ligne1: "Résidence Adam, 2ᵉ étage, appartement n° 5",
+    ligne2: "Trémie Mesnana, 90000 Tanger",
+    pays: "Maroc",
+    carte:
+      "https://www.google.com/maps/search/?api=1&query=Dr+Taouab+Zogarh+Cursoux+Cabinet+de+cardiologie+mesnana+Tanger",
+    carteIntegree: "https://maps.google.com/maps?q=35.752777,-5.85083&z=17&output=embed",
   },
-  telephone: "[01 23 45 67 89]",
-  telephoneLien: "+33123456789",
-  email: "[contact@cabinet-cardio-mesnana.fr]",
-  // Lien de prise de rendez-vous en ligne (Doctolib, Maiia, etc.)
-  rendezVous: "https://www.doctolib.fr/",
-  horaires: [
-    { jour: "Lundi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Mardi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Mercredi", heures: "[9h00 – 12h30]" },
-    { jour: "Jeudi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Vendredi", heures: "[9h00 – 12h30 · 14h00 – 17h00]" },
-    { jour: "Samedi", heures: "Fermé" },
-    { jour: "Dimanche", heures: "Fermé" },
+  telephones: [
+    { libelle: "Fixe", numero: "05 39 31 85 50", lien: "+212539318550" },
+    { libelle: "Mobile", numero: "07 16 74 49 13", lien: "+212716744913" },
   ],
-  acces: {
-    transports: "[Ligne de bus / métro / tram et arrêt le plus proche]",
-    stationnement: "[Parking gratuit devant le cabinet / parking public à proximité]",
-    pmr: "Cabinet accessible aux personnes à mobilité réduite.",
-  },
+  site: "cabinetcardiomesnana.com",
+  // Laissez vide tant que les horaires détaillés ne sont pas confirmés :
+  // le site affiche alors seulement la phrase « horairesNote ».
+  horaires: [] as { jour: string; heures: string }[],
+  horairesNote: "Ouverture à partir de 9h00. Consultations sur rendez-vous : appelez le secrétariat.",
 };
+
+export const telephonePrincipal = cabinet.telephones[0];

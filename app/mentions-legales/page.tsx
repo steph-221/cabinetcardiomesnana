@@ -16,13 +16,9 @@ export default function MentionsLegales() {
           <p>
             {cabinet.nom} — {cabinet.medecin.nom}, {cabinet.medecin.titre.toLowerCase()}
             <br />
-            {cabinet.adresse.rue}, {cabinet.adresse.ville}
+            {cabinet.adresse.ligne1}, {cabinet.adresse.ligne2}, {cabinet.adresse.pays}
             <br />
-            Téléphone : {cabinet.telephone} · E-mail : {cabinet.email}
-            <br />
-            N° RPPS : {cabinet.medecin.rpps}
-            <br />
-            Inscrit au Conseil départemental de l&apos;Ordre des médecins de [département].
+            Téléphone : {cabinet.telephones.map((t) => t.numero).join(" · ")}
           </p>
         </section>
 
@@ -30,7 +26,7 @@ export default function MentionsLegales() {
           <h2 className="mb-2 text-lg font-semibold text-slate-900">Hébergement</h2>
           <p>
             Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis —{" "}
-            <a href="https://vercel.com" className="text-rose-600 hover:underline">
+            <a href="https://vercel.com" className="text-red-600 hover:underline">
               vercel.com
             </a>
           </p>
@@ -40,15 +36,15 @@ export default function MentionsLegales() {
           <h2 className="mb-2 text-lg font-semibold text-slate-900">Caractère informatif</h2>
           <p>
             Les informations présentées sur ce site sont fournies à titre informatif et ne remplacent pas une
-            consultation médicale. En cas d&apos;urgence, appelez le 15 ou le 112.
+            consultation médicale. En cas d&apos;urgence, appelez le 141 (SAMU) ou le 15 (Protection civile).
           </p>
         </section>
 
         <section>
           <h2 className="mb-2 text-lg font-semibold text-slate-900">Données personnelles</h2>
           <p>
-            Ce site ne collecte aucune donnée personnelle et n&apos;utilise pas de cookies de suivi. La prise de
-            rendez-vous en ligne est assurée par un service tiers, soumis à sa propre politique de confidentialité.
+            Ce site ne contient aucun formulaire, ne collecte aucune donnée personnelle et n&apos;utilise pas de cookies
+            de suivi. Le plan d&apos;accès est fourni par Google Maps, soumis à sa propre politique de confidentialité.
           </p>
         </section>
       </div>
