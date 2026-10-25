@@ -3,6 +3,16 @@
 
 export const cabinet = {
   medecin: "Dr Taouab Zogarh Cursoux",
+  site: "https://www.cabinetcardiomesnana.com",
+  // Pour Google (données structurées) : adresse et position du cabinet
+  adresse: {
+    rue: "Résidence Adam, 2ᵉ étage, appartement n° 5, Trémie Mesnana",
+    codePostal: "90000",
+    ville: "Tanger",
+    region: "Tanger-Tétouan-Al Hoceïma",
+    pays: "MA",
+  },
+  position: { latitude: 35.752777, longitude: -5.85083 },
   carte:
     "https://www.google.com/maps/search/?api=1&query=Dr+Taouab+Zogarh+Cursoux+Cabinet+de+cardiologie+mesnana+Tanger",
   carteIntegree: "https://maps.google.com/maps?q=35.752777,-5.85083&z=17&output=embed",

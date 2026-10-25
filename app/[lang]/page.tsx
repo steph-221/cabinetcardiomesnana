@@ -17,6 +17,7 @@ import {
   Waves,
 } from "lucide-react";
 import { cabinet, estLangue } from "../cabinet";
+import { donneesStructurees, jsonLd } from "../referencement";
 import { getDictionnaire } from "./dictionaries";
 import bureau from "../../public/cabinet/bureau.jpg";
 import salleExamen from "../../public/cabinet/salle-examen.jpg";
@@ -35,6 +36,8 @@ export default async function Accueil({ params }: PageProps<"/[lang]">) {
 
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(donneesStructurees(lang, t)) }} />
+
       {/* Présentation */}
       <section className="bg-gradient-to-b from-red-50 to-white">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-2 md:items-center md:py-20">

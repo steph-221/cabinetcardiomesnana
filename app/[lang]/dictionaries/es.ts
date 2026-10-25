@@ -2,9 +2,9 @@ import type { Dictionnaire } from "./fr";
 
 const es: Dictionnaire = {
   meta: {
-    titre: "Consulta de Cardiología Mesnana — Dr Taouab Zogarh Cursoux, cardiología en Tánger",
+    titre: "Cardiología en Tánger (Mesnana) — Dr Taouab Zogarh Cursoux",
     description:
-      "Consulta de cardiología en Mesnana, Tánger: consultas, ECG y ecocardiografía. Citas: +212 5 39 31 85 50.",
+      "Consulta de cardiología en Mesnana, Tánger: consultas, ECG, ecocardiografía, Holter, MAPA y prueba de esfuerzo. Cita en línea o al +212 5 39 31 85 50.",
   },
   nom: "Consulta de Cardiología Mesnana",
   nomCourt: "Cardio Mesnana",

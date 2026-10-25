@@ -1,8 +1,8 @@
 const fr = {
   meta: {
-    titre: "Cabinet de Cardiologie Mesnana — Dr Taouab Zogarh Cursoux, cardiologue à Tanger",
+    titre: "Cardiologue à Tanger (Mesnana) — Dr Taouab Zogarh Cursoux",
     description:
-      "Cabinet de cardiologie à Mesnana, Tanger : consultations, ECG et échocardiographie. Rendez-vous au 05 39 31 85 50.",
+      "Cabinet de cardiologie à Mesnana, Tanger : consultation, ECG, échocardiographie, Holter, MAPA et épreuve d'effort. Rendez-vous en ligne ou au 05 39 31 85 50.",
   },
   nom: "Cabinet de Cardiologie Mesnana",
   nomCourt: "Cardio Mesnana",
