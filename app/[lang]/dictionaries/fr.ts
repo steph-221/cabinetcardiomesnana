@@ -48,7 +48,7 @@ const fr = {
       {
         titre: "Hypertension et prévention",
         texte:
-          "Diagnostic et suivi de l'hypertension artérielle, du cholestérol et du diabète pour protéger le cœur et les artères.",
+          "Diagnostic et suivi de l'hypertension artérielle, du cholestérol et du diabète pour protéger le cœur et les vaisseaux.",
       },
       {
         titre: "Holter ECG",

@@ -50,7 +50,7 @@ const en: Dictionnaire = {
       {
         titre: "Hypertension and prevention",
         texte:
-          "Diagnosis and follow-up of high blood pressure, cholesterol and diabetes to protect the heart and arteries.",
+          "Diagnosis and follow-up of high blood pressure, cholesterol and diabetes to protect the heart and blood vessels.",
       },
       {
         titre: "Holter monitoring",
