@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { estJour, jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../agenda/session";
+import { mettreALaCorbeille } from "../../../dossier/drive";
+import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
 import {
   ajouterTraitement,
@@ -12,6 +14,7 @@ import {
   doublonsPossibles,
   facteursRisque,
   libellePatient,
+  lirePatient,
   modifierPatient,
   supprimerPatient,
   supprimerTraitement,
@@ -99,7 +102,10 @@ export async function enregistrerPatient(
 
 export async function supprimer(langue: string, id: number) {
   const admin = await exigerUtilisateur(langue, "admin");
+  const patient = await lirePatient(id);
   await supprimerPatient(id);
+  // Le dossier Drive part à la corbeille (récupérable 30 jours)
+  if (patient?.driveDossier) await mettreALaCorbeille(patient.driveDossier).catch(console.error);
   await journaliser(admin.identifiant, "suppression", id);
   redirect(`/${langue}/espace/patients`);
 }
@@ -140,5 +146,22 @@ export async function effacerTraitement(langue: string, patientId: number, id: n
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerTraitement(patientId, id);
   await journaliser(utilisateur.identifiant, "traitement supprimé", patientId);
+  refresh();
+}
+
+// --- Examens : la conclusion et la suppression sont réservées aux médecins ---
+
+export async function changerConclusion(langue: string, patientId: number, id: number, formData: FormData) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await modifierConclusion(patientId, id, texte(formData, "conclusion", 5000));
+  await journaliser(utilisateur.identifiant, "conclusion d'examen modifiée", patientId);
+  refresh();
+}
+
+export async function retirerExamen(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const fichier = await supprimerExamen(patientId, id);
+  if (fichier) await mettreALaCorbeille(fichier).catch(console.error);
+  await journaliser(utilisateur.identifiant, "examen supprimé", patientId);
   refresh();
 }

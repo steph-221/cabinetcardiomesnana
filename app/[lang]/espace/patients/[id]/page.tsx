@@ -4,10 +4,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
-import { History, MessageCircle, Pencil, Phone, Pill, TriangleAlert } from "lucide-react";
+import { ExternalLink, FileText, History, MessageCircle, Pencil, Phone, Pill, TriangleAlert } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { jourLocal } from "../../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../../agenda/session";
+import { compteDrive } from "../../../../dossier/drive";
+import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
 import {
   age,
@@ -19,6 +21,7 @@ import {
   type Traitement,
 } from "../../../../dossier/patients";
 import { Retour } from "../commun";
+import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
 
 export const metadata: Metadata = {
@@ -56,7 +59,11 @@ async function Dossier({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
-  const traitements = medical ? await listerTraitements(id) : [];
+  const [traitements, examens, drive] = await Promise.all([
+    medical ? listerTraitements(id) : [],
+    listerExamens(id),
+    compteDrive().catch(() => null),
+  ]);
 
   // Chaque ouverture de dossier est tracée, après l'envoi de la page pour ne pas la ralentir
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
@@ -153,6 +160,8 @@ async function Dossier({
           </p>
         )}
       </div>
+
+      <Examens langue={langue} patientId={id} examens={examens} medical={medical} drive={Boolean(drive)} />
 
       {utilisateur.admin && (
         <div className="mt-12 border-t border-slate-200 pt-6">
@@ -261,5 +270,92 @@ function ContenuMedical({
         )}
       </section>
     </div>
+  );
+}
+
+function Examens({
+  langue,
+  patientId,
+  examens,
+  medical,
+  drive,
+}: {
+  langue: string;
+  patientId: number;
+  examens: Examen[];
+  medical: boolean;
+  drive: boolean;
+}) {
+  const taille = (octets: number) =>
+    octets > 1024 * 1024 ? `${(octets / 1024 / 1024).toFixed(1)} Mo` : `${Math.max(1, Math.round(octets / 1024))} Ko`;
+
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <FileText className="h-5 w-5 text-red-600" aria-hidden />
+        Examens
+      </h2>
+      {drive ? (
+        <EnvoiExamens
+          patientId={patientId}
+          types={typesExamen}
+          medical={medical}
+          tailleMax={TAILLE_MAX}
+          aujourdhui={jourLocal(new Date())}
+        />
+      ) : (
+        <p className="rounded-lg bg-amber-50 p-4 text-amber-900">
+          Google Drive n&apos;est pas encore connecté : l&apos;administrateur doit le connecter depuis l&apos;espace
+          cabinet (bouton « Google Drive »).
+        </p>
+      )}
+
+      {examens.length === 0 ? (
+        <p className="mt-4 text-slate-500">Aucun examen pour le moment.</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-slate-100">
+          {examens.map((e) => (
+            <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p>
+                  <span className="font-mono text-slate-600">{date(e.date)}</span>
+                  <span className="ms-3 font-medium text-slate-900">{e.type}</span>
+                  {e.fichierNom && (
+                    <span className="ms-3 text-slate-400">
+                      {e.fichierNom} · {taille(e.fichierTaille)}
+                    </span>
+                  )}
+                </p>
+                {medical && e.conclusion && <p className="mt-1 whitespace-pre-line text-slate-700">{e.conclusion}</p>}
+                {medical && (
+                  <ConclusionExamen langue={langue} patientId={patientId} id={e.id} conclusion={e.conclusion} />
+                )}
+              </div>
+              {medical && (
+                <div className="flex items-center gap-1">
+                  {e.fichierDrive && (
+                    <a
+                      href={`/api/fichiers/${e.id}`}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                    >
+                      <ExternalLink className="h-3 w-3" aria-hidden />
+                      Ouvrir
+                    </a>
+                  )}
+                  <BoutonSupprimerExamen
+                    langue={langue}
+                    patientId={patientId}
+                    id={e.id}
+                    libelle={`${e.type} du ${date(e.date)}`}
+                  />
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

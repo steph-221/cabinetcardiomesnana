@@ -25,7 +25,45 @@ Les dossiers sont enregistrés dans une base Postgres gratuite, Neon :
 Les tables sont créées automatiquement à la première ouverture de la page **Patients** ; il n'y a rien d'autre à
 faire. Les évolutions futures de la base s'appliquent de la même façon.
 
-## 2. Rôles du personnel
+## 2. Connecter Google Drive (une seule fois)
+
+Les examens (PDF des appareils, photos de papiers ou de résultats de laboratoire) sont rangés dans le Google Drive du
+cabinet : un dossier « Cabinet — Dossiers patients », puis un sous-dossier par patient (« NOM Prénom — n° 12 »), et
+des fichiers nommés par date et type (« 2025-04-18 Échocardiographie (ETT) — compte-rendu.pdf »). Le site ne voit
+que les fichiers qu'il a lui-même créés : le reste du Drive lui reste invisible.
+
+1. Sur <https://console.cloud.google.com/>, dans le même projet que l'agenda : **API et services → Bibliothèque** →
+   activer **Google Drive API**.
+2. **Google Auth Platform** (ou « Écran de consentement OAuth ») : type **Externe**, nom « Site cabinet », adresse
+   de contact du cabinet. Puis **Audience → Publier l'application** (état « En production »). Sans cette étape,
+   Google coupe l'accès au bout de 7 jours. La portée utilisée (`drive.file`) ne demande pas de vérification par
+   Google.
+3. **Clients → Créer un client** → type **Application Web**. Dans **URI de redirection autorisés**, ajouter :
+   - `https://www.cabinetcardiomesnana.com/api/drive/retour`
+   - `https://cabinetcardiomesnana.com/api/drive/retour`
+   - l'adresse `…vercel.app/api/drive/retour` du projet, si l'espace cabinet est parfois ouvert par cette adresse.
+4. Projet Vercel → **Settings → Environment Variables** :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `GOOGLE_OAUTH_CLIENT_ID` | l'« ID client » affiché à l'étape 3 |
+   | `GOOGLE_OAUTH_CLIENT_SECRET` | le « Code secret du client » de l'étape 3 |
+
+   Puis redéployer.
+5. Se connecter à l'espace cabinet avec le compte administrateur → **Google Drive** → **Connecter Google Drive**, et
+   choisir le compte Google du cabinet.
+
+Ensuite, dans chaque dossier patient, section **Examens** :
+
+- choisir le type et la date, puis **Choisir des fichiers** (plusieurs PDF à la fois, ou glisser-déposer) ou
+  **Prendre une photo** (sur téléphone, ouvre directement l'appareil photo) ;
+- les photos sont réduites automatiquement (environ 1 Mo) ; 4 Mo maximum par fichier ;
+- la secrétaire peut classer les examens ; seuls les médecins écrivent une conclusion et ouvrent les fichiers ;
+- **Supprimer** met le fichier dans la corbeille de Google Drive (récupérable pendant 30 jours).
+
+Le jeton d'accès à Google Drive est enregistré chiffré dans la base. **Déconnecter** (page Google Drive) le révoque.
+
+## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :
 
@@ -33,7 +71,7 @@ Dans **Gérer les comptes**, chaque compte a un rôle :
 | --- | --- | --- | --- | --- |
 | Administrateur (le médecin, `COMPTE_ADMIN`) | oui | oui | oui | oui |
 | Médecin (remplaçant) | oui | oui | oui | non |
-| Secrétaire | oui | oui | **non** : rien n'est envoyé à son navigateur | non |
+| Secrétaire | oui | oui, et classement des examens | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
 
 Les comptes créés avant cette mise à jour sont « secrétaire ». Pour un médecin remplaçant, choisir **médecin** dans la
 liste à côté de son nom puis **Changer**.

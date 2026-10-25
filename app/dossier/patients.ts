@@ -37,7 +37,14 @@ export type ContenuMedical = {
 };
 
 export type Patient = Identite &
-  ContenuMedical & { id: number; creeLe: Date; creePar: string; modifieLe: Date; modifiePar: string };
+  ContenuMedical & {
+    id: number;
+    driveDossier: string | null;
+    creeLe: Date;
+    creePar: string;
+    modifieLe: Date;
+    modifiePar: string;
+  };
 
 export type ResumePatient = Pick<Patient, "id" | "nom" | "prenom" | "sexe" | "naissance" | "telephone" | "modifieLe">;
 
@@ -67,6 +74,7 @@ const versPatient = (l: Ligne): Patient => ({
   antecedents: l.antecedents as string,
   allergies: l.allergies as string,
   notes: l.notes as string,
+  driveDossier: (l.drive_dossier as string | null | undefined) ?? null,
   creeLe: l.cree_le as Date,
   creePar: l.cree_par as string,
   modifieLe: l.modifie_le as Date,

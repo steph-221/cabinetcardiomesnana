@@ -21,6 +21,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Ignore les fichiers internes de Next.js et les fichiers statiques (images, favicon…)
-  matcher: ["/((?!_next|.*\\..*).*)"],
+  // Ignore les fichiers internes de Next.js, les routes /api et les fichiers statiques (images, favicon…)
+  matcher: ["/((?!_next|api/|.*\\..*).*)"],
 };
