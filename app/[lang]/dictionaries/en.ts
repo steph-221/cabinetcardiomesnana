@@ -20,7 +20,7 @@ const en: Dictionnaire = {
   },
   accueil: {
     titreMedecin: "Cardiologist",
-    slogan: "Specialist in heart and artery diseases in Tangier: prevention, diagnosis and follow-up.",
+    slogan: "Specialist in diseases of the heart and blood vessels in Tangier: prevention, diagnosis and follow-up.",
     ville: "Mesnana, 90000 Tangier",
     photo: "Examination room at the practice",
   },
