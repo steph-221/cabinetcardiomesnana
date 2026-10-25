@@ -20,3 +20,8 @@ body {
 section[id] {
   scroll-margin-top: 5rem;
 }
+
+/* Police adaptée à l'écriture arabe */
+html:lang(ar) {
+  font-family: var(--font-arabic), var(--font-geist-sans), sans-serif;
+}

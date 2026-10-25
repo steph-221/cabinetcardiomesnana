@@ -1,42 +1,37 @@
-// Informations du cabinet : modifiez ce fichier pour mettre à jour le site.
-// Les valeurs entre crochets [ ... ] sont à remplacer par les vraies informations.
+// Informations du cabinet communes à toutes les langues.
+// Les textes traduits sont dans app/[lang]/dictionaries/.
 
 export const cabinet = {
-  nom: "Cabinet de Cardiologie Mesnana",
-  nomCourt: "Cardio Mesnana",
-  slogan: "Prévention, diagnostic et suivi des maladies du cœur et des vaisseaux.",
-  medecin: {
-    nom: "Dr [Prénom Nom]",
-    titre: "Cardiologue",
-    presentation:
-      "[Présentation du médecin : formation, parcours, domaines d'intérêt. Exemple : diplômé de la faculté de médecine de ..., ancien chef de clinique, spécialisé dans la prise en charge de l'insuffisance cardiaque et des troubles du rythme.]",
-    secteur: "[Secteur 1 conventionné — carte Vitale acceptée]",
-    rpps: "[Numéro RPPS]",
+  medecin: "Dr Taouab Zogarh Cursoux",
+  carte:
+    "https://www.google.com/maps/search/?api=1&query=Dr+Taouab+Zogarh+Cursoux+Cabinet+de+cardiologie+mesnana+Tanger",
+  carteIntegree: "https://maps.google.com/maps?q=35.752777,-5.85083&z=17&output=embed",
+  telephones: {
+    fixe: { numero: "05 39 31 85 50", lien: "+212539318550" },
+    mobile: { numero: "07 16 74 49 13", lien: "+212716744913" },
   },
-  adresse: {
-    rue: "[Numéro et rue]",
-    ville: "[Code postal] [Ville]",
-    complement: "[Étage, bâtiment, interphone…]",
-    // Lien Google Maps vers le cabinet
-    carte: "https://maps.google.com/?q=[adresse+du+cabinet]",
-  },
-  telephone: "[01 23 45 67 89]",
-  telephoneLien: "+33123456789",
-  email: "[contact@cabinet-cardio-mesnana.fr]",
-  // Lien de prise de rendez-vous en ligne (Doctolib, Maiia, etc.)
-  rendezVous: "https://www.doctolib.fr/",
+  whatsapp: "https://wa.me/212716744913",
+  // Du lundi au dimanche, dans l'ordre ; null = fermé.
   horaires: [
-    { jour: "Lundi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Mardi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Mercredi", heures: "[9h00 – 12h30]" },
-    { jour: "Jeudi", heures: "[9h00 – 12h30 · 14h00 – 18h30]" },
-    { jour: "Vendredi", heures: "[9h00 – 12h30 · 14h00 – 17h00]" },
-    { jour: "Samedi", heures: "Fermé" },
-    { jour: "Dimanche", heures: "Fermé" },
-  ],
-  acces: {
-    transports: "[Ligne de bus / métro / tram et arrêt le plus proche]",
-    stationnement: "[Parking gratuit devant le cabinet / parking public à proximité]",
-    pmr: "Cabinet accessible aux personnes à mobilité réduite.",
-  },
+    "09:00 – 17:00",
+    "09:00 – 17:00",
+    "09:00 – 17:00",
+    "09:00 – 17:00",
+    "09:00 – 17:00",
+    "09:30 – 14:00",
+    null,
+  ] as (string | null)[],
 };
+
+export const langues = ["fr", "ar", "en", "es"] as const;
+export type Langue = (typeof langues)[number];
+export const langueParDefaut: Langue = "fr";
+
+export const nomsLangues: Record<Langue, string> = {
+  fr: "Français",
+  ar: "العربية",
+  en: "English",
+  es: "Español",
+};
+
+export const estLangue = (valeur: string): valeur is Langue => (langues as readonly string[]).includes(valeur);
