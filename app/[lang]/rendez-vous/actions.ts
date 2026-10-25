@@ -1,6 +1,6 @@
 "use server";
 
-import { chevauche, creneauxDuJour, estJour, joursReservables } from "../../agenda/creneaux";
+import { chevauche, creneauxDuJour, estJour, jourLocal, joursReservables } from "../../agenda/creneaux";
 import { agendaConfigure, creerRendezvous, periodesOccupees } from "../../agenda/google";
 
 // Créneaux encore libres pour un jour donné ("HH:MM")
@@ -25,7 +25,7 @@ export type EtatReservation =
       statut: "erreur";
       code: "champs" | "creneauPris" | "technique";
       // Valeurs saisies, pour que le formulaire ne se vide pas
-      valeurs: { nom: string; telephone: string; motif: string };
+      valeurs: { nom: string; telephone: string; motif: string; dateNaissance: string; email: string };
     }
   | { statut: "confirme"; jour: string; heure: string };
 
@@ -40,15 +40,28 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   const nom = texte(formData, "nom", 100);
   const telephone = texte(formData, "telephone", 30);
   const motif = texte(formData, "motif", 300);
+  // Facultatifs
+  const dateNaissance = texte(formData, "dateNaissance", 10);
+  const email = texte(formData, "email", 100);
   const erreur = (code: "champs" | "creneauPris" | "technique"): EtatReservation => ({
     statut: "erreur",
     code,
-    valeurs: { nom, telephone, motif },
+    valeurs: { nom, telephone, motif, dateNaissance, email },
   });
   const telephoneValide = /^\+?[\d\s.-]{8,20}$/.test(telephone);
   // Champ invisible : seuls les robots le remplissent
   if (texte(formData, "site", 100)) return erreur("champs");
-  if (!estJour(jour) || nom.length < 2 || !telephoneValide || formData.get("consentement") !== "on") {
+  const naissanceValide =
+    !dateNaissance || (estJour(dateNaissance) && dateNaissance >= "1900-01-01" && dateNaissance <= jourLocal(new Date()));
+  const emailValide = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (
+    !estJour(jour) ||
+    nom.length < 2 ||
+    !telephoneValide ||
+    !naissanceValide ||
+    !emailValide ||
+    formData.get("consentement") !== "on"
+  ) {
     return erreur("champs");
   }
   if (!agendaConfigure()) return erreur("technique");
@@ -62,7 +75,16 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
     if (occupe.some((p) => chevauche(p, { debut: creneau.debut.getTime(), fin: creneau.fin.getTime() }))) {
       return erreur("creneauPris");
     }
-    await creerRendezvous({ debut: creneau.debut, fin: creneau.fin, nom, telephone, motif, source: "site" });
+    await creerRendezvous({
+      debut: creneau.debut,
+      fin: creneau.fin,
+      nom,
+      telephone,
+      motif,
+      dateNaissance,
+      email,
+      source: "site",
+    });
   } catch (e) {
     console.error(e);
     return erreur("technique");

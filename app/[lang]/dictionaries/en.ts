@@ -122,6 +122,8 @@ const en: Dictionnaire = {
     nom: "Full name",
     telephone: "Phone",
     motif: "Reason for the visit",
+    dateNaissance: "Date of birth",
+    email: "Email",
     facultatif: "optional",
     consentement: "I agree that this information is sent to the practice to organise my appointment (see legal notice).",
     confirmer: "Confirm appointment",
@@ -130,7 +132,7 @@ const en: Dictionnaire = {
     confirmeTexte:
       "Thank you! The front desk may call you to confirm. If you cannot come, please let the practice know by phone or WhatsApp.",
     erreurs: {
-      champs: "Please check your name and phone number, and tick the consent box.",
+      champs: "Please check your name and phone number (and, if filled in, your date of birth and email), and tick the consent box.",
       creneauPris: "This time slot has just been booked. Please choose another one.",
       technique: "A technical problem prevents booking. Please call the front desk.",
     },
@@ -149,7 +151,7 @@ const en: Dictionnaire = {
       "The information on this site is provided for information only and does not replace a medical consultation. In an emergency, call 141 (SAMU ambulance) or 15 (Civil Protection).",
     donnees: "Personal data",
     donneesTexte:
-      "When you book an appointment online, your name, phone number and the reason for your visit (if given) are sent to the practice and stored in its calendar (Google Calendar), solely to organise your consultation. Only the doctor and the front desk can access them and they are never used for any other purpose. You may ask to access, correct or delete them by contacting the practice (Moroccan law no. 09-08). The site does not use tracking cookies. The map is provided by Google Maps, subject to its own privacy policy.",
+      "When you book an appointment online, your name, phone number and, if you provide them, your date of birth, email and the reason for your visit are sent to the practice and stored in its calendar (Google Calendar), solely to organise your consultation. Only the doctor and the front desk can access them and they are never used for any other purpose. You may ask to access, correct or delete them by contacting the practice (Moroccan law no. 09-08). The site does not use tracking cookies. The map is provided by Google Maps, subject to its own privacy policy.",
   },
 };
 

@@ -24,6 +24,7 @@ export const cabinet = {
   // Réservation en ligne
   fuseau: "Africa/Casablanca",
   dureeRdv: 30, // minutes par créneau
+  dureeControle: 10, // rendez-vous de contrôle ajouté par le secrétariat entre deux consultations
   joursReservables: 21, // jusqu'à combien de jours à l'avance
   delaiMinimum: 2, // heures minimum entre la réservation et le rendez-vous
 };

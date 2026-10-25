@@ -122,6 +122,8 @@ const fr = {
     nom: "Nom et prénom",
     telephone: "Téléphone",
     motif: "Motif de la consultation",
+    dateNaissance: "Date de naissance",
+    email: "E-mail",
     facultatif: "facultatif",
     consentement:
       "J'accepte que ces informations soient transmises au cabinet pour organiser mon rendez-vous (voir les mentions légales).",
@@ -131,7 +133,7 @@ const fr = {
     confirmeTexte:
       "Merci ! Le secrétariat pourra vous appeler pour confirmer. En cas d'empêchement, prévenez le cabinet par téléphone ou WhatsApp.",
     erreurs: {
-      champs: "Merci de vérifier votre nom, votre numéro de téléphone et de cocher la case d'accord.",
+      champs: "Merci de vérifier votre nom, votre numéro de téléphone (et, s'ils sont remplis, la date de naissance et l'e-mail), puis de cocher la case d'accord.",
       creneauPris: "Cet horaire vient d'être réservé. Merci d'en choisir un autre.",
       technique: "Un problème technique empêche la réservation. Merci d'appeler le secrétariat.",
     },
@@ -150,7 +152,7 @@ const fr = {
       "Les informations présentées sur ce site sont fournies à titre informatif et ne remplacent pas une consultation médicale. En cas d'urgence, appelez le 141 (SAMU) ou le 15 (Protection civile).",
     donnees: "Données personnelles",
     donneesTexte:
-      "Lorsque vous prenez rendez-vous en ligne, votre nom, votre téléphone et le motif éventuel sont transmis au cabinet et enregistrés dans son agenda (Google Agenda), uniquement pour organiser votre consultation. Ils ne sont accessibles qu'au médecin et au secrétariat et ne sont jamais utilisés à d'autres fins. Vous pouvez demander leur consultation, rectification ou suppression en contactant le cabinet (loi n° 09-08). Le site n'utilise pas de cookies de suivi. Le plan d'accès est fourni par Google Maps, soumis à sa propre politique de confidentialité.",
+      "Lorsque vous prenez rendez-vous en ligne, votre nom, votre téléphone et, si vous les indiquez, votre date de naissance, votre e-mail et le motif de consultation sont transmis au cabinet et enregistrés dans son agenda (Google Agenda), uniquement pour organiser votre consultation. Ils ne sont accessibles qu'au médecin et au secrétariat et ne sont jamais utilisés à d'autres fins. Vous pouvez demander leur consultation, rectification ou suppression en contactant le cabinet (loi n° 09-08). Le site n'utilise pas de cookies de suivi. Le plan d'accès est fourni par Google Maps, soumis à sa propre politique de confidentialité.",
   },
 };
 

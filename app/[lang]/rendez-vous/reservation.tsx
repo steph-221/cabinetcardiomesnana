@@ -149,6 +149,31 @@ export function Reservation({
               className={champ}
             />
           </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">
+              {t.dateNaissance} <span className="font-normal text-slate-400">({t.facultatif})</span>
+              <input
+                name="dateNaissance"
+                type="date"
+                min="1900-01-01"
+                autoComplete="bday"
+                defaultValue={saisi?.dateNaissance}
+                className={champ}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              {t.email} <span className="font-normal text-slate-400">({t.facultatif})</span>
+              <input
+                name="email"
+                type="email"
+                maxLength={100}
+                autoComplete="email"
+                dir="ltr"
+                defaultValue={saisi?.email}
+                className={champ}
+              />
+            </label>
+          </div>
           <label className="block text-sm font-medium text-slate-700">
             {t.motif} <span className="font-normal text-slate-400">({t.facultatif})</span>
             <textarea name="motif" rows={3} maxLength={300} defaultValue={saisi?.motif} className={champ} />

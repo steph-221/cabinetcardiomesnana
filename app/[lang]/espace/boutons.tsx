@@ -63,8 +63,15 @@ export function FormulaireAjout({ langue, aujourdhui }: { langue: string; aujour
         <input name="heure" type="time" required step={300} defaultValue={v.heure} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
-        Durée (minutes)
-        <input name="duree" type="number" min={5} max={240} step={5} defaultValue={v.duree ?? cabinet.dureeRdv} className={champ} />
+        Type
+        <select name="type" defaultValue={v.type ?? "consultation"} className={champ}>
+          <option value="consultation">Consultation ({cabinet.dureeRdv} min)</option>
+          <option value="controle">Contrôle ({cabinet.dureeControle} min)</option>
+        </select>
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Durée <span className="font-normal text-slate-400">(minutes, si différente)</span>
+        <input name="duree" type="number" min={5} max={240} step={5} defaultValue={v.duree} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Nom du patient
@@ -75,6 +82,14 @@ export function FormulaireAjout({ langue, aujourdhui }: { langue: string; aujour
         <input name="telephone" type="tel" maxLength={30} defaultValue={v.telephone} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
+        Date de naissance
+        <input name="dateNaissance" type="date" min="1900-01-01" defaultValue={v.dateNaissance} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        E-mail
+        <input name="email" type="email" maxLength={100} defaultValue={v.email} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700 sm:col-span-2 lg:col-span-3">
         Motif
         <input name="motif" maxLength={300} defaultValue={v.motif} className={champ} />
       </label>

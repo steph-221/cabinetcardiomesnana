@@ -101,19 +101,17 @@ async function Tableau({ langue }: { langue: string }) {
         <FormulaireAjout langue={langue} aujourdhui={aujourdhui} />
       </section>
 
-      {utilisateur.admin && (
-        <section className="mt-8 rounded-2xl border border-slate-200 p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Ban className="h-5 w-5 text-red-600" aria-hidden />
-            Fermer des créneaux
-          </h2>
-          <p className="mt-1 mb-4 text-sm text-slate-500">
-            Congé, absence, formation… Les créneaux fermés ne sont plus proposés aux patients sur le site. Les
-            rendez-vous déjà pris ne sont pas annulés.
-          </p>
-          <FormulaireFermeture langue={langue} aujourdhui={aujourdhui} />
-        </section>
-      )}
+      <section className="mt-8 rounded-2xl border border-slate-200 p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Ban className="h-5 w-5 text-red-600" aria-hidden />
+          Fermer des créneaux
+        </h2>
+        <p className="mt-1 mb-4 text-sm text-slate-500">
+          Congé, absence, formation… Les créneaux fermés ne sont plus proposés aux patients sur le site. Les
+          rendez-vous déjà pris ne sont pas annulés.
+        </p>
+        <FormulaireFermeture langue={langue} aujourdhui={aujourdhui} />
+      </section>
 
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -157,6 +155,11 @@ async function Tableau({ langue }: { langue: string }) {
                                 fermé
                               </span>
                             )}
+                            {r.controle && (
+                              <span className="ms-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800">
+                                contrôle
+                              </span>
+                            )}
                             {r.enLigne && (
                               <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">
                                 <Globe className="h-3 w-3" aria-hidden />
@@ -173,12 +176,23 @@ async function Tableau({ langue }: { langue: string }) {
                               {r.telephone}
                             </a>
                           )}
+                          {(r.dateNaissance || r.email) && (
+                            <p className="mt-1 text-slate-500">
+                              {r.dateNaissance && `Né·e le ${r.dateNaissance.split("-").reverse().join("/")}`}
+                              {r.dateNaissance && r.email && " · "}
+                              {r.email && (
+                                <a href={`mailto:${r.email}`} className="hover:text-red-700">
+                                  {r.email}
+                                </a>
+                              )}
+                            </p>
+                          )}
                           {r.motif && !r.fermeture && <p className="mt-1 text-slate-500">{r.motif}</p>}
                         </div>
                       </div>
                       {/* Rendez-vous patients et fermetures se gèrent ici ; le reste dans Google Agenda */}
                       {r.annulable && <BoutonAnnuler langue={langue} id={r.id} nom={r.titre} />}
-                      {r.fermeture && utilisateur.admin && <BoutonRouvrir langue={langue} id={r.id} />}
+                      {r.fermeture && <BoutonRouvrir langue={langue} id={r.id} />}
                     </li>
                   ))}
                 </ul>
