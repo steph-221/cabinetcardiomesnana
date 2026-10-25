@@ -2,9 +2,9 @@ import type { Dictionnaire } from "./fr";
 
 const en: Dictionnaire = {
   meta: {
-    titre: "Mesnana Cardiology Practice — Dr Taouab Zogarh Cursoux, cardiologist in Tangier",
+    titre: "Cardiologist in Tangier (Mesnana) — Dr Taouab Zogarh Cursoux",
     description:
-      "Cardiology practice in Mesnana, Tangier: consultations, ECG and echocardiography. Appointments: +212 5 39 31 85 50.",
+      "Cardiology practice in Mesnana, Tangier: consultations, ECG, echocardiography, Holter monitoring, 24-hour blood pressure monitoring and stress test. Book online or call +212 5 39 31 85 50.",
   },
   nom: "Mesnana Cardiology Practice",
   nomCourt: "Cardio Mesnana",

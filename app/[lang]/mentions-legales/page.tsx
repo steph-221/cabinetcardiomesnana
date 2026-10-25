@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { cabinet, estLangue } from "../../cabinet";
+import { alternatesPour } from "../../referencement";
 import { getDictionnaire } from "../dictionaries";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/mentions-legales">): Promise<Metadata> {
   const { lang } = await params;
-  return estLangue(lang) ? { title: getDictionnaire(lang).mentions.titre } : {};
+  if (!estLangue(lang)) return {};
+  return { title: getDictionnaire(lang).mentions.titre, alternates: alternatesPour(lang, "/mentions-legales") };
 }
 
 export default async function MentionsLegales({ params }: PageProps<"/[lang]/mentions-legales">) {

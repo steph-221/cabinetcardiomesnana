@@ -5,12 +5,14 @@ import { Phone, TriangleAlert } from "lucide-react";
 import { cabinet, estLangue, type Langue } from "../../cabinet";
 import { joursReservables } from "../../agenda/creneaux";
 import { agendaConfigure } from "../../agenda/google";
+import { alternatesPour } from "../../referencement";
 import { getDictionnaire, type Dictionnaire } from "../dictionaries";
 import { Reservation } from "./reservation";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/rendez-vous">): Promise<Metadata> {
   const { lang } = await params;
-  return estLangue(lang) ? { title: getDictionnaire(lang).reservation.titre } : {};
+  if (!estLangue(lang)) return {};
+  return { title: getDictionnaire(lang).reservation.titre, alternates: alternatesPour(lang, "/rendez-vous") };
 }
 
 export default async function PageRendezvous({ params }: PageProps<"/[lang]/rendez-vous">) {
