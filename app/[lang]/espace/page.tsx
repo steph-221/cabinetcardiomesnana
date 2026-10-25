@@ -155,6 +155,11 @@ async function Tableau({ langue }: { langue: string }) {
                                 fermé
                               </span>
                             )}
+                            {r.controle && (
+                              <span className="ms-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800">
+                                contrôle
+                              </span>
+                            )}
                             {r.enLigne && (
                               <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">
                                 <Globe className="h-3 w-3" aria-hidden />
@@ -170,6 +175,17 @@ async function Tableau({ langue }: { langue: string }) {
                               <Phone className="h-3 w-3" aria-hidden />
                               {r.telephone}
                             </a>
+                          )}
+                          {(r.dateNaissance || r.email) && (
+                            <p className="mt-1 text-slate-500">
+                              {r.dateNaissance && `Né·e le ${r.dateNaissance.split("-").reverse().join("/")}`}
+                              {r.dateNaissance && r.email && " · "}
+                              {r.email && (
+                                <a href={`mailto:${r.email}`} className="hover:text-red-700">
+                                  {r.email}
+                                </a>
+                              )}
+                            </p>
                           )}
                           {r.motif && !r.fermeture && <p className="mt-1 text-slate-500">{r.motif}</p>}
                         </div>

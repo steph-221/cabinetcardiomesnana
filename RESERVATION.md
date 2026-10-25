@@ -75,6 +75,13 @@ Les comptes du personnel sont enregistrés dans une petite base gratuite, Upstas
 
 Chaque rendez-vous ajouté depuis l'espace cabinet indique dans Google Agenda qui l'a créé.
 
+Dans **Ajouter un rendez-vous**, le champ **Type** propose :
+
+- **Consultation** (30 min) : occupe le créneau, qui n'est plus proposé aux patients ;
+- **Contrôle** (10 min) : se glisse entre deux consultations, sans retirer de créneau aux patients.
+
+La durée peut être modifiée au besoin. Ces valeurs se règlent dans `app/cabinet.ts` (`dureeRdv`, `dureeControle`).
+
 ## 6. Fermer des créneaux (congés, absences)
 
 Pour l'administrateur et le personnel (secrétaire, remplaçant…), dans l'espace cabinet, section **Fermer des créneaux** :
@@ -89,6 +96,6 @@ Agenda (« Fermé — motif »).
 
 ## Données personnelles
 
-Le formulaire collecte le nom, le téléphone et le motif (facultatif) du patient, avec son accord explicite. Les
+Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
 mentions légales ont été mises à jour en conséquence (loi 09-08). Selon l'usage, une déclaration auprès de la
 CNDP (<https://www.cndp.ma>) peut être nécessaire : à vérifier par le cabinet.

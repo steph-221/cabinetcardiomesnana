@@ -124,6 +124,8 @@ const es: Dictionnaire = {
     nom: "Nombre y apellidos",
     telephone: "Teléfono",
     motif: "Motivo de la consulta",
+    dateNaissance: "Fecha de nacimiento",
+    email: "Correo electrónico",
     facultatif: "opcional",
     consentement: "Acepto que estos datos se envíen a la consulta para organizar mi cita (ver aviso legal).",
     confirmer: "Confirmar la cita",
@@ -132,7 +134,7 @@ const es: Dictionnaire = {
     confirmeTexte:
       "¡Gracias! La secretaría podrá llamarle para confirmar. Si no puede acudir, avise a la consulta por teléfono o WhatsApp.",
     erreurs: {
-      champs: "Por favor, compruebe su nombre y teléfono y marque la casilla de consentimiento.",
+      champs: "Por favor, compruebe su nombre y teléfono (y, si los ha indicado, la fecha de nacimiento y el correo electrónico) y marque la casilla de consentimiento.",
       creneauPris: "Este horario acaba de reservarse. Por favor, elija otro.",
       technique: "Un problema técnico impide la reserva. Por favor, llame a la secretaría.",
     },
@@ -151,7 +153,7 @@ const es: Dictionnaire = {
       "La información de este sitio tiene carácter informativo y no sustituye a una consulta médica. En caso de urgencia, llame al 141 (SAMU) o al 15 (Protección Civil).",
     donnees: "Datos personales",
     donneesTexte:
-      "Cuando pide cita en línea, su nombre, su teléfono y el motivo de la consulta (si lo indica) se envían a la consulta y se guardan en su agenda (Google Calendar), únicamente para organizar su visita. Solo el médico y la secretaría tienen acceso a ellos y nunca se utilizan con otros fines. Puede solicitar su consulta, rectificación o supresión contactando con la consulta (ley marroquí n.º 09-08). El sitio no utiliza cookies de seguimiento. El mapa lo proporciona Google Maps, sujeto a su propia política de privacidad.",
+      "Cuando pide cita en línea, su nombre, su teléfono y, si los indica, su fecha de nacimiento, su correo electrónico y el motivo de la consulta se envían a la consulta y se guardan en su agenda (Google Calendar), únicamente para organizar su visita. Solo el médico y la secretaría tienen acceso a ellos y nunca se utilizan con otros fines. Puede solicitar su consulta, rectificación o supresión contactando con la consulta (ley marroquí n.º 09-08). El sitio no utiliza cookies de seguimiento. El mapa lo proporciona Google Maps, sujeto a su propia política de privacidad.",
   },
 };
 

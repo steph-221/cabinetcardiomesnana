@@ -64,9 +64,15 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   const nom = String(formData.get("nom") ?? "").trim().slice(0, 100);
   const telephone = String(formData.get("telephone") ?? "").trim().slice(0, 30);
   const motif = String(formData.get("motif") ?? "").trim().slice(0, 300);
-  const duree = Number(formData.get("duree")) || cabinet.dureeRdv;
+  const dateNaissance = String(formData.get("dateNaissance") ?? "");
+  const email = String(formData.get("email") ?? "").trim().slice(0, 100);
+  const controle = formData.get("type") === "controle";
+  const duree = Number(formData.get("duree")) || (controle ? cabinet.dureeControle : cabinet.dureeRdv);
   if (!estJour(jour) || !/^\d{2}:\d{2}$/.test(heure) || !nom || duree < 5 || duree > 240) {
     return echec("Merci de remplir la date, l'heure et le nom du patient.", formData);
+  }
+  if ((dateNaissance && !estJour(dateNaissance)) || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    return echec("Vérifiez la date de naissance et l'e-mail.", formData);
   }
   const debut = dateLocale(jour, heure);
   try {
@@ -76,6 +82,9 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
       nom,
       telephone,
       motif,
+      dateNaissance,
+      email,
+      controle,
       source: "secretariat",
       par: utilisateur.identifiant,
     });

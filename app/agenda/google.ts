@@ -14,6 +14,9 @@ export type Rendezvous = {
   fin: string; // ISO
   telephone?: string;
   motif?: string;
+  dateNaissance?: string; // "AAAA-MM-JJ"
+  email?: string;
+  controle: boolean; // rendez-vous de contrôle court, glissé entre deux consultations
   enLigne: boolean;
   annulable: boolean; // rendez-vous patient créé par le site ou l'espace cabinet
   fermeture: boolean; // créneaux fermés par l'administrateur
@@ -122,6 +125,9 @@ export async function listerRendezvous(debut: Date, fin: Date): Promise<Rendezvo
       fin: e.end.dateTime ?? e.end.date!,
       telephone: prive.telephone,
       motif: prive.motif,
+      dateNaissance: prive.dateNaissance,
+      email: prive.email,
+      controle: prive.type === "controle",
       enLigne: prive.source === "site",
       annulable: prive.source === "site" || prive.source === "secretariat",
       fermeture: prive.source === "fermeture",
@@ -135,11 +141,16 @@ export async function creerRendezvous(rdv: {
   nom: string;
   telephone: string;
   motif: string;
+  dateNaissance?: string;
+  email?: string;
+  controle?: boolean;
   source: "site" | "secretariat";
   par?: string;
 }) {
   const description = [
     `Téléphone : ${rdv.telephone}`,
+    rdv.dateNaissance && `Date de naissance : ${rdv.dateNaissance.split("-").reverse().join("/")}`,
+    rdv.email && `E-mail : ${rdv.email}`,
     rdv.motif && `Motif : ${rdv.motif}`,
     rdv.source === "site" ? "Réservé en ligne sur le site" : `Ajouté par ${rdv.par ?? "le secrétariat"}`,
   ]
@@ -149,12 +160,21 @@ export async function creerRendezvous(rdv: {
   return appel<EvenementGoogle>(`/calendars/${idAgenda()}/events`, {
     method: "POST",
     body: JSON.stringify({
-      summary: `RDV — ${rdv.nom}`,
+      summary: `${rdv.controle ? "Contrôle" : "RDV"} — ${rdv.nom}`,
       description,
+      // Un contrôle se glisse entre deux consultations : il ne retire pas de créneau aux patients
+      transparency: rdv.controle ? "transparent" : "opaque",
       start: { dateTime: rdv.debut.toISOString(), timeZone: cabinet.fuseau },
       end: { dateTime: rdv.fin.toISOString(), timeZone: cabinet.fuseau },
       extendedProperties: {
-        private: { source: rdv.source, telephone: rdv.telephone, motif: rdv.motif },
+        private: {
+          source: rdv.source,
+          type: rdv.controle ? "controle" : "consultation",
+          telephone: rdv.telephone,
+          motif: rdv.motif,
+          dateNaissance: rdv.dateNaissance ?? "",
+          email: rdv.email ?? "",
+        },
       },
     }),
   });
