@@ -77,7 +77,7 @@ Chaque rendez-vous ajouté depuis l'espace cabinet indique dans Google Agenda qu
 
 ## 6. Fermer des créneaux (congés, absences)
 
-Réservé à l'administrateur, dans l'espace cabinet, section **Fermer des créneaux** :
+Pour l'administrateur et le personnel (secrétaire, remplaçant…), dans l'espace cabinet, section **Fermer des créneaux** :
 
 - **Journée entière** (cochée) : fermer un jour, ou plusieurs jours de suite en remplissant « Au » ;
 - **Journée entière** décochée : fermer une plage horaire (par exemple de 14:00 à 16:00) ;

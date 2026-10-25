@@ -101,19 +101,17 @@ async function Tableau({ langue }: { langue: string }) {
         <FormulaireAjout langue={langue} aujourdhui={aujourdhui} />
       </section>
 
-      {utilisateur.admin && (
-        <section className="mt-8 rounded-2xl border border-slate-200 p-6">
-          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Ban className="h-5 w-5 text-red-600" aria-hidden />
-            Fermer des créneaux
-          </h2>
-          <p className="mt-1 mb-4 text-sm text-slate-500">
-            Congé, absence, formation… Les créneaux fermés ne sont plus proposés aux patients sur le site. Les
-            rendez-vous déjà pris ne sont pas annulés.
-          </p>
-          <FormulaireFermeture langue={langue} aujourdhui={aujourdhui} />
-        </section>
-      )}
+      <section className="mt-8 rounded-2xl border border-slate-200 p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Ban className="h-5 w-5 text-red-600" aria-hidden />
+          Fermer des créneaux
+        </h2>
+        <p className="mt-1 mb-4 text-sm text-slate-500">
+          Congé, absence, formation… Les créneaux fermés ne sont plus proposés aux patients sur le site. Les
+          rendez-vous déjà pris ne sont pas annulés.
+        </p>
+        <FormulaireFermeture langue={langue} aujourdhui={aujourdhui} />
+      </section>
 
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -178,7 +176,7 @@ async function Tableau({ langue }: { langue: string }) {
                       </div>
                       {/* Rendez-vous patients et fermetures se gèrent ici ; le reste dans Google Agenda */}
                       {r.annulable && <BoutonAnnuler langue={langue} id={r.id} nom={r.titre} />}
-                      {r.fermeture && utilisateur.admin && <BoutonRouvrir langue={langue} id={r.id} />}
+                      {r.fermeture && <BoutonRouvrir langue={langue} id={r.id} />}
                     </li>
                   ))}
                 </ul>
