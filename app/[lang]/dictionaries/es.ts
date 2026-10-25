@@ -50,7 +50,7 @@ const es: Dictionnaire = {
       {
         titre: "Hipertensión y prevención",
         texte:
-          "Diagnóstico y seguimiento de la hipertensión arterial, el colesterol y la diabetes para proteger el corazón y las arterias.",
+          "Diagnóstico y seguimiento de la hipertensión arterial, el colesterol y la diabetes para proteger el corazón y los vasos sanguíneos.",
       },
       {
         titre: "Holter ECG",
