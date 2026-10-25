@@ -3,13 +3,13 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { CalendarDays, Globe, LogOut, Phone, Users } from "lucide-react";
+import { Ban, CalendarDays, Globe, LogOut, Phone, Users } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
 import { utilisateurConnecte } from "../../agenda/session";
 import { deconnexion } from "./actions";
-import { BoutonAnnuler, FormulaireAjout } from "./boutons";
+import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture } from "./boutons";
 
 export const metadata: Metadata = {
   title: "Espace cabinet",
@@ -56,6 +56,10 @@ async function Tableau({ langue }: { langue: string }) {
     const jour = r.debut.length === 10 ? r.debut : jourLocal(new Date(r.debut));
     parJour.set(jour, [...(parJour.get(jour) ?? []), r]);
   }
+  const titreCourt = (jour: string) =>
+    new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(
+      new Date(`${jour}T12:00:00Z`),
+    );
   const titreJour = (jour: string) =>
     new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(
       new Date(`${jour}T12:00:00Z`),
@@ -97,14 +101,27 @@ async function Tableau({ langue }: { langue: string }) {
         <FormulaireAjout langue={langue} aujourdhui={aujourdhui} />
       </section>
 
+      {utilisateur.admin && (
+        <section className="mt-8 rounded-2xl border border-slate-200 p-6">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+            <Ban className="h-5 w-5 text-red-600" aria-hidden />
+            Fermer des créneaux
+          </h2>
+          <p className="mt-1 mb-4 text-sm text-slate-500">
+            Congé, absence, formation… Les créneaux fermés ne sont plus proposés aux patients sur le site. Les
+            rendez-vous déjà pris ne sont pas annulés.
+          </p>
+          <FormulaireFermeture langue={langue} aujourdhui={aujourdhui} />
+        </section>
+      )}
+
       <section className="mt-8">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
           <CalendarDays className="h-5 w-5 text-red-600" aria-hidden />
           Les {JOURS_AFFICHES} prochains jours
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Pour bloquer un créneau (congé, absence, réunion), ajoutez simplement un événement dans Google Agenda : il
-          ne sera plus proposé aux patients.
+          Tout événement ajouté directement dans Google Agenda bloque aussi les créneaux correspondants.
         </p>
 
         {rendezvous === null ? (
@@ -126,12 +143,20 @@ async function Tableau({ langue }: { langue: string }) {
                       <div className="flex gap-4">
                         <span className="w-24 shrink-0 font-mono text-sm text-slate-700">
                           {r.debut.length === 10
-                            ? "Journée"
+                            ? ajouterJours(r.debut, 1) === r.fin
+                              ? "Journée"
+                              : `→ ${titreCourt(ajouterJours(r.fin, -1))}`
                             : `${heureLocale(new Date(r.debut))}–${heureLocale(new Date(r.fin))}`}
                         </span>
                         <div className="text-sm">
                           <p className="font-medium text-slate-900">
                             {r.titre}
+                            {r.fermeture && (
+                              <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-normal text-red-700">
+                                <Ban className="h-3 w-3" aria-hidden />
+                                fermé
+                              </span>
+                            )}
                             {r.enLigne && (
                               <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">
                                 <Globe className="h-3 w-3" aria-hidden />
@@ -148,11 +173,12 @@ async function Tableau({ langue }: { langue: string }) {
                               {r.telephone}
                             </a>
                           )}
-                          {r.motif && <p className="mt-1 text-slate-500">{r.motif}</p>}
+                          {r.motif && !r.fermeture && <p className="mt-1 text-slate-500">{r.motif}</p>}
                         </div>
                       </div>
-                      {/* Seuls les rendez-vous patients sont annulables ici ; le reste se gère dans Google Agenda */}
+                      {/* Rendez-vous patients et fermetures se gèrent ici ; le reste dans Google Agenda */}
                       {r.annulable && <BoutonAnnuler langue={langue} id={r.id} nom={r.titre} />}
+                      {r.fermeture && utilisateur.admin && <BoutonRouvrir langue={langue} id={r.id} />}
                     </li>
                   ))}
                 </ul>

@@ -75,6 +75,18 @@ Les comptes du personnel sont enregistrés dans une petite base gratuite, Upstas
 
 Chaque rendez-vous ajouté depuis l'espace cabinet indique dans Google Agenda qui l'a créé.
 
+## 6. Fermer des créneaux (congés, absences)
+
+Réservé à l'administrateur, dans l'espace cabinet, section **Fermer des créneaux** :
+
+- **Journée entière** (cochée) : fermer un jour, ou plusieurs jours de suite en remplissant « Au » ;
+- **Journée entière** décochée : fermer une plage horaire (par exemple de 14:00 à 16:00) ;
+- un motif facultatif, visible seulement par le cabinet.
+
+Les créneaux fermés ne sont plus proposés aux patients ; les rendez-vous déjà pris ne sont pas annulés. Le bouton
+**Rouvrir**, dans la liste des prochains jours, annule une fermeture. Les fermetures apparaissent aussi dans Google
+Agenda (« Fermé — motif »).
+
 ## Données personnelles
 
 Le formulaire collecte le nom, le téléphone et le motif (facultatif) du patient, avec son accord explicite. Les
