@@ -9,6 +9,7 @@ const en: Dictionnaire = {
   nom: "Mesnana Cardiology Practice",
   nomCourt: "Cardio Mesnana",
   nav: {
+    rdv: "Book an appointment",
     soins: "Care & tests",
     medecin: "The doctor",
     cabinet: "The practice",
@@ -104,10 +105,35 @@ const en: Dictionnaire = {
   },
   contact: {
     titre: "Book an appointment",
-    texte: "Call the reception to book your appointment.",
+    texte: "Book online, or contact the front desk by phone or WhatsApp.",
     fixe: "Landline",
     mobile: "Mobile",
     whatsapp: "Message on WhatsApp",
+  },
+  reservation: {
+    titre: "Book an appointment",
+    intro: "Pick a day, then a free time slot: your appointment goes straight into the practice's calendar.",
+    chargement: "Loading availability…",
+    indisponible: "Online booking is not available at the moment. Please call the front desk:",
+    choisirJour: "Choose a day",
+    choisirHeure: "Choose a time",
+    complet: "No free time slots left that day. Please choose another day.",
+    vosCoordonnees: "Your details",
+    nom: "Full name",
+    telephone: "Phone",
+    motif: "Reason for the visit",
+    facultatif: "optional",
+    consentement: "I agree that this information is sent to the practice to organise my appointment (see legal notice).",
+    confirmer: "Confirm appointment",
+    envoi: "Saving…",
+    confirme: "Appointment confirmed",
+    confirmeTexte:
+      "Thank you! The front desk may call you to confirm. If you cannot come, please let the practice know by phone or WhatsApp.",
+    erreurs: {
+      champs: "Please check your name and phone number, and tick the consent box.",
+      creneauPris: "This time slot has just been booked. Please choose another one.",
+      technique: "A technical problem prevents booking. Please call the front desk.",
+    },
   },
   pied: {
     mentions: "Legal notice",
@@ -123,7 +149,7 @@ const en: Dictionnaire = {
       "The information on this site is provided for information only and does not replace a medical consultation. In an emergency, call 141 (SAMU ambulance) or 15 (Civil Protection).",
     donnees: "Personal data",
     donneesTexte:
-      "This site has no forms, collects no personal data and uses no tracking cookies. The map is provided by Google Maps, which has its own privacy policy.",
+      "When you book an appointment online, your name, phone number and the reason for your visit (if given) are sent to the practice and stored in its calendar (Google Calendar), solely to organise your consultation. Only the doctor and the front desk can access them and they are never used for any other purpose. You may ask to access, correct or delete them by contacting the practice (Moroccan law no. 09-08). The site does not use tracking cookies. The map is provided by Google Maps, subject to its own privacy policy.",
   },
 };
 

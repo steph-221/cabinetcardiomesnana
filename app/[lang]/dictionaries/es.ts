@@ -9,6 +9,7 @@ const es: Dictionnaire = {
   nom: "Consulta de Cardiología Mesnana",
   nomCourt: "Cardio Mesnana",
   nav: {
+    rdv: "Pedir cita",
     soins: "Servicios y pruebas",
     medecin: "El médico",
     cabinet: "La consulta",
@@ -106,10 +107,35 @@ const es: Dictionnaire = {
   },
   contact: {
     titre: "Pedir cita",
-    texte: "Llame a la secretaría para concertar su cita.",
+    texte: "Pida cita en línea, o contacte con la secretaría por teléfono o WhatsApp.",
     fixe: "Fijo",
     mobile: "Móvil",
     whatsapp: "Escribir por WhatsApp",
+  },
+  reservation: {
+    titre: "Pedir cita",
+    intro: "Elija un día y luego un horario libre: su cita se registra directamente en la agenda de la consulta.",
+    chargement: "Cargando disponibilidad…",
+    indisponible: "La reserva en línea no está disponible en este momento. Por favor, llame a la secretaría:",
+    choisirJour: "Elija un día",
+    choisirHeure: "Elija un horario",
+    complet: "No quedan horarios libres ese día. Elija otro día.",
+    vosCoordonnees: "Sus datos",
+    nom: "Nombre y apellidos",
+    telephone: "Teléfono",
+    motif: "Motivo de la consulta",
+    facultatif: "opcional",
+    consentement: "Acepto que estos datos se envíen a la consulta para organizar mi cita (ver aviso legal).",
+    confirmer: "Confirmar la cita",
+    envoi: "Guardando…",
+    confirme: "Cita confirmada",
+    confirmeTexte:
+      "¡Gracias! La secretaría podrá llamarle para confirmar. Si no puede acudir, avise a la consulta por teléfono o WhatsApp.",
+    erreurs: {
+      champs: "Por favor, compruebe su nombre y teléfono y marque la casilla de consentimiento.",
+      creneauPris: "Este horario acaba de reservarse. Por favor, elija otro.",
+      technique: "Un problema técnico impide la reserva. Por favor, llame a la secretaría.",
+    },
   },
   pied: {
     mentions: "Aviso legal",
@@ -125,7 +151,7 @@ const es: Dictionnaire = {
       "La información de este sitio tiene carácter informativo y no sustituye a una consulta médica. En caso de urgencia, llame al 141 (SAMU) o al 15 (Protección Civil).",
     donnees: "Datos personales",
     donneesTexte:
-      "Este sitio no contiene formularios, no recoge datos personales y no utiliza cookies de seguimiento. El mapa lo proporciona Google Maps, sujeto a su propia política de privacidad.",
+      "Cuando pide cita en línea, su nombre, su teléfono y el motivo de la consulta (si lo indica) se envían a la consulta y se guardan en su agenda (Google Calendar), únicamente para organizar su visita. Solo el médico y la secretaría tienen acceso a ellos y nunca se utilizan con otros fines. Puede solicitar su consulta, rectificación o supresión contactando con la consulta (ley marroquí n.º 09-08). El sitio no utiliza cookies de seguimiento. El mapa lo proporciona Google Maps, sujeto a su propia política de privacidad.",
   },
 };
 

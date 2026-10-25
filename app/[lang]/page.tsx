@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import {
   Activity,
   CalendarCheck,
@@ -44,9 +45,16 @@ export default async function Accueil({ params }: PageProps<"/[lang]">) {
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">{t.nom}</h1>
             <p className="mt-4 text-lg text-slate-600">{t.accueil.slogan}</p>
             <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href={`/${lang}/rendez-vous`}
+                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+              >
+                <CalendarCheck className="h-5 w-5" aria-hidden />
+                {t.nav.rdv}
+              </Link>
               <a
                 href={`tel:${fixe.lien}`}
-                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+                className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-6 py-3 font-medium text-red-700 hover:bg-red-50"
               >
                 <Phone className="h-5 w-5" aria-hidden />
                 <span dir="ltr">{fixe.numero}</span>
@@ -226,6 +234,13 @@ export default async function Accueil({ params }: PageProps<"/[lang]">) {
             <p className="mt-2 text-red-100">{t.contact.texte}</p>
           </div>
           <div className="flex flex-col gap-3 md:items-end">
+            <Link
+              href={`/${lang}/rendez-vous`}
+              className="inline-flex items-center gap-3 rounded-full bg-slate-900 px-6 py-3 font-medium text-white hover:bg-slate-800"
+            >
+              <CalendarCheck className="h-5 w-5" aria-hidden />
+              {t.nav.rdv}
+            </Link>
             {[
               { ...fixe, libelle: t.contact.fixe },
               { ...mobile, libelle: t.contact.mobile },

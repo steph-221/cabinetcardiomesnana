@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, HeartPulse, Menu, Phone, X } from "lucide-react";
+import { CalendarCheck, Globe, HeartPulse, Menu, Phone, X } from "lucide-react";
 import { cabinet, langues, nomsLangues, type Langue } from "../cabinet";
 import type { Dictionnaire } from "./dictionaries";
 
@@ -63,11 +63,18 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
           <SelecteurLangue langue={langue} label={t.nav.langue} />
           <a
             href={`tel:${fixe.lien}`}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
           >
             <Phone className="h-4 w-4" aria-hidden />
             <span dir="ltr">{fixe.numero}</span>
           </a>
+          <Link
+            href={`/${langue}/rendez-vous`}
+            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <CalendarCheck className="h-4 w-4" aria-hidden />
+            {t.nav.rdv}
+          </Link>
         </div>
 
         <button
@@ -94,10 +101,18 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
             <li className="pt-2">
               <SelecteurLangue langue={langue} label={t.nav.langue} />
             </li>
-            <li>
+            <li className="flex flex-wrap gap-2 pt-2">
+              <Link
+                href={`/${langue}/rendez-vous`}
+                onClick={() => setOuvert(false)}
+                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white"
+              >
+                <CalendarCheck className="h-4 w-4" aria-hidden />
+                {t.nav.rdv}
+              </Link>
               <a
                 href={`tel:${fixe.lien}`}
-                className="mt-2 inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white"
+                className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700"
               >
                 <Phone className="h-4 w-4" aria-hidden />
                 {t.nav.appeler}

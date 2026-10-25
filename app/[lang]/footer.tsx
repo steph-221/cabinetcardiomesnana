@@ -9,9 +9,14 @@ export function Footer({ langue, t }: { langue: Langue; t: Dictionnaire }) {
         <p>
           © {t.nom} — {cabinet.medecin}
         </p>
-        <Link href={`/${langue}/mentions-legales`} className="hover:text-slate-900">
-          {t.pied.mentions}
-        </Link>
+        <div className="flex gap-4">
+          <Link href={`/${langue}/mentions-legales`} className="hover:text-slate-900">
+            {t.pied.mentions}
+          </Link>
+          <Link href={`/${langue}/espace`} className="text-slate-400 hover:text-slate-900" lang="fr">
+            Espace cabinet
+          </Link>
+        </div>
       </div>
     </footer>
   );
