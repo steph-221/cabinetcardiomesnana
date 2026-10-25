@@ -144,16 +144,22 @@ export default async function Accueil({ params }: PageProps<"/[lang]">) {
       <section id="cabinet" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <h2 className="text-3xl font-bold text-slate-900">{t.cabinet.titre}</h2>
         <p className="mt-2 max-w-2xl text-slate-600">{t.cabinet.intro}</p>
-        <div className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mt-10 grid gap-6 sm:grid-cols-2">
           {photos.map((src, i) => (
-            <figure key={src.src} className="overflow-hidden rounded-2xl bg-slate-100">
+            <figure
+              key={src.src}
+              className="group relative overflow-hidden rounded-3xl bg-slate-100 shadow-md ring-1 ring-slate-900/5"
+            >
               <Image
                 src={src}
                 alt={t.cabinet.photos[i]}
                 placeholder="blur"
-                sizes="(min-width: 1024px) 25vw, 50vw"
-                className="aspect-[3/4] w-full object-cover transition duration-300 hover:scale-105"
+                sizes="(min-width: 1152px) 552px, (min-width: 640px) 50vw, 100vw"
+                className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105"
               />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-5 pb-4 pt-10 text-sm font-medium text-white">
+                {t.cabinet.photos[i]}
+              </figcaption>
             </figure>
           ))}
         </div>
