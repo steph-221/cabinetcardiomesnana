@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { dateLocale, estJour } from "../../agenda/creneaux";
-import { creerRendezvous, supprimerRendezvous } from "../../agenda/google";
+import { creerFermeture, creerRendezvous, supprimerRendezvous } from "../../agenda/google";
 import {
   enregistrerCompte,
   estAdmin,
@@ -116,5 +116,45 @@ export async function enregistrer(langue: string, _: EtatFormulaire, formData: F
 export async function retirer(langue: string, identifiant: string) {
   await exigerAdmin(langue);
   await supprimerCompte(identifiant);
+  refresh();
+}
+
+// --- Fermeture de créneaux : réservé à l'administrateur ---
+
+export async function fermer(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
+  const admin = await exigerAdmin(langue);
+  const jourDebut = String(formData.get("jourDebut") ?? "");
+  const jourFin = String(formData.get("jourFin") || jourDebut);
+  const motif = String(formData.get("motif") ?? "").trim().slice(0, 100);
+  if (!estJour(jourDebut) || !estJour(jourFin) || jourFin < jourDebut) {
+    return echec("Vérifiez les dates : la date de fin doit être après la date de début.", formData);
+  }
+
+  let periode: Parameters<typeof creerFermeture>[0];
+  if (formData.get("journeeEntiere") === "on") {
+    periode = { jourDebut, jourFin };
+  } else {
+    const heureDebut = String(formData.get("heureDebut") ?? "");
+    const heureFin = String(formData.get("heureFin") ?? "");
+    if (!/^\d{2}:\d{2}$/.test(heureDebut) || !/^\d{2}:\d{2}$/.test(heureFin)) {
+      return echec("Indiquez l'heure de début et l'heure de fin, ou cochez « Journée entière ».", formData);
+    }
+    periode = { debut: dateLocale(jourDebut, heureDebut), fin: dateLocale(jourFin, heureFin) };
+    if (periode.fin <= periode.debut) return echec("L'heure de fin doit être après l'heure de début.", formData);
+  }
+
+  try {
+    await creerFermeture(periode, motif, admin.identifiant);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("L'agenda Google n'a pas pu enregistrer la fermeture. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return null;
+}
+
+export async function rouvrir(langue: string, id: string) {
+  await exigerAdmin(langue);
+  await supprimerRendezvous(id);
   refresh();
 }

@@ -3,6 +3,7 @@
 
 import { createSign } from "node:crypto";
 import { cabinet } from "../cabinet";
+import { ajouterJours } from "./creneaux";
 
 const API = "https://www.googleapis.com/calendar/v3";
 
@@ -15,6 +16,7 @@ export type Rendezvous = {
   motif?: string;
   enLigne: boolean;
   annulable: boolean; // rendez-vous patient créé par le site ou l'espace cabinet
+  fermeture: boolean; // créneaux fermés par l'administrateur
 };
 
 const config = () => ({
@@ -121,7 +123,8 @@ export async function listerRendezvous(debut: Date, fin: Date): Promise<Rendezvo
       telephone: prive.telephone,
       motif: prive.motif,
       enLigne: prive.source === "site",
-      annulable: Boolean(prive.source),
+      annulable: prive.source === "site" || prive.source === "secretariat",
+      fermeture: prive.source === "fermeture",
     };
   });
 }
@@ -153,6 +156,33 @@ export async function creerRendezvous(rdv: {
       extendedProperties: {
         private: { source: rdv.source, telephone: rdv.telephone, motif: rdv.motif },
       },
+    }),
+  });
+}
+
+// Ferme des créneaux : un événement « occupé » dans l'agenda les retire du site.
+// Soit des journées entières (jourFin inclus), soit une plage horaire.
+export async function creerFermeture(
+  periode: { jourDebut: string; jourFin: string } | { debut: Date; fin: Date },
+  motif: string,
+  par: string,
+) {
+  const dates =
+    "jourDebut" in periode
+      ? // Pour Google, la date de fin d'un événement « journée entière » est exclue
+        { start: { date: periode.jourDebut }, end: { date: ajouterJours(periode.jourFin, 1) } }
+      : {
+          start: { dateTime: periode.debut.toISOString(), timeZone: cabinet.fuseau },
+          end: { dateTime: periode.fin.toISOString(), timeZone: cabinet.fuseau },
+        };
+  return appel<EvenementGoogle>(`/calendars/${idAgenda()}/events`, {
+    method: "POST",
+    body: JSON.stringify({
+      summary: `Fermé${motif ? ` — ${motif}` : ""}`,
+      description: `Créneaux fermés à la réservation en ligne par ${par}`,
+      transparency: "opaque",
+      ...dates,
+      extendedProperties: { private: { source: "fermeture", motif } },
     }),
   });
 }
