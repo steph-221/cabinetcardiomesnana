@@ -88,6 +88,18 @@ La fiche du patient affiche ensuite :
 
 Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
 
+## Suivis et relances (tout le personnel)
+
+- En fin de consultation, la rubrique **Prochain suivi** (« Échocardiographie (ETT) dans 6 mois ») crée un suivi ;
+  on peut aussi en ajouter un depuis le dossier (section **Suivi à prévoir**), avec un délai ou une date précise.
+- La page **Suivis** (bouton sur l'agenda, avec le nombre de suivis en retard) les classe : en retard, dans les
+  7 jours, dans le mois.
+- **Message WhatsApp** ouvre WhatsApp avec un rappel déjà rédigé (nom du patient, examen, date, téléphone du
+  cabinet et lien de prise de rendez-vous en ligne) : il suffit de l'envoyer. Puis **Relancé** (la date et la
+  personne sont notées), et **Fait** une fois le rendez-vous pris.
+- Sur l'agenda, le lien **Dossier** d'un rendez-vous ouvre directement le dossier du patient quand son téléphone
+  est connu.
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :
@@ -96,7 +108,7 @@ Dans **Gérer les comptes**, chaque compte a un rôle :
 | --- | --- | --- | --- | --- |
 | Administrateur (le médecin, `COMPTE_ADMIN`) | oui | oui | oui | oui |
 | Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes et alertes) | non |
-| Secrétaire | oui | oui, et classement des examens | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
+| Secrétaire | oui | oui, classement des examens, suivis et relances | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
 
 Les comptes créés avant cette mise à jour sont « secrétaire ». Pour un médecin remplaçant, choisir **médecin** dans la
 liste à côté de son nom puis **Changer**.

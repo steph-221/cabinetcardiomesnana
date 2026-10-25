@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { estJour, jourLocal } from "../../../agenda/creneaux";
+import { ajouterJours, estJour, jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../agenda/session";
 import {
   bornesConstantes,
@@ -14,6 +14,7 @@ import {
 } from "../../../dossier/consultations";
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
+import { ajouterSuivi, changerStatut, delais, supprimerSuivi, type Statut } from "../../../dossier/suivis";
 import { journaliser } from "../../../dossier/journal";
 import {
   ajouterTraitement,
@@ -243,6 +244,12 @@ export async function enregistrerConsultationPatient(
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, id ? "consultation modifiée" : "consultation ajoutée", patientId, date);
+    // Prochain suivi proposé en fin de consultation (« ETT dans 6 mois »)
+    const prochain = echeanceSaisie(formData, date);
+    if (enregistre !== null && prochain) {
+      await ajouterSuivi(patientId, prochain.quoi, prochain.echeance, utilisateur.identifiant);
+      await journaliser(utilisateur.identifiant, "suivi prévu", patientId, `${prochain.quoi} vers le ${prochain.echeance}`);
+    }
   } catch (erreur) {
     console.error(erreur);
     return echec("La consultation n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
@@ -265,4 +272,52 @@ export async function retirerConsultation(langue: string, patientId: number, id:
   await supprimerConsultation(patientId, id);
   await journaliser(utilisateur.identifiant, "consultation supprimée", patientId);
   redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+}
+
+// --- Suivis : tout le personnel (la secrétaire organise les relances) ---
+
+// « quoi » + délai (en jours, à partir de la date donnée) ou date précise
+function echeanceSaisie(formData: FormData, depuis: string) {
+  const quoi = texte(formData, "suiviQuoi", 150);
+  const date = String(formData.get("suiviDate") ?? "");
+  const jours = Number(formData.get("suiviDelai"));
+  if (!quoi) return null;
+  if (estJour(date)) return { quoi, echeance: date };
+  if (delais.some((d) => d.jours === jours)) return { quoi, echeance: ajouterJours(depuis, jours) };
+  return null;
+}
+
+export async function nouveauSuivi(
+  langue: string,
+  patientId: number,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue);
+  const prochain = echeanceSaisie(formData, jourLocal(new Date()));
+  if (!prochain) return echec("Indiquez ce qu'il faut prévoir, et un délai ou une date.", formData);
+  try {
+    await ajouterSuivi(patientId, prochain.quoi, prochain.echeance, utilisateur.identifiant);
+    await journaliser(utilisateur.identifiant, "suivi prévu", patientId, `${prochain.quoi} vers le ${prochain.echeance}`);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Le suivi n'a pas pu être enregistré. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return null;
+}
+
+export async function statutSuivi(langue: string, patientId: number, id: number, statut: Statut) {
+  const utilisateur = await exigerUtilisateur(langue);
+  if (!["a_faire", "relance", "fait"].includes(statut)) return;
+  await changerStatut(patientId, id, statut, utilisateur.identifiant);
+  await journaliser(utilisateur.identifiant, `suivi : ${statut === "fait" ? "fait" : statut === "relance" ? "patient relancé" : "à faire"}`, patientId);
+  refresh();
+}
+
+export async function effacerSuivi(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue);
+  await supprimerSuivi(patientId, id);
+  await journaliser(utilisateur.identifiant, "suivi supprimé", patientId);
+  refresh();
 }

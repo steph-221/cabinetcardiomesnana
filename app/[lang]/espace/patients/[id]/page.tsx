@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
-import { ExternalLink, FileText, History, MessageCircle, Pencil, Phone, Pill, TriangleAlert } from "lucide-react";
+import { CalendarClock, ExternalLink, FileText, History, MessageCircle, Pencil, Phone, Pill, TriangleAlert } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { jourLocal } from "../../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../../agenda/session";
@@ -13,6 +13,7 @@ import { listerConsultations } from "../../../../dossier/consultations";
 import { compteDrive } from "../../../../dossier/drive";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
+import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
   age,
   libellePatient,
@@ -25,6 +26,8 @@ import {
 import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
+import { LigneSuivi } from "../liste-suivis";
+import { FormulaireSuivi } from "../suivis";
 import { Alertes, SuiviMedical } from "./suivi";
 
 export const metadata: Metadata = {
@@ -62,11 +65,12 @@ async function Dossier({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
-  const [traitements, consultations, examens, drive] = await Promise.all([
+  const [traitements, consultations, examens, drive, suivis] = await Promise.all([
     medical ? listerTraitements(id) : [],
     medical ? listerConsultations(id) : [],
     listerExamens(id),
     compteDrive().catch(() => null),
+    listerSuivisPatient(id),
   ]);
 
   // Chaque ouverture de dossier est tracée, après l'envoi de la page pour ne pas la ralentir
@@ -175,6 +179,8 @@ async function Dossier({
           </p>
         )}
       </div>
+
+      <Suivis langue={langue} patient={patient} suivis={suivis} />
 
       {medical && <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} />}
 
@@ -373,6 +379,37 @@ function Examens({
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+function Suivis({ langue, patient, suivis }: { langue: string; patient: Patient; suivis: SuiviPatient[] }) {
+  const aujourdhui = jourLocal(new Date());
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
+      <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <CalendarClock className="h-5 w-5 text-red-600" aria-hidden />
+        Suivi à prévoir
+      </h2>
+      {suivis.length === 0 ? (
+        <p className="text-slate-500">Rien de prévu.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {suivis.map((s) => (
+            <LigneSuivi
+              key={s.id}
+              langue={langue}
+              // Coordonnées du patient pour le message de relance
+              suivi={{ ...s, nom: patient.nom, prenom: patient.prenom, sexe: patient.sexe, telephone: patient.telephone }}
+              aujourdhui={aujourdhui}
+              avecPatient={false}
+            />
+          ))}
+        </ul>
+      )}
+      <div className="mt-4 border-t border-slate-100 pt-4">
+        <FormulaireSuivi langue={langue} patientId={patient.id} choix={{ quoi: suivisCourants, delais }} />
+      </div>
     </section>
   );
 }

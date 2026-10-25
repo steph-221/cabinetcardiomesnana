@@ -6,6 +6,7 @@ import { Save, Trash2 } from "lucide-react";
 import { imc, surfaceCorporelle } from "../../../dossier/calculs";
 import type { Consultation } from "../../../dossier/consultations";
 import { enregistrerConsultationPatient, retirerConsultation } from "./actions";
+import { ChampsSuivi, type Choix } from "./suivis";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -32,6 +33,7 @@ export function FormulaireConsultation({
   consultation,
   tailleConnue,
   definitions,
+  choixSuivi,
   aujourdhui,
 }: {
   langue: string;
@@ -39,6 +41,7 @@ export function FormulaireConsultation({
   consultation: Consultation | null;
   tailleConnue: number | null;
   definitions: readonly { cle: string; libelle: string; unite: string }[];
+  choixSuivi: Choix;
   aujourdhui: string;
 }) {
   const [etat, envoyer] = useActionState(
@@ -180,6 +183,13 @@ export function FormulaireConsultation({
           />
         </label>
       </div>
+
+      <fieldset className="rounded-xl border border-slate-200 p-4">
+        <legend className="px-1 text-sm font-semibold text-slate-900">
+          Prochain suivi <span className="font-normal text-slate-500">(facultatif : apparaîtra dans « Suivis »)</span>
+        </legend>
+        <ChampsSuivi choix={choixSuivi} valeurs={etat?.valeurs} />
+      </fieldset>
 
       {etat && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">

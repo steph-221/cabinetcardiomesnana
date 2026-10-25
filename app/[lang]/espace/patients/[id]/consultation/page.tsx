@@ -8,6 +8,7 @@ import { jourLocal } from "../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../agenda/session";
 import { listerConsultations, mesures } from "../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../dossier/patients";
+import { delais, suivisCourants } from "../../../../../dossier/suivis";
 import { Retour } from "../../commun";
 import { FormulaireConsultation } from "../../consultation";
 
@@ -54,6 +55,7 @@ async function Formulaire({
         consultation={null}
         tailleConnue={tailleConnue}
         definitions={mesures}
+        choixSuivi={{ quoi: suivisCourants, delais }}
         aujourdhui={jourLocal(new Date())}
       />
     </>
