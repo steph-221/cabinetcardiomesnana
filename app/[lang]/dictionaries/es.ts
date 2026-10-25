@@ -20,7 +20,7 @@ const es: Dictionnaire = {
   },
   accueil: {
     titreMedecin: "Cardiología",
-    slogan: "Especialista en enfermedades del corazón y de las arterias en Tánger: prevención, diagnóstico y seguimiento.",
+    slogan: "Especialista en enfermedades del corazón y de los vasos sanguíneos en Tánger: prevención, diagnóstico y seguimiento.",
     ville: "Mesnana, 90000 Tánger",
     photo: "Sala de exploración de la consulta",
   },

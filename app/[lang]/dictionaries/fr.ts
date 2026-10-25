@@ -18,7 +18,7 @@ const fr = {
   },
   accueil: {
     titreMedecin: "Cardiologue",
-    slogan: "Spécialiste des maladies du cœur et des artères à Tanger : prévention, diagnostic et suivi.",
+    slogan: "Spécialiste des maladies du cœur et des vaisseaux à Tanger : prévention, diagnostic et suivi.",
     ville: "Mesnana, 90000 Tanger",
     photo: "Salle d'examen du cabinet",
   },
