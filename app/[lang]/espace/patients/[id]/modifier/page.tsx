@@ -50,7 +50,7 @@ async function Formulaire({
       <FormulairePatient
         langue={langue}
         // La secrétaire ne reçoit jamais le contenu médical, même masqué
-        patient={medical ? patient : { ...patient, facteursRisque: [], antecedents: "", allergies: "", notes: "" }}
+        patient={medical ? patient : { ...patient, facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null }}
         medical={medical}
         facteurs={facteursRisque}
         couvertures={couvertures}

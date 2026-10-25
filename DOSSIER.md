@@ -63,6 +63,31 @@ Ensuite, dans chaque dossier patient, section **Examens** :
 
 Le jeton d'accès à Google Drive est enregistré chiffré dans la base. **Déconnecter** (page Google Drive) le révoque.
 
+## Consultations, courbes et alertes (médecins)
+
+Dans un dossier, **Nouvelle consultation** reprend les rubriques du rapport de consultation du cabinet : motif,
+examen physique (TA, FC, SpO₂, taille reprise de la dernière fois, poids, surface corporelle et IMC calculés
+pendant la saisie), ECG, valeurs (INR, FEVG, LDL-c en g/L, créatinine en mg/L, HbA1c, NT-proBNP), autres,
+conclusion et conduite à tenir. Une virgule ou un point conviennent pour les décimales ; une valeur
+invraisemblable (FC à 500…) est refusée.
+
+La fiche du patient affiche ensuite :
+
+- **les courbes d'évolution** de chaque valeur, avec la zone cible de l'INR (à régler dans **Modifier**, rubrique
+  « Zone cible de l'INR ») ; le survol d'un point donne sa date et sa valeur, et chaque courbe a son tableau ;
+- **les calculs** : surface corporelle, IMC, DFG estimé (CKD-EPI 2021, d'après la dernière créatinine, l'âge et le
+  sexe) ;
+- **le score CHA₂DS₂-VA** (recommandations ESC 2024 sur la fibrillation atriale), pré-rempli avec l'âge, l'HTA et
+  le diabète du dossier ; les autres critères se cochent sur place (rien n'est enregistré) ;
+- **les alertes**, en haut du dossier :
+  - INR hors de la zone cible ;
+  - bradycardie (FC < 50), en précisant le bêtabloquant en cours s'il y en a un ;
+  - TA ≥ 140/90 ;
+  - DFG < 60 (< 30 : critique), pour penser à adapter les posologies ;
+  - FEVG ≤ 40 % ou en baisse d'au moins 10 points.
+
+Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :
@@ -70,7 +95,7 @@ Dans **Gérer les comptes**, chaque compte a un rôle :
 | Rôle | Agenda | Identité et coordonnées des patients | Contenu médical (antécédents, allergies, traitements…) | Comptes, journal, suppression d'un dossier |
 | --- | --- | --- | --- | --- |
 | Administrateur (le médecin, `COMPTE_ADMIN`) | oui | oui | oui | oui |
-| Médecin (remplaçant) | oui | oui | oui | non |
+| Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes et alertes) | non |
 | Secrétaire | oui | oui, et classement des examens | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
 
 Les comptes créés avant cette mise à jour sont « secrétaire ». Pour un médecin remplaçant, choisir **médecin** dans la

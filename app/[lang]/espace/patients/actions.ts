@@ -4,6 +4,14 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { estJour, jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../agenda/session";
+import {
+  bornesConstantes,
+  enregistrerConsultation,
+  mesures,
+  supprimerConsultation,
+  type Constantes,
+  type SaisieConsultation,
+} from "../../../dossier/consultations";
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
@@ -22,6 +30,14 @@ import {
   type Identite,
 } from "../../../dossier/patients";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
+
+// Nombre saisi avec virgule ou point : null si vide, undefined si illisible
+function decimalSaisi(formData: FormData, nom: string) {
+  const brut = String(formData.get(nom) ?? "").trim().replace(",", ".");
+  if (!brut) return null;
+  const n = Number(brut);
+  return Number.isFinite(n) ? n : undefined;
+}
 
 export type EtatPatient = (NonNullable<EtatFormulaire> & { doublons?: { id: number; libelle: string }[] }) | null;
 
@@ -61,6 +77,16 @@ export async function enregistrerPatient(
     return echecPatient("Vérifiez l'adresse e-mail.", formData);
   }
 
+  // Zone cible de l'INR : les deux bornes, ou aucune
+  const inrMin = decimalSaisi(formData, "inrMin");
+  const inrMax = decimalSaisi(formData, "inrMax");
+  if (accesMedical(utilisateur)) {
+    const invalide = (v: number | null | undefined) => v === undefined || (v !== null && (v < 1 || v > 6));
+    if (invalide(inrMin) || invalide(inrMax) || (inrMin === null) !== (inrMax === null) || (inrMin ?? 0) >= (inrMax ?? 1)) {
+      return echecPatient("Zone cible de l'INR : indiquez un minimum et un maximum entre 1 et 6 (par exemple 2,5 et 3,5).", formData);
+    }
+  }
+
   // La secrétaire ne voit pas le contenu médical : il n'est ni lu ni modifié pour elle
   const medical: ContenuMedical | null = accesMedical(utilisateur)
     ? {
@@ -71,6 +97,8 @@ export async function enregistrerPatient(
         antecedents: texte(formData, "antecedents", 5000),
         allergies: texte(formData, "allergies", 1000),
         notes: texte(formData, "notes", 5000),
+        inrMin: inrMin ?? null,
+        inrMax: inrMax ?? null,
       }
     : null;
 
@@ -164,4 +192,77 @@ export async function retirerExamen(langue: string, patientId: number, id: numbe
   if (fichier) await mettreALaCorbeille(fichier).catch(console.error);
   await journaliser(utilisateur.identifiant, "examen supprimé", patientId);
   refresh();
+}
+
+// --- Consultations : médecins seulement ---
+
+export async function enregistrerConsultationPatient(
+  langue: string,
+  patientId: number,
+  id: number | null,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const date = String(formData.get("date") ?? "");
+  if (!estJour(date) || date > jourLocal(new Date())) return echec("Vérifiez la date de la consultation.", formData);
+
+  const constantes = {} as Constantes;
+  for (const [cle, [min, max]] of Object.entries(bornesConstantes) as [keyof Constantes, [number, number]][]) {
+    const v = decimalSaisi(formData, cle);
+    if (v === undefined || (v !== null && (v < min || v > max))) {
+      return echec(`Valeur invalide pour ${libellesConstantes[cle]} (entre ${min} et ${max}).`, formData);
+    }
+    constantes[cle] = v === null ? null : cle === "poids" ? Math.round(v * 10) / 10 : Math.round(v);
+  }
+  const valeurs: SaisieConsultation["mesures"] = {};
+  for (const m of mesures) {
+    const v = decimalSaisi(formData, m.cle);
+    if (v === undefined || (v !== null && (v < m.min || v > m.max))) {
+      return echec(`Valeur invalide pour ${m.libelle} (entre ${m.min} et ${m.max} ${m.unite}).`, formData);
+    }
+    if (v !== null) valeurs[m.cle] = v;
+  }
+
+  let enregistre: number | null;
+  try {
+    enregistre = await enregistrerConsultation(
+      patientId,
+      id,
+      {
+        date,
+        ...constantes,
+        motif: texte(formData, "motif", 1000),
+        examen: texte(formData, "examen", 5000),
+        ecg: texte(formData, "ecg", 2000),
+        mesures: valeurs,
+        autres: texte(formData, "autres", 2000),
+        conclusion: texte(formData, "conclusion", 5000),
+        conduite: texte(formData, "conduite", 5000),
+      },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, id ? "consultation modifiée" : "consultation ajoutée", patientId, date);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("La consultation n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
+  }
+  if (enregistre === null) return echec("Cette consultation n'existe plus.", formData);
+  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+}
+
+const libellesConstantes: Record<keyof Constantes, string> = {
+  taSys: "la TA systolique",
+  taDia: "la TA diastolique",
+  fc: "la FC",
+  spo2: "la SpO₂",
+  poids: "le poids",
+  taille: "la taille",
+};
+
+export async function retirerConsultation(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await supprimerConsultation(patientId, id);
+  await journaliser(utilisateur.identifiant, "consultation supprimée", patientId);
+  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
 }

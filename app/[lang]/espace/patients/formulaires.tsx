@@ -17,6 +17,7 @@ import {
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 const etiquette = "text-sm font-medium text-slate-700";
+const decimalFr = (n: number | null | undefined) => (n === null || n === undefined ? "" : String(n).replace(".", ","));
 
 function Envoyer({
   children,
@@ -193,6 +194,31 @@ export function FormulairePatient({
             Notes
             <textarea name="notes" rows={5} maxLength={5000} defaultValue={v("notes", patient?.notes)} className={champ} />
           </label>
+          <div className="sm:col-span-2">
+            <p className={etiquette}>
+              Zone cible de l&apos;INR{" "}
+              <span className="font-normal text-slate-400">(si traitement par AVK : alerte quand l&apos;INR en sort)</span>
+            </p>
+            <div className="mt-1 flex items-center gap-2 text-sm text-slate-700">
+              <input
+                name="inrMin"
+                inputMode="decimal"
+                aria-label="INR minimum"
+                placeholder="2,5"
+                defaultValue={v("inrMin", decimalFr(patient?.inrMin))}
+                className={`${champ} mt-0 w-24`}
+              />
+              à
+              <input
+                name="inrMax"
+                inputMode="decimal"
+                aria-label="INR maximum"
+                placeholder="3,5"
+                defaultValue={v("inrMax", decimalFr(patient?.inrMax))}
+                className={`${champ} mt-0 w-24`}
+              />
+            </div>
+          </div>
         </fieldset>
       )}
 

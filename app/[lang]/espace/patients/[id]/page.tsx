@@ -8,6 +8,8 @@ import { ExternalLink, FileText, History, MessageCircle, Pencil, Phone, Pill, Tr
 import { estLangue } from "../../../../cabinet";
 import { jourLocal } from "../../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../../agenda/session";
+import { alertes } from "../../../../dossier/calculs";
+import { listerConsultations } from "../../../../dossier/consultations";
 import { compteDrive } from "../../../../dossier/drive";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
@@ -23,6 +25,7 @@ import {
 import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
+import { Alertes, SuiviMedical } from "./suivi";
 
 export const metadata: Metadata = {
   title: "Dossier patient",
@@ -59,8 +62,9 @@ async function Dossier({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
-  const [traitements, examens, drive] = await Promise.all([
+  const [traitements, consultations, examens, drive] = await Promise.all([
     medical ? listerTraitements(id) : [],
+    medical ? listerConsultations(id) : [],
     listerExamens(id),
     compteDrive().catch(() => null),
   ]);
@@ -69,6 +73,16 @@ async function Dossier({
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
 
   const ans = age(patient.naissance, jourLocal(new Date()));
+  const signaux = medical
+    ? alertes({
+        releves: consultations,
+        traitementsEnCours: traitements.filter((t) => !t.fin).map((t) => t.medicament),
+        inrMin: patient.inrMin,
+        inrMax: patient.inrMax,
+        age: ans,
+        sexe: patient.sexe,
+      })
+    : [];
   const whatsapp = patient.telephone ? lienWhatsApp(patient.telephone) : null;
   const bouton =
     "inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50";
@@ -111,6 +125,7 @@ async function Dossier({
           Allergies : {patient.allergies}
         </p>
       )}
+      <Alertes alertes={signaux} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-slate-200 p-6 text-sm lg:col-span-1">
@@ -160,6 +175,8 @@ async function Dossier({
           </p>
         )}
       </div>
+
+      {medical && <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} />}
 
       <Examens langue={langue} patientId={id} examens={examens} medical={medical} drive={Boolean(drive)} />
 

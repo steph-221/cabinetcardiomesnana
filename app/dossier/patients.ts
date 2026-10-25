@@ -34,6 +34,9 @@ export type ContenuMedical = {
   antecedents: string;
   allergies: string;
   notes: string;
+  // Zone cible de l'INR sous AVK (valve mécanique, FA…), fixée par le médecin
+  inrMin: number | null;
+  inrMax: number | null;
 };
 
 export type Patient = Identite &
@@ -74,6 +77,8 @@ const versPatient = (l: Ligne): Patient => ({
   antecedents: l.antecedents as string,
   allergies: l.allergies as string,
   notes: l.notes as string,
+  inrMin: l.inr_min === null || l.inr_min === undefined ? null : Number(l.inr_min),
+  inrMax: l.inr_max === null || l.inr_max === undefined ? null : Number(l.inr_max),
   driveDossier: (l.drive_dossier as string | null | undefined) ?? null,
   creeLe: l.cree_le as Date,
   creePar: l.cree_par as string,
@@ -169,13 +174,13 @@ export async function doublonsPossibles(identite: Identite, saufId?: number): Pr
 
 export async function creerPatient(identite: Identite, medical: ContenuMedical | null, par: string) {
   const sql = await base();
-  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "" };
+  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null };
   const [{ id }] = await sql`
     INSERT INTO patients (nom, prenom, sexe, naissance, telephone, email, cin, adresse, couverture, medecin_traitant,
-                          facteurs_risque, antecedents, allergies, notes, cree_par, modifie_par)
+                          facteurs_risque, antecedents, allergies, notes, inr_min, inr_max, cree_par, modifie_par)
     VALUES (${identite.nom}, ${identite.prenom}, ${identite.sexe}, ${identite.naissance}, ${identite.telephone},
             ${identite.email}, ${identite.cin}, ${identite.adresse}, ${identite.couverture}, ${identite.medecinTraitant},
-            ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${par}, ${par})
+            ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${m.inrMin}, ${m.inrMax}, ${par}, ${par})
     RETURNING id`;
   return id as number;
 }
@@ -192,7 +197,8 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
   if (medical) {
     await sql`
       UPDATE patients SET facteurs_risque = ${medical.facteursRisque}, antecedents = ${medical.antecedents},
-        allergies = ${medical.allergies}, notes = ${medical.notes}
+        allergies = ${medical.allergies}, notes = ${medical.notes}, inr_min = ${medical.inrMin},
+        inr_max = ${medical.inrMax}
       WHERE id = ${id}`;
   }
 }
