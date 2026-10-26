@@ -4,7 +4,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
-import { CalendarClock, ExternalLink, FileText, History, MessageCircle, Pencil, Phone, Pill, TriangleAlert } from "lucide-react";
+import {
+  CalendarClock,
+  ExternalLink,
+  FilePlus2,
+  FileText,
+  History,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Pill,
+  Printer,
+  ScrollText,
+  TriangleAlert,
+} from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { jourLocal } from "../../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../../agenda/session";
@@ -12,7 +25,9 @@ import { alertes } from "../../../../dossier/calculs";
 import { listerConsultations } from "../../../../dossier/consultations";
 import { compteDrive } from "../../../../dossier/drive";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
+import type { DonneesETT } from "../../../../dossier/ett";
 import { journaliser } from "../../../../dossier/journal";
+import { listerOrdonnances, type Ordonnance } from "../../../../dossier/ordonnances";
 import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
   age,
@@ -25,6 +40,7 @@ import {
 } from "../../../../dossier/patients";
 import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
+import { BoutonSupprimerOrdonnance } from "../documents";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
 import { LigneSuivi } from "../liste-suivis";
 import { FormulaireSuivi } from "../suivis";
@@ -65,13 +81,19 @@ async function Dossier({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
-  const [traitements, consultations, examens, drive, suivis] = await Promise.all([
+  const [traitements, consultations, examens, drive, suivis, ordonnances] = await Promise.all([
     medical ? listerTraitements(id) : [],
     medical ? listerConsultations(id) : [],
     listerExamens(id),
     compteDrive().catch(() => null),
     listerSuivisPatient(id),
+    medical ? listerOrdonnances(id) : [],
   ]);
+  // FEVG mesurées dans les comptes rendus d'ETT : elles complètent la courbe et les alertes
+  const fevgEchos = examens.flatMap((e) => {
+    const fevg = (e.valeurs.ett as DonneesETT | undefined)?.valeurs.fevg;
+    return typeof fevg === "number" ? [{ date: e.date, valeur: fevg }] : [];
+  });
 
   // Chaque ouverture de dossier est tracée, après l'envoi de la page pour ne pas la ralentir
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
@@ -79,7 +101,10 @@ async function Dossier({
   const ans = age(patient.naissance, jourLocal(new Date()));
   const signaux = medical
     ? alertes({
-        releves: consultations,
+        releves: [
+          ...consultations,
+          ...fevgEchos.map((f) => ({ date: f.date, taSys: null, taDia: null, fc: null, mesures: { fevg: f.valeur } })),
+        ].sort((a, b) => b.date.localeCompare(a.date)),
         traitementsEnCours: traitements.filter((t) => !t.fin).map((t) => t.medicament),
         inrMin: patient.inrMin,
         inrMax: patient.inrMax,
@@ -124,7 +149,10 @@ async function Dossier({
       </div>
 
       {medical && patient.allergies && (
-        <p role="note" className="mt-6 flex items-start gap-2 rounded-lg bg-red-50 p-4 text-sm font-medium text-red-800">
+        <p
+          role="note"
+          className="mt-6 flex items-start gap-2 rounded-lg bg-red-50 p-4 text-sm font-medium text-red-800"
+        >
           <TriangleAlert className="h-5 w-5 shrink-0" aria-hidden />
           Allergies : {patient.allergies}
         </p>
@@ -182,7 +210,11 @@ async function Dossier({
 
       <Suivis langue={langue} patient={patient} suivis={suivis} />
 
-      {medical && <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} />}
+      {medical && (
+        <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} fevgEchos={fevgEchos} />
+      )}
+
+      {medical && <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} />}
 
       <Examens langue={langue} patientId={id} examens={examens} medical={medical} drive={Boolean(drive)} />
 
@@ -313,11 +345,22 @@ function Examens({
     octets > 1024 * 1024 ? `${(octets / 1024 / 1024).toFixed(1)} Mo` : `${Math.max(1, Math.round(octets / 1024))} Ko`;
 
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
-        <FileText className="h-5 w-5 text-red-600" aria-hidden />
-        Examens
-      </h2>
+    <section id="examens" className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 p-6 text-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <FileText className="h-5 w-5 text-red-600" aria-hidden />
+          Examens
+        </h2>
+        {medical && (
+          <Link
+            href={`/${langue}/espace/patients/${patientId}/ett`}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <FilePlus2 className="h-4 w-4" aria-hidden />
+            Compte rendu d&apos;ETT
+          </Link>
+        )}
+      </div>
       {drive ? (
         <EnvoiExamens
           patientId={patientId}
@@ -337,46 +380,61 @@ function Examens({
         <p className="mt-4 text-slate-500">Aucun examen pour le moment.</p>
       ) : (
         <ul className="mt-4 divide-y divide-slate-100">
-          {examens.map((e) => (
-            <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-              <div className="min-w-0 flex-1">
-                <p>
-                  <span className="font-mono text-slate-600">{date(e.date)}</span>
-                  <span className="ms-3 font-medium text-slate-900">{e.type}</span>
-                  {e.fichierNom && (
-                    <span className="ms-3 text-slate-400">
-                      {e.fichierNom} · {taille(e.fichierTaille)}
-                    </span>
+          {examens.map((e) => {
+            // Compte rendu d'ETT saisi sur le site : le PDF se regénère depuis les mesures
+            const ett = Boolean(e.valeurs.ett);
+            return (
+              <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <p>
+                    <span className="font-mono text-slate-600">{date(e.date)}</span>
+                    <span className="ms-3 font-medium text-slate-900">{e.type}</span>
+                    {e.fichierNom && (
+                      <span className="ms-3 text-slate-400">
+                        {e.fichierNom} · {taille(e.fichierTaille)}
+                      </span>
+                    )}
+                  </p>
+                  {medical && e.conclusion && <p className="mt-1 whitespace-pre-line text-slate-700">{e.conclusion}</p>}
+                  {medical && !ett && (
+                    <ConclusionExamen langue={langue} patientId={patientId} id={e.id} conclusion={e.conclusion} />
                   )}
-                </p>
-                {medical && e.conclusion && <p className="mt-1 whitespace-pre-line text-slate-700">{e.conclusion}</p>}
-                {medical && (
-                  <ConclusionExamen langue={langue} patientId={patientId} id={e.id} conclusion={e.conclusion} />
-                )}
-              </div>
-              {medical && (
-                <div className="flex items-center gap-1">
-                  {e.fichierDrive && (
-                    <a
-                      href={`/api/fichiers/${e.id}`}
-                      target="_blank"
-                      rel="noopener"
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                    >
-                      <ExternalLink className="h-3 w-3" aria-hidden />
-                      Ouvrir
-                    </a>
-                  )}
-                  <BoutonSupprimerExamen
-                    langue={langue}
-                    patientId={patientId}
-                    id={e.id}
-                    libelle={`${e.type} du ${date(e.date)}`}
-                  />
                 </div>
-              )}
-            </li>
-          ))}
+                {medical && (
+                  <div className="flex items-center gap-1">
+                    {ett && (
+                      <a
+                        href={`/api/examens/${e.id}/compte-rendu`}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                      >
+                        <Printer className="h-3 w-3" aria-hidden />
+                        Compte rendu
+                      </a>
+                    )}
+                    {e.fichierDrive && !ett && (
+                      <a
+                        href={`/api/fichiers/${e.id}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                      >
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                        Ouvrir
+                      </a>
+                    )}
+                    <BoutonSupprimerExamen
+                      langue={langue}
+                      patientId={patientId}
+                      id={e.id}
+                      libelle={`${e.type} du ${date(e.date)}`}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -400,7 +458,13 @@ function Suivis({ langue, patient, suivis }: { langue: string; patient: Patient;
               key={s.id}
               langue={langue}
               // Coordonnées du patient pour le message de relance
-              suivi={{ ...s, nom: patient.nom, prenom: patient.prenom, sexe: patient.sexe, telephone: patient.telephone }}
+              suivi={{
+                ...s,
+                nom: patient.nom,
+                prenom: patient.prenom,
+                sexe: patient.sexe,
+                telephone: patient.telephone,
+              }}
               aujourdhui={aujourdhui}
               avecPatient={false}
             />
@@ -410,6 +474,61 @@ function Suivis({ langue, patient, suivis }: { langue: string; patient: Patient;
       <div className="mt-4 border-t border-slate-100 pt-4">
         <FormulaireSuivi langue={langue} patientId={patient.id} choix={{ quoi: suivisCourants, delais }} />
       </div>
+    </section>
+  );
+}
+
+function Ordonnances({
+  langue,
+  patientId,
+  ordonnances,
+}: {
+  langue: string;
+  patientId: number;
+  ordonnances: Ordonnance[];
+}) {
+  return (
+    <section id="ordonnances" className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 p-6 text-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <ScrollText className="h-5 w-5 text-red-600" aria-hidden />
+          Ordonnances
+        </h2>
+        <Link
+          href={`/${langue}/espace/patients/${patientId}/ordonnance`}
+          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+        >
+          <FilePlus2 className="h-4 w-4" aria-hidden />
+          Nouvelle ordonnance
+        </Link>
+      </div>
+      {ordonnances.length === 0 ? (
+        <p className="text-slate-500">Aucune ordonnance.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {ordonnances.map((o) => (
+            <li key={o.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div>
+                <span className="font-mono text-slate-600">{date(o.date)}</span>
+                <span className="ms-3 text-slate-900">{o.lignes.map((l) => l.medicament).join(" · ")}</span>
+                <span className="ms-2 text-xs text-slate-400">{o.creePar}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <a
+                  href={`/api/ordonnances/${o.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                >
+                  <Printer className="h-3 w-3" aria-hidden />
+                  Imprimer
+                </a>
+                <BoutonSupprimerOrdonnance langue={langue} patientId={patientId} id={o.id} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

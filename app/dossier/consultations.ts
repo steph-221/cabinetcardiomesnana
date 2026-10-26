@@ -57,6 +57,13 @@ export async function lireConsultation(patientId: number, id: number) {
   return ligne ? versConsultation(ligne) : null;
 }
 
+// Pour le rapport PDF : la consultation et son patient
+export async function lireConsultationSeule(id: number) {
+  const sql = await base();
+  const [ligne] = await sql`SELECT * FROM consultations WHERE id = ${id}`;
+  return ligne ? { ...versConsultation(ligne), patientId: ligne.patient_id as number } : null;
+}
+
 export async function enregistrerConsultation(
   patientId: number,
   id: number | null,

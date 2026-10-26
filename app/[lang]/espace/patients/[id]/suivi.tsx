@@ -1,7 +1,7 @@
 // Suivi médical du dossier : alertes, calculs, courbes d'évolution et consultations (médecins seulement)
 
 import Link from "next/link";
-import { Activity, Calculator, ClipboardPlus, OctagonAlert, Stethoscope, TriangleAlert } from "lucide-react";
+import { Activity, Calculator, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
 import { dfg, imc, surfaceCorporelle, type Alerte } from "../../../../dossier/calculs";
 import { mesures, type Consultation } from "../../../../dossier/consultations";
 import type { Patient } from "../../../../dossier/patients";
@@ -38,16 +38,19 @@ export function Alertes({ alertes }: { alertes: Alerte[] }) {
 }
 
 // Valeurs d'une consultation, de la plus ancienne à la plus récente, pour les courbes
-function serie(consultations: Consultation[], nom: string, couleur: string, valeur: (c: Consultation) => number | null | undefined): Serie {
+function serie(
+  consultations: Consultation[],
+  nom: string,
+  couleur: string,
+  valeur: (c: Consultation) => number | null | undefined,
+): Serie {
   return {
     nom,
     couleur,
-    points: [...consultations]
-      .reverse()
-      .flatMap((c) => {
-        const v = valeur(c);
-        return v === null || v === undefined ? [] : [{ date: c.date, valeur: v }];
-      }),
+    points: [...consultations].reverse().flatMap((c) => {
+      const v = valeur(c);
+      return v === null || v === undefined ? [] : [{ date: c.date, valeur: v }];
+    }),
   };
 }
 
@@ -56,11 +59,13 @@ export function SuiviMedical({
   patient,
   age,
   consultations,
+  fevgEchos,
 }: {
   langue: string;
   patient: Patient;
   age: number | null;
   consultations: Consultation[];
+  fevgEchos: { date: string; valeur: number }[];
 }) {
   // Dernières valeurs connues (consultations de la plus récente à la plus ancienne)
   const poids = consultations.find((c) => c.poids !== null)?.poids ?? null;
@@ -75,7 +80,8 @@ export function SuiviMedical({
       titre: "INR",
       unite: "",
       series: [serie(consultations, "INR", couleurs[0], (c) => c.mesures.inr)],
-      bande: patient.inrMin !== null && patient.inrMax !== null ? { min: patient.inrMin, max: patient.inrMax } : undefined,
+      bande:
+        patient.inrMin !== null && patient.inrMax !== null ? { min: patient.inrMin, max: patient.inrMax } : undefined,
     },
     {
       titre: "Tension artérielle",
@@ -89,11 +95,12 @@ export function SuiviMedical({
     { titre: "Poids", unite: "kg", series: [serie(consultations, "Poids", couleurs[0], (c) => c.poids)] },
     ...mesures
       .filter((m) => m.cle !== "inr")
-      .map((m) => ({
-        titre: m.libelle,
-        unite: m.unite,
-        series: [serie(consultations, m.libelle, couleurs[0], (c) => c.mesures[m.cle])],
-      })),
+      .map((m) => {
+        const s = serie(consultations, m.libelle, couleurs[0], (c) => c.mesures[m.cle]);
+        // La FEVG des comptes rendus d'ETT s'ajoute à celle notée en consultation
+        if (m.cle === "fevg") s.points = [...s.points, ...fevgEchos].sort((a, b) => a.date.localeCompare(b.date));
+        return { titre: m.libelle, unite: m.unite, series: [s] };
+      }),
   ].filter((c) => c.series.some((s) => s.points.length > 0));
 
   // Pré-remplissage du score à partir du dossier
@@ -118,7 +125,13 @@ export function SuiviMedical({
             <Valeur
               titre="DFG estimé (CKD-EPI 2021)"
               valeur={debit && `${Math.round(debit)} mL/min/1,73 m²`}
-              manque={!creatinine ? "créatinine non renseignée" : !patient.sexe || age === null ? "sexe ou âge manquant" : undefined}
+              manque={
+                !creatinine
+                  ? "créatinine non renseignée"
+                  : !patient.sexe || age === null
+                    ? "sexe ou âge manquant"
+                    : undefined
+              }
             />
           </dl>
           <p className="mt-3 text-xs text-slate-400">D&apos;après les dernières valeurs saisies en consultation.</p>
@@ -173,7 +186,18 @@ export function SuiviMedical({
                     </Link>
                     {c.motif && <span className="ms-2 text-slate-600">{c.motif}</span>}
                   </p>
-                  <span className="text-xs text-slate-400">{c.creePar}</span>
+                  <span className="flex items-center gap-2 text-xs text-slate-400">
+                    {c.creePar}
+                    <a
+                      href={`/api/consultations/${c.id}/pdf`}
+                      target="_blank"
+                      rel="noopener"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
+                    >
+                      <Printer className="h-3 w-3" aria-hidden />
+                      Rapport PDF
+                    </a>
+                  </span>
                 </div>
                 <p className="mt-1 text-slate-700">
                   {[
@@ -182,7 +206,9 @@ export function SuiviMedical({
                     c.spo2 && `SpO₂ ${c.spo2} %`,
                     c.poids && `${fr(c.poids)} kg`,
                     ...mesures.flatMap((m) =>
-                      c.mesures[m.cle] !== undefined ? [`${m.libelle} ${fr(c.mesures[m.cle]!, 2)}${m.unite ? ` ${m.unite}` : ""}`] : [],
+                      c.mesures[m.cle] !== undefined
+                        ? [`${m.libelle} ${fr(c.mesures[m.cle]!, 2)}${m.unite ? ` ${m.unite}` : ""}`]
+                        : [],
                     ),
                   ]
                     .filter(Boolean)
@@ -206,7 +232,9 @@ function Valeur({ titre, valeur, manque }: { titre: string; valeur: string | nul
   return (
     <div>
       <dt className="text-slate-500">{titre}</dt>
-      <dd className="font-medium text-slate-900">{valeur || <span className="font-normal text-slate-400">{manque ?? "—"}</span>}</dd>
+      <dd className="font-medium text-slate-900">
+        {valeur || <span className="font-normal text-slate-400">{manque ?? "—"}</span>}
+      </dd>
     </div>
   );
 }
