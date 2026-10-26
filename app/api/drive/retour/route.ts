@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { utilisateurConnecte } from "../../../agenda/session";
 import { verifier } from "../../../dossier/chiffrement";
-import { connecterDrive } from "../../../dossier/drive";
+import { connecterDrive, ErreurDrive } from "../../../dossier/drive";
 import { journaliser } from "../../../dossier/journal";
 
 export async function GET(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     await journaliser(utilisateur.identifiant, "Google Drive connecté", null);
   } catch (erreur) {
     console.error(erreur);
-    return page("erreur");
+    return page(erreur instanceof ErreurDrive && erreur.raisons.includes("portee") ? "portee" : "erreur");
   }
   return page("connecte");
 }

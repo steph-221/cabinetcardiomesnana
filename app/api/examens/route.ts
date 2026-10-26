@@ -3,7 +3,7 @@
 
 import { estJour } from "../../agenda/creneaux";
 import { accesMedical, utilisateurConnecte } from "../../agenda/session";
-import { compteDrive, dossierPatient, envoyerFichier } from "../../dossier/drive";
+import { compteDrive, envoyerExamen, expliquerErreurDrive, mettreALaCorbeille } from "../../dossier/drive";
 import { ajouterExamen, TAILLE_MAX, typesExamen, typesFichier } from "../../dossier/examens";
 import { journaliser } from "../../dossier/journal";
 import { lirePatient } from "../../dossier/patients";
@@ -32,9 +32,14 @@ export async function POST(request: Request) {
   if (!patient) return erreur("Dossier introuvable.", 404);
   if (!(await compteDrive())) return erreur("Google Drive n'est pas connecté (voir l'espace administrateur).", 503);
 
+  let drive: string;
   try {
-    const dossier = await dossierPatient(patient);
-    const drive = await envoyerFichier(dossier, `${date} ${type} — ${fichier.name}`, fichier);
+    drive = await envoyerExamen(patient, `${date} ${type} — ${fichier.name}`, fichier);
+  } catch (e) {
+    console.error(e);
+    return erreur(expliquerErreurDrive(e), 502);
+  }
+  try {
     const id = await ajouterExamen(
       patient.id,
       { type, date, conclusion, fichier: { drive, nom: fichier.name, type: fichier.type, taille: fichier.size } },
@@ -44,6 +49,8 @@ export async function POST(request: Request) {
     return Response.json({ id });
   } catch (e) {
     console.error(e);
-    return erreur("Google Drive n'a pas pu enregistrer le fichier. Réessayez dans un instant.", 502);
+    // Le fichier ne serait rattaché à aucun examen : il repart à la corbeille du Drive
+    await mettreALaCorbeille(drive).catch(console.error);
+    return erreur("L'examen n'a pas pu être enregistré dans la base. Réessayez dans un instant.", 500);
   }
 }
