@@ -11,6 +11,7 @@ import {
   FileText,
   History,
   MessageCircle,
+  MessagesSquare,
   Pencil,
   Phone,
   Pill,
@@ -139,6 +140,12 @@ async function Dossier({
             <Pencil className="h-4 w-4" aria-hidden />
             Modifier
           </Link>
+          {medical && (
+            <Link href={`/${langue}/espace/assistant?patient=${id}`} className={bouton}>
+              <MessagesSquare className="h-4 w-4" aria-hidden />
+              Demander à l&apos;assistant
+            </Link>
+          )}
           {utilisateur.admin && (
             <Link href={`/${langue}/espace/journal?patient=${id}`} className={bouton}>
               <History className="h-4 w-4" aria-hidden />

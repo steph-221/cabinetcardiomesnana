@@ -164,6 +164,42 @@ Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement grat
 utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
 d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
 
+## Bibliothèque et assistant à références (médecins)
+
+L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les
+médicaments, les doses, les seuils et les conduites à tenir **uniquement à partir des sources de la Bibliothèque**.
+Chaque affirmation porte un numéro qui renvoie au passage cité, surligné, avec la source, son année et sa page, et un
+lien qui ouvre la version officielle à cette page. Le texte qui n'est rattaché à aucune source est affiché en gris.
+Si la bibliothèque ne contient pas la réponse, l'assistant répond « Pas de réponse dans la bibliothèque » au lieu de
+deviner.
+
+**Alimenter la bibliothèque** (bouton **Bibliothèque**) :
+
+1. Télécharger les recommandations sur
+   <https://www.escardio.org/guidelines/clinical-practice-guidelines/all-esc-practice-guidelines/> (insuffisance
+   cardiaque, FA, valvulopathies, SCC, SCA, HTA, dyslipidémies, EP, endocardite, cardio-oncologie…). Elles restent à
+   usage interne du cabinet.
+2. **Ajouter une source** : choisir le PDF, indiquer le titre, l'organisme (ESC), l'année de l'édition, la langue du
+   texte (anglais pour l'ESC) et, si possible, le lien vers le PDF officiel. Le PDF est lu sur l'ordinateur ; seul son
+   texte est envoyé et indexé, page par page (une à deux minutes pour une recommandation entière). Un PDF scanné,
+   dont le texte ne se sélectionne pas, est refusé.
+3. Pour une notice ou un RCP (par exemple sur la base de l'ANSM) ou un protocole du cabinet : **Texte collé**.
+4. Quand une nouvelle recommandation paraît (en général fin août, au congrès de l'ESC), l'ajouter et **Marquer
+   remplacée** l'ancienne : elle n'est plus citée.
+
+**Contrôle de qualité** : chaque réponse se note **Juste** ou **À revoir**, avec un commentaire. Une réponse juste peut
+devenir une **fiche validée** de la bibliothèque, citée ensuite comme « Dr Taouab », avec ses sources d'origine. Les
+questions, les réponses et les sources citées sont conservées et journalisées.
+
+**Fonctionnement et coût** : l'assistant utilise la même clé `ANTHROPIC_API_KEY` que la dictée (voir plus haut). Pour
+chaque question, Claude choisit d'abord les mots-clés, en anglais et en français (Cardix devient carvédilol, FA
+devient atrial fibrillation). Les passages correspondants sont ensuite cherchés dans la base, et Claude rédige la
+réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de dollar par question.
+
+**Depuis un dossier**, un résumé **sans nom ni coordonnées** est joint à la question : âge, sexe, poids, facteurs de
+risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
+conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :

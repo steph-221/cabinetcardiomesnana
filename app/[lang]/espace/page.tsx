@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   Ban,
   BookA,
+  Library,
+  MessagesSquare,
   CalendarClock,
   CalendarDays,
   FolderOpen,
@@ -132,6 +134,24 @@ async function Tableau({ langue }: { langue: string }) {
             >
               <BookA className="h-4 w-4" aria-hidden />
               Lexique
+            </Link>
+          )}
+          {accesMedical(utilisateur) && (
+            <Link
+              href={`/${langue}/espace/assistant`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <MessagesSquare className="h-4 w-4" aria-hidden />
+              Assistant
+            </Link>
+          )}
+          {accesMedical(utilisateur) && (
+            <Link
+              href={`/${langue}/espace/bibliotheque`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <Library className="h-4 w-4" aria-hidden />
+              Bibliothèque
             </Link>
           )}
           {utilisateur.admin && (
