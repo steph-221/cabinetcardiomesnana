@@ -19,6 +19,11 @@ const messages: Record<string, { texte: string; ok: boolean }> = {
   annule: { texte: "Connexion annulée.", ok: false },
   refuse: { texte: "La connexion a expiré ou n'a pas pu être vérifiée. Recommencez.", ok: false },
   erreur: { texte: "Google n'a pas accepté la connexion. Recommencez dans un instant.", ok: false },
+  portee: {
+    texte:
+      "L'accès à Google Drive n'a pas été autorisé : recommencez et, sur la page de Google, cochez la case d'accès aux fichiers Google Drive.",
+    ok: false,
+  },
 };
 
 export default async function Drive({ params, searchParams }: PageProps<"/[lang]/espace/drive">) {
