@@ -3,11 +3,14 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, CalendarDays, Globe, LogOut, Phone, Users } from "lucide-react";
+import { Ban, CalendarClock, CalendarDays, FolderOpen, Globe, HardDrive, History, LogOut, Phone, Users } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
 import { utilisateurConnecte } from "../../agenda/session";
+import { baseConfiguree } from "../../dossier/base";
+import { finTelephone } from "../../dossier/patients";
+import { compterEnRetard, patientsParTelephone } from "../../dossier/suivis";
 import { deconnexion } from "./actions";
 import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture } from "./boutons";
 
@@ -50,6 +53,22 @@ async function Tableau({ langue }: { langue: string }) {
     }
   }
 
+  // Rendez-vous reliés aux dossiers par le téléphone ; nombre de suivis en retard
+  let dossiers = new Map<string, number>();
+  let enRetard = 0;
+  if (baseConfiguree()) {
+    try {
+      [dossiers, enRetard] = await Promise.all([
+        patientsParTelephone([
+          ...new Set((rendezvous ?? []).flatMap((r) => (r.telephone ? [finTelephone(r.telephone)] : []))),
+        ]),
+        compterEnRetard(aujourdhui),
+      ]);
+    } catch (erreur) {
+      console.error(erreur);
+    }
+  }
+
   // Regroupe par jour (les événements « journée entière » n'ont qu'une date)
   const parJour = new Map<string, Rendezvous[]>();
   for (const r of rendezvous ?? []) {
@@ -75,6 +94,43 @@ async function Tableau({ langue }: { langue: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/${langue}/espace/patients`}
+            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <FolderOpen className="h-4 w-4" aria-hidden />
+            Patients
+          </Link>
+          <Link
+            href={`/${langue}/espace/suivis`}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <CalendarClock className="h-4 w-4" aria-hidden />
+            Suivis
+            {enRetard > 0 && (
+              <span className="rounded-full bg-red-600 px-2 text-xs font-semibold text-white">
+                {enRetard} en retard
+              </span>
+            )}
+          </Link>
+          {utilisateur.admin && (
+            <Link
+              href={`/${langue}/espace/drive`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <HardDrive className="h-4 w-4" aria-hidden />
+              Google Drive
+            </Link>
+          )}
+          {utilisateur.admin && (
+            <Link
+              href={`/${langue}/espace/journal`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <History className="h-4 w-4" aria-hidden />
+              Journal
+            </Link>
+          )}
           {utilisateur.admin && (
             <Link
               href={`/${langue}/espace/comptes`}
@@ -175,6 +231,19 @@ async function Tableau({ langue }: { langue: string }) {
                               <Phone className="h-3 w-3" aria-hidden />
                               {r.telephone}
                             </a>
+                          )}
+                          {r.telephone && !r.fermeture && (
+                            <Link
+                              href={
+                                dossiers.has(finTelephone(r.telephone))
+                                  ? `/${langue}/espace/patients/${dossiers.get(finTelephone(r.telephone))}`
+                                  : `/${langue}/espace/patients?q=${encodeURIComponent(r.telephone)}`
+                              }
+                              className="ms-3 inline-flex items-center gap-1 text-slate-600 hover:text-red-700"
+                            >
+                              <FolderOpen className="h-3 w-3" aria-hidden />
+                              Dossier
+                            </Link>
                           )}
                           {(r.dateNaissance || r.email) && (
                             <p className="mt-1 text-slate-500">

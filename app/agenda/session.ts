@@ -2,20 +2,32 @@
 // - Le compte administrateur (le médecin) est défini sur Vercel : COMPTE_ADMIN=taouab:motdepasse
 // - L'administrateur crée lui-même les autres comptes (secrétaire, remplaçant…) depuis le site ;
 //   ils sont enregistrés dans le stockage, mots de passe chiffrés (scrypt).
+// - Chaque compte a un rôle : « medecin » (remplaçant : tout le dossier médical, sauf la gestion des comptes)
+//   ou « secretaire » (agenda, identité des patients, examens à classer ; pas le contenu médical).
 // La session est un cookie signé avec SESSION_SECRET, valable 12 heures.
 
 import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import type { RoleCompte } from "./roles";
 import { commande, stockageConfigure } from "./stockage";
 
 const COOKIE = "espace_cabinet";
 const DUREE = 12 * 3600; // secondes
 const CLE_COMPTES = "comptes";
 
-export type Utilisateur = { identifiant: string; admin: boolean };
+export type Utilisateur = { identifiant: string; admin: boolean; role: RoleCompte | "admin" };
 
-type Compte = { empreinte: string; sel: string; version: string; creePar: string; creeLe: string };
+// Les comptes créés avant les rôles n'en ont pas : ils restent « secrétaire »
+type Compte = {
+  empreinte: string;
+  sel: string;
+  version: string;
+  creePar: string;
+  creeLe: string;
+  role?: RoleCompte;
+};
 
 const deriver = promisify(scrypt) as (motDePasse: string, sel: string, longueur: number) => Promise<Buffer>;
 
@@ -90,20 +102,36 @@ export async function utilisateurConnecte(): Promise<Utilisateur | null> {
     return null;
   }
   if (session.exp < Date.now() / 1000) return null;
-  if (session.u === admin()?.identifiant) return { identifiant: session.u, admin: true };
+  if (session.u === admin()?.identifiant) return { identifiant: session.u, admin: true, role: "admin" };
   // Un compte supprimé ou dont le mot de passe a été changé perd l'accès immédiatement
   const compte = await lireCompte(session.u);
-  return compte?.version === session.v ? { identifiant: session.u, admin: false } : null;
+  return compte?.version === session.v
+    ? { identifiant: session.u, admin: false, role: compte.role ?? "secretaire" }
+    : null;
+}
+
+// Le contenu médical (antécédents, traitements, conclusions…) est réservé aux médecins
+export const accesMedical = (utilisateur: Utilisateur) => utilisateur.role !== "secretaire";
+
+// Pour les pages et les actions : renvoie vers la connexion, ou vers l'accueil de l'espace si le rôle ne suffit pas.
+// Les actions doivent toujours l'appeler elles-mêmes : ne jamais se fier à la page qui les appelle.
+export async function exigerUtilisateur(langue: string, acces: "tous" | "medical" | "admin" = "tous") {
+  const utilisateur = await utilisateurConnecte();
+  if (!utilisateur) redirect(`/${langue}/espace/connexion`);
+  if ((acces === "medical" && !accesMedical(utilisateur)) || (acces === "admin" && !utilisateur.admin)) {
+    redirect(`/${langue}/espace`);
+  }
+  return utilisateur;
 }
 
 // --- Gestion des comptes (réservée à l'administrateur : à vérifier par l'appelant) ---
 
 export async function listerComptes() {
   const brut = await commande<string[]>("HGETALL", CLE_COMPTES);
-  const comptes: { identifiant: string; creePar: string; creeLe: string }[] = [];
+  const comptes: { identifiant: string; creePar: string; creeLe: string; role: RoleCompte }[] = [];
   for (let i = 0; i < brut.length; i += 2) {
-    const { creePar, creeLe } = JSON.parse(brut[i + 1]) as Compte;
-    comptes.push({ identifiant: brut[i], creePar, creeLe });
+    const { creePar, creeLe, role } = JSON.parse(brut[i + 1]) as Compte;
+    comptes.push({ identifiant: brut[i], creePar, creeLe, role: role ?? "secretaire" });
   }
   return comptes.sort((a, b) => a.identifiant.localeCompare(b.identifiant));
 }
@@ -111,7 +139,7 @@ export async function listerComptes() {
 export const identifiantValide = (identifiant: string) => /^[a-z0-9._-]{2,30}$/.test(identifiant);
 
 // Crée le compte, ou remplace son mot de passe s'il existe (ses sessions ouvertes sont alors fermées)
-export async function enregistrerCompte(saisi: string, motDePasse: string, par: string) {
+export async function enregistrerCompte(saisi: string, motDePasse: string, par: string, role: RoleCompte) {
   const identifiant = normaliser(saisi);
   const sel = randomBytes(16).toString("base64");
   const compte: Compte = {
@@ -120,8 +148,17 @@ export async function enregistrerCompte(saisi: string, motDePasse: string, par: 
     version: randomBytes(8).toString("base64url"),
     creePar: par,
     creeLe: new Date().toISOString(),
+    role,
   };
   await commande("HSET", CLE_COMPTES, identifiant, JSON.stringify(compte));
+}
+
+// Change le rôle sans toucher au mot de passe ; les sessions ouvertes prennent le nouveau rôle à la requête suivante
+export async function changerRole(saisi: string, role: RoleCompte) {
+  const identifiant = normaliser(saisi);
+  const compte = await lireCompte(identifiant);
+  if (!compte) return;
+  await commande("HSET", CLE_COMPTES, identifiant, JSON.stringify({ ...compte, role }));
 }
 
 export async function supprimerCompte(identifiant: string) {

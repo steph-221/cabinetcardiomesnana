@@ -1,17 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarCheck, Globe, HeartPulse, Menu, Phone, X } from "lucide-react";
 import { cabinet, langues, nomsLangues, type Langue } from "../cabinet";
 import type { Dictionnaire } from "./dictionaries";
 
+// Sur les pages dont l'adresse n'est connue qu'à la requête (dossier patient…), les liens mènent d'abord à
+// l'accueil de chaque langue, le temps de lire l'adresse
 function SelecteurLangue({ langue, label }: { langue: Langue; label: string }) {
+  return (
+    <Suspense fallback={<Langues langue={langue} label={label} versLangue={(l) => `/${l}`} />}>
+      <SelecteurLangueChemin langue={langue} label={label} />
+    </Suspense>
+  );
+}
+
+function SelecteurLangueChemin({ langue, label }: { langue: Langue; label: string }) {
   const chemin = usePathname();
   // Remplace le premier segment (/fr, /ar…) en gardant le reste du chemin
-  const versLangue = (l: Langue) => chemin.replace(/^\/[^/]+/, `/${l}`);
+  return <Langues langue={langue} label={label} versLangue={(l) => chemin.replace(/^\/[^/]+/, `/${l}`)} />;
+}
 
+function Langues({
+  langue,
+  label,
+  versLangue,
+}: {
+  langue: Langue;
+  label: string;
+  versLangue: (l: Langue) => string;
+}) {
   return (
     <div className="flex items-center gap-1" role="group" aria-label={label}>
       <Globe className="h-4 w-4 text-slate-400" aria-hidden />
