@@ -6,7 +6,7 @@ import { estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { lireLexique, type EntreeLexique } from "../../../dossier/lexique";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 import { BoutonRetirerMot, FormulaireMot } from "./formulaires";
 
 export const metadata: Metadata = {
@@ -20,8 +20,7 @@ export default async function Lexique({ params }: PageProps<"/[lang]/espace/lexi
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <h1 className="mt-4 flex items-center gap-2 text-2xl font-bold text-slate-900">
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
         <BookA className="h-6 w-6 text-red-600" aria-hidden />
         Lexique de la dictée
       </h1>

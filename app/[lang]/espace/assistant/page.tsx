@@ -9,7 +9,7 @@ import { baseConfiguree } from "../../../dossier/base";
 import { claudeConfigure } from "../../../dossier/dictee";
 import { libellePatient, lirePatient } from "../../../dossier/patients";
 import { listerQuestions, resumeClinique, type Question } from "../../../dossier/questions";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 import { FormulaireQuestion } from "./formulaires";
 
 export const metadata: Metadata = {
@@ -23,8 +23,7 @@ export default async function Assistant({ params, searchParams }: PageProps<"/[l
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
           <MessagesSquare className="h-6 w-6 text-red-600" aria-hidden />
           Assistant de cardiologie

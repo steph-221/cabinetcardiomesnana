@@ -3,29 +3,14 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import {
-  Ban,
-  BookA,
-  Library,
-  MessagesSquare,
-  CalendarClock,
-  CalendarDays,
-  FolderOpen,
-  Globe,
-  HardDrive,
-  History,
-  LogOut,
-  Phone,
-  Users,
-} from "lucide-react";
+import { Ban, CalendarDays, FolderOpen, Globe, Phone } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
-import { accesMedical, utilisateurConnecte } from "../../agenda/session";
+import { utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
 import { finTelephone } from "../../dossier/patients";
-import { compterEnRetard, patientsParTelephone } from "../../dossier/suivis";
-import { deconnexion } from "./actions";
+import { patientsParTelephone } from "../../dossier/suivis";
 import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture } from "./boutons";
 
 export const metadata: Metadata = {
@@ -67,16 +52,12 @@ async function Tableau({ langue }: { langue: string }) {
     }
   }
 
-  // Rendez-vous reliés aux dossiers par le téléphone ; nombre de suivis en retard
+  // Rendez-vous reliés aux dossiers par le téléphone
   let dossiers = new Map<string, number>();
-  let enRetard = 0;
   if (baseConfiguree()) {
     try {
-      [dossiers, enRetard] = await Promise.all([
-        patientsParTelephone([
-          ...new Set((rendezvous ?? []).flatMap((r) => (r.telephone ? [finTelephone(r.telephone)] : []))),
-        ]),
-        compterEnRetard(aujourdhui),
+      dossiers = await patientsParTelephone([
+        ...new Set((rendezvous ?? []).flatMap((r) => (r.telephone ? [finTelephone(r.telephone)] : []))),
       ]);
     } catch (erreur) {
       console.error(erreur);
@@ -100,98 +81,10 @@ async function Tableau({ langue }: { langue: string }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Agenda du cabinet</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Connecté·e : <strong>{utilisateur.identifiant}</strong>
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/${langue}/espace/patients`}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >
-            <FolderOpen className="h-4 w-4" aria-hidden />
-            Patients
-          </Link>
-          <Link
-            href={`/${langue}/espace/suivis`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <CalendarClock className="h-4 w-4" aria-hidden />
-            Suivis
-            {enRetard > 0 && (
-              <span className="rounded-full bg-red-600 px-2 text-xs font-semibold text-white">
-                {enRetard} en retard
-              </span>
-            )}
-          </Link>
-          {accesMedical(utilisateur) && (
-            <Link
-              href={`/${langue}/espace/lexique`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <BookA className="h-4 w-4" aria-hidden />
-              Lexique
-            </Link>
-          )}
-          {accesMedical(utilisateur) && (
-            <Link
-              href={`/${langue}/espace/assistant`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <MessagesSquare className="h-4 w-4" aria-hidden />
-              Assistant
-            </Link>
-          )}
-          {accesMedical(utilisateur) && (
-            <Link
-              href={`/${langue}/espace/bibliotheque`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <Library className="h-4 w-4" aria-hidden />
-              Bibliothèque
-            </Link>
-          )}
-          {utilisateur.admin && (
-            <Link
-              href={`/${langue}/espace/drive`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <HardDrive className="h-4 w-4" aria-hidden />
-              Google Drive
-            </Link>
-          )}
-          {utilisateur.admin && (
-            <Link
-              href={`/${langue}/espace/journal`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <History className="h-4 w-4" aria-hidden />
-              Journal
-            </Link>
-          )}
-          {utilisateur.admin && (
-            <Link
-              href={`/${langue}/espace/comptes`}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <Users className="h-4 w-4" aria-hidden />
-              Gérer les comptes
-            </Link>
-          )}
-          <form action={deconnexion.bind(null, langue)}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              <LogOut className="h-4 w-4" aria-hidden />
-              Se déconnecter
-            </button>
-          </form>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold text-slate-900">Agenda du cabinet</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        Connecté·e : <strong>{utilisateur.identifiant}</strong>
+      </p>
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Ajouter un rendez-vous</h2>
