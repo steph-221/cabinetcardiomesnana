@@ -3,11 +3,23 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, CalendarClock, CalendarDays, FolderOpen, Globe, HardDrive, History, LogOut, Phone, Users } from "lucide-react";
+import {
+  Ban,
+  BookA,
+  CalendarClock,
+  CalendarDays,
+  FolderOpen,
+  Globe,
+  HardDrive,
+  History,
+  LogOut,
+  Phone,
+  Users,
+} from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
-import { utilisateurConnecte } from "../../agenda/session";
+import { accesMedical, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
 import { finTelephone } from "../../dossier/patients";
 import { compterEnRetard, patientsParTelephone } from "../../dossier/suivis";
@@ -113,6 +125,15 @@ async function Tableau({ langue }: { langue: string }) {
               </span>
             )}
           </Link>
+          {accesMedical(utilisateur) && (
+            <Link
+              href={`/${langue}/espace/lexique`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <BookA className="h-4 w-4" aria-hidden />
+              Lexique
+            </Link>
+          )}
           {utilisateur.admin && (
             <Link
               href={`/${langue}/espace/drive`}

@@ -100,6 +100,48 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
 - Sur l'agenda, le lien **Dossier** d'un rendez-vous ouvre directement le dossier du patient quand son téléphone
   est connu.
 
+## Dictée vocale (médecins)
+
+En haut du formulaire de consultation, **Dicter la consultation** écoute le médecin (5 minutes au plus). **C'est
+gratuit et il n'y a rien à configurer.**
+
+1. **Reconnaissance de la voix** : celle du navigateur (Chrome, Edge ou Safari ; pas Firefox), la même que la dictée
+   du téléphone. Le texte s'affiche pendant que l'on parle. Elle a besoin d'Internet.
+2. **Correction gratuite**, faite dans le navigateur avec le vocabulaire de cardiologie et le lexique du cabinet :
+   - commandes dictées : « à la ligne », « point », « virgule », « deux points », « pour cent »… ;
+   - sigles épelés ou mal écrits : « f e v g » → FEVG, « e t t » → ETT, « avk » → AVK ;
+   - médicaments mal reconnus : « sin trom » → Sintrom, « bisoprolole » → bisoprolol (signalés pour vérification) ;
+   - valeurs chiffrées, qui remplissent aussi les champs : « TA 13 8 » → 130/80 mmHg, « fréquence cardiaque 45 »,
+     « INR 2,83 », « FEVG 55 % », « poids 60 », « taille 1,56 », « créatinine 12 mg/l », « LDL 1,2 g/l » ;
+   - rangement dans les rubriques annoncées : « motif », « examen », « ECG », « autres », « conclusion »,
+     « conduite à tenir ». Sans rubrique annoncée, le texte va en conclusion.
+3. **Relecture par le médecin** : les mots douteux sont signalés, chaque rubrique se corrige sur place, le texte
+   reconnu avant correction reste consultable. **Insérer dans la consultation** ajoute le texte à la suite de ce qui
+   est déjà saisi ; rien n'est enregistré avant **Enregistrer la consultation**.
+
+Exemple de dictée : « motif : contrôle sous Sintrom, à la ligne, examen : RAS, TA 13 8, fréquence cardiaque 62, à
+la ligne, conclusion : bon équilibre tensionnel, à la ligne, conduite à tenir : continuer même traitement ».
+
+**Le lexique apprend** : un mot mal reconnu se corrige avec **Retenir dans le lexique** pendant la relecture, ou sur
+la page **Lexique** (bouton sur l'agenda). La correction s'applique à toutes les dictées suivantes.
+
+### Facultatif : « Améliorer avec Claude »
+
+Pour une dictée difficile (sans rubriques annoncées, phrases longues), le bouton **Améliorer avec Claude** fait
+corriger et ranger le texte par Claude (Anthropic) : environ 2 centimes de dollar par dictée, et seulement quand on
+clique. Seul le texte dicté est envoyé, sans le nom ni l'identité du patient. Pour l'activer :
+
+1. Sur <https://console.anthropic.com/>, créer un compte pour le cabinet, ajouter quelques dollars de crédits (et une
+   limite de dépense mensuelle dans **Settings → Limits**), puis **API Keys → Create Key**.
+2. Projet Vercel → **Settings → Environment Variables** : ajouter `ANTHROPIC_API_KEY` avec cette clé (les trois
+   environnements), puis redéployer.
+
+Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement gratuite.
+
+**Données de santé** : la voix passe par les serveurs de Google (Chrome, Edge) ou d'Apple (Safari), et, si l'on
+utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
+d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :
@@ -107,7 +149,7 @@ Dans **Gérer les comptes**, chaque compte a un rôle :
 | Rôle | Agenda | Identité et coordonnées des patients | Contenu médical (antécédents, allergies, traitements…) | Comptes, journal, suppression d'un dossier |
 | --- | --- | --- | --- | --- |
 | Administrateur (le médecin, `COMPTE_ADMIN`) | oui | oui | oui | oui |
-| Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes et alertes) | non |
+| Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes, alertes et dictée) | non |
 | Secrétaire | oui | oui, classement des examens, suivis et relances | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
 
 Les comptes créés avant cette mise à jour sont « secrétaire ». Pour un médecin remplaçant, choisir **médecin** dans la
@@ -117,7 +159,8 @@ liste à côté de son nom puis **Changer**.
 
 Les dossiers contiennent des données de santé, « sensibles » au sens de la loi 09-08 : leur traitement demande une
 **autorisation préalable de la CNDP** (<https://www.cndp.ma>), pas une simple déclaration. La base Neon est hébergée
-hors du Maroc : ce transfert doit être indiqué dans la demande. À faire par le cabinet avant d'y saisir de vrais
+hors du Maroc, tout comme Google Drive, la dictée du navigateur (Google ou Apple) et Claude (Anthropic) s'il est
+utilisé : ces transferts doivent être indiqués dans la demande. À faire par le cabinet avant d'y saisir de vrais
 dossiers. Les mentions légales du site seront complétées en conséquence.
 
 - Les données sont chiffrées pendant le transfert et sur les disques de Neon ; seul le site y a accès.
