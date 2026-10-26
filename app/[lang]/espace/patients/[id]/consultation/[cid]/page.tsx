@@ -9,6 +9,7 @@ import { exigerUtilisateur } from "../../../../../../agenda/session";
 import { lireConsultation, mesures } from "../../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../../dossier/patients";
 import { delais, suivisCourants } from "../../../../../../dossier/suivis";
+import { dicteeConfiguree } from "../../../../../../dossier/dictee";
 import { Retour } from "../../../commun";
 import { BoutonSupprimerConsultation, FormulaireConsultation } from "../../../consultation";
 
@@ -62,6 +63,7 @@ async function Formulaire({
         tailleConnue={null}
         definitions={mesures}
         choixSuivi={{ quoi: suivisCourants, delais }}
+        dictee={dicteeConfiguree()}
         aujourdhui={jourLocal(new Date())}
       />
       <div className="mt-12 border-t border-slate-200 pt-6">

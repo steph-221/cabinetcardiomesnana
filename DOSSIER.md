@@ -100,6 +100,48 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
 - Sur l'agenda, le lien **Dossier** d'un rendez-vous ouvre directement le dossier du patient quand son téléphone
   est connu.
 
+## Dictée vocale (médecins)
+
+En haut du formulaire de consultation, **Dicter la consultation** enregistre la voix du médecin (5 minutes au plus).
+Le texte est ensuite :
+
+1. **transcrit** par la reconnaissance vocale de Google (français), guidée par le vocabulaire de cardiologie
+   (sigles, termes, médicaments) et par le lexique du cabinet ;
+2. **corrigé et rangé** par Claude (Anthropic) dans les rubriques du rapport : motif, examen clinique, ECG, autres,
+   conclusion, conduite à tenir. Les valeurs dictées (« TA 13/8 », « FC quarante-cinq », « FEVG 55 % »…) remplissent
+   aussi les champs chiffrés. La consigne lui interdit d'ajouter quoi que ce soit qui n'a pas été dicté ;
+3. **relu par le médecin** : les mots douteux sont signalés (« sin trom » → Sintrom), chaque rubrique se corrige sur
+   place, et le texte reconnu avant correction reste consultable. **Insérer dans la consultation** ajoute le texte à
+   la suite de ce qui est déjà saisi ; rien n'est enregistré avant **Enregistrer la consultation**.
+
+Pour dicter, annoncez les rubriques et la mise en forme : « motif : contrôle sous Sintrom… à la ligne… examen :
+RAS… conclusion : bradycardie sinusale… conduite à tenir : arrêt du Cardix, Holter dans un mois ».
+
+**Le lexique apprend** : un mot mal reconnu se corrige avec **Retenir dans le lexique** pendant la relecture, ou sur
+la page **Lexique** (bouton sur l'agenda). Il est transmis à toutes les dictées suivantes.
+
+**L'audio n'est jamais conservé**. Seul le texte dicté est envoyé à Claude, sans le nom ni l'identité du patient.
+
+### Mise en service (une seule fois)
+
+1. **Reconnaissance vocale Google** : sur <https://console.cloud.google.com/>, dans le projet de l'agenda :
+   - **Facturation** : la reconnaissance vocale est payante (environ 2 centimes de dollar par minute dictée, avec
+     un petit quota gratuit chaque mois). Un compte de facturation doit être relié au projet ;
+   - **API et services → Bibliothèque** : activer **Cloud Speech-to-Text API**.
+
+   Le compte de service de l'agenda (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`) sert aussi à la dictée :
+   aucune autre clé Google n'est nécessaire.
+2. **Claude (Anthropic)** : sur <https://console.anthropic.com/>, créer un compte pour le cabinet, ajouter un moyen
+   de paiement ou des crédits, puis **API Keys → Create Key**. Compter environ 2 centimes de dollar par dictée.
+3. Projet Vercel → **Settings → Environment Variables** : ajouter `ANTHROPIC_API_KEY` avec la clé de l'étape 2
+   (les trois environnements), puis redéployer.
+
+Le bouton **Dicter la consultation** n'apparaît que lorsque tout est configuré. Le navigateur demande l'autorisation
+d'utiliser le micro à la première dictée.
+
+**Données de santé** : la voix part chez Google et le texte chez Anthropic, hors du Maroc. Ce transfert doit figurer
+dans la demande d'autorisation à la CNDP (voir plus bas).
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :
@@ -107,7 +149,7 @@ Dans **Gérer les comptes**, chaque compte a un rôle :
 | Rôle | Agenda | Identité et coordonnées des patients | Contenu médical (antécédents, allergies, traitements…) | Comptes, journal, suppression d'un dossier |
 | --- | --- | --- | --- | --- |
 | Administrateur (le médecin, `COMPTE_ADMIN`) | oui | oui | oui | oui |
-| Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes et alertes) | non |
+| Médecin (remplaçant) | oui | oui | oui (y compris consultations, courbes, alertes et dictée) | non |
 | Secrétaire | oui | oui, classement des examens, suivis et relances | **non** : rien n'est envoyé à son navigateur (ni conclusions, ni fichiers d'examen) | non |
 
 Les comptes créés avant cette mise à jour sont « secrétaire ». Pour un médecin remplaçant, choisir **médecin** dans la
@@ -117,7 +159,8 @@ liste à côté de son nom puis **Changer**.
 
 Les dossiers contiennent des données de santé, « sensibles » au sens de la loi 09-08 : leur traitement demande une
 **autorisation préalable de la CNDP** (<https://www.cndp.ma>), pas une simple déclaration. La base Neon est hébergée
-hors du Maroc : ce transfert doit être indiqué dans la demande. À faire par le cabinet avant d'y saisir de vrais
+hors du Maroc, tout comme Google Drive, la reconnaissance vocale de Google et Claude (Anthropic) pour la dictée : ces
+transferts doivent être indiqués dans la demande. À faire par le cabinet avant d'y saisir de vrais
 dossiers. Les mentions légales du site seront complétées en conséquence.
 
 - Les données sont chiffrées pendant le transfert et sur les disques de Neon ; seul le site y a accès.
