@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   Ban,
   BookA,
+  FileInput,
   Library,
   MessagesSquare,
   CalendarClock,
@@ -152,6 +153,15 @@ async function Tableau({ langue }: { langue: string }) {
             >
               <Library className="h-4 w-4" aria-hidden />
               Bibliothèque
+            </Link>
+          )}
+          {accesMedical(utilisateur) && (
+            <Link
+              href={`/${langue}/espace/reprise`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <FileInput className="h-4 w-4" aria-hidden />
+              Reprise Word
             </Link>
           )}
           {utilisateur.admin && (
