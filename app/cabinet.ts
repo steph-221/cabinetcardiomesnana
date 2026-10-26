@@ -3,6 +3,9 @@
 
 export const cabinet = {
   medecin: "Dr Taouab Zogarh Cursoux",
+  // En-tête des ordonnances et comptes rendus (une ligne par élément ; INPE laissé vide tant qu'il n'est pas fourni)
+  specialite: "Cardiologue",
+  inpe: "",
   site: "https://www.cabinetcardiomesnana.com",
   // Pour Google (données structurées) : adresse et position du cabinet
   adresse: {

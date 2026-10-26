@@ -88,6 +88,28 @@ La fiche du patient affiche ensuite :
 
 Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
 
+## Ordonnances et comptes rendus en PDF (médecins)
+
+Tous les documents portent l'en-tête du cabinet (nom du médecin, « Cardiologue », adresse, téléphones) et un
+emplacement « Signature et cachet ». Le numéro INPE s'ajoute dans `app/cabinet.ts` (champ `inpe`) s'il doit
+figurer. Une copie PDF est rangée automatiquement dans le dossier Drive du patient quand Drive est connecté.
+
+- **Ordonnance** (format A5) : bouton **Nouvelle ordonnance** dans le dossier. Les traitements en cours sont repris
+  d'emblée ; on retire, complète (posologie, durée) ou ajoute des lignes, avec une remarque facultative. Les
+  ordonnances restent dans la liste du dossier : **Imprimer** ouvre le PDF.
+- **Rapport de consultation** (A4) : lien **Rapport PDF** sur chaque consultation, avec la présentation du rapport
+  Word du cabinet (antécédents, allergies, traitement en cours, motif, examen physique, ECG, autres, conclusion,
+  conduite à tenir). Il est regénéré à chaque ouverture : une consultation corrigée donne un rapport à jour.
+- **Compte rendu d'échocardiographie-Doppler** (A4) : bouton **Compte rendu d'ETT** dans la section Examens. Les
+  champs suivent le modèle du cabinet (mesures 2D puis Doppler) ; seuls ceux remplis apparaissent dans le PDF.
+  - Calculs pendant la saisie : surface corporelle, masse VG (Devereux) et masse indexée, épaisseur pariétale
+    relative, gradient VD-OD et PAPS (avec la pression OD estimée), gradient maximal et surface aortique indexée.
+  - **Propositions pour le « AU TOTAL »** d'après les seuils publiés (ASE/EACVI, ESC) : FEVG, dilatation VG,
+    HVG, oreillettes, pressions de remplissage, fonction VD, rétrécissement mitral, rétrécissement aortique (avec la
+    **discordance** surface / gradient qui doit faire rechercher un bas débit), probabilité d'HTAP. Chaque
+    proposition indique sa source ; un clic l'ajoute au texte, que le médecin rédige et valide.
+  - La FEVG du compte rendu s'ajoute à la courbe de FEVG et aux alertes du dossier.
+
 ## Suivis et relances (tout le personnel)
 
 - En fin de consultation, la rubrique **Prochain suivi** (« Échocardiographie (ETT) dans 6 mois ») crée un suivi ;

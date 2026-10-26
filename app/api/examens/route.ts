@@ -20,7 +20,11 @@ export async function POST(request: Request) {
   const type = String(formulaire.get("type") ?? "");
   const date = String(formulaire.get("date") ?? "");
   // La secrétaire classe les examens ; seuls les médecins écrivent une conclusion
-  const conclusion = accesMedical(utilisateur) ? String(formulaire.get("conclusion") ?? "").trim().slice(0, 5000) : "";
+  const conclusion = accesMedical(utilisateur)
+    ? String(formulaire.get("conclusion") ?? "")
+        .trim()
+        .slice(0, 5000)
+    : "";
   const fichier = formulaire.get("fichier");
 
   if (!typesExamen.includes(type) || !estJour(date)) return erreur("Indiquez le type et la date de l'examen.", 400);

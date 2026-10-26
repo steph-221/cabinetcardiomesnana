@@ -28,6 +28,8 @@ export type Examen = {
   type: string;
   date: string; // "AAAA-MM-JJ"
   conclusion: string;
+  // Compte rendu d'ETT saisi sur le site : { ett: DonneesETT } (voir ett.ts) ; vide pour un fichier envoyé
+  valeurs: Record<string, unknown>;
   fichierDrive: string | null;
   fichierNom: string;
   fichierType: string;
@@ -41,6 +43,7 @@ const versExamen = (l: Record<string, unknown>): Examen => ({
   type: l.type as string,
   date: l.date as string,
   conclusion: l.conclusion as string,
+  valeurs: (l.valeurs as Record<string, unknown>) ?? {},
   fichierDrive: l.fichier_drive as string | null,
   fichierNom: l.fichier_nom as string,
   fichierType: l.fichier_type as string,
@@ -67,20 +70,29 @@ export async function ajouterExamen(
     type: string;
     date: string;
     conclusion: string;
+    valeurs?: Record<string, unknown>;
     fichier: { drive: string; nom: string; type: string; taille: number } | null;
   },
   par: string,
 ) {
   const sql = await base();
   const [[{ id }]] = await sql.transaction([
-    sql`INSERT INTO examens (patient_id, type, date, conclusion, fichier_drive, fichier_nom, fichier_type,
+    sql`INSERT INTO examens (patient_id, type, date, conclusion, valeurs, fichier_drive, fichier_nom, fichier_type,
                              fichier_taille, cree_par)
-        VALUES (${patientId}, ${e.type}, ${e.date}, ${e.conclusion}, ${e.fichier?.drive ?? null},
-                ${e.fichier?.nom ?? ""}, ${e.fichier?.type ?? ""}, ${e.fichier?.taille ?? 0}, ${par})
+        VALUES (${patientId}, ${e.type}, ${e.date}, ${e.conclusion}, ${JSON.stringify(e.valeurs ?? {})}::jsonb,
+                ${e.fichier?.drive ?? null}, ${e.fichier?.nom ?? ""}, ${e.fichier?.type ?? ""},
+                ${e.fichier?.taille ?? 0}, ${par})
         RETURNING id`,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,
   ]);
   return id as number;
+}
+
+// Copie PDF d'un compte rendu rangée dans Drive après coup
+export async function rangerFichierExamen(id: number, f: { drive: string; nom: string; taille: number }) {
+  const sql = await base();
+  await sql`UPDATE examens SET fichier_drive = ${f.drive}, fichier_nom = ${f.nom}, fichier_type = 'application/pdf',
+              fichier_taille = ${f.taille} WHERE id = ${id}`;
 }
 
 export async function modifierConclusion(patientId: number, id: number, conclusion: string) {
