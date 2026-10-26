@@ -6,7 +6,7 @@ import { cabinet, estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { lireJournal, type Entree } from "../../../dossier/journal";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 
 export const metadata: Metadata = {
   title: "Journal des accès",
@@ -19,8 +19,7 @@ export default async function Journal({ params, searchParams }: PageProps<"/[lan
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <h1 className="mt-4 text-2xl font-bold text-slate-900">Journal des accès aux dossiers</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Journal des accès aux dossiers</h1>
       <p className="mt-1 text-sm text-slate-500">
         Qui a ouvert, créé ou modifié un dossier, et quand. Les 200 dernières entrées.
       </p>

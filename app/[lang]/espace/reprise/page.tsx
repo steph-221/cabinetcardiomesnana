@@ -8,7 +8,7 @@ import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { claudeConfigure } from "../../../dossier/dictee";
 import { listerImports, type Import } from "../../../dossier/import-word";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 import { BoutonsImport, ChoixFichiers } from "./fichiers";
 
 export const metadata: Metadata = {
@@ -22,8 +22,7 @@ export default async function Reprise({ params }: PageProps<"/[lang]/espace/repr
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <h1 className="mt-4 flex items-center gap-2 text-2xl font-bold text-slate-900">
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
         <FileInput className="h-6 w-6 text-red-600" aria-hidden />
         Reprise des comptes rendus Word
       </h1>

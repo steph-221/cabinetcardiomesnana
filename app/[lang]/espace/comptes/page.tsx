@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { ArrowLeft, ShieldCheck, UserRound } from "lucide-react";
+import { ShieldCheck, UserRound } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { listerComptes, utilisateurConnecte } from "../../../agenda/session";
 import { stockageConfigure } from "../../../agenda/stockage";
@@ -20,14 +19,7 @@ export default async function Comptes({ params }: PageProps<"/[lang]/espace/comp
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Link
-        href={`/${lang}/espace`}
-        className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Retour à l&apos;agenda
-      </Link>
-      <h1 className="mt-4 text-2xl font-bold text-slate-900">Comptes du personnel</h1>
+      <h1 className="text-2xl font-bold text-slate-900">Comptes du personnel</h1>
       <p className="mt-1 text-sm text-slate-500">
         Créez un compte pour la secrétaire, un médecin remplaçant… Supprimez-le à la fin du remplacement : l&apos;accès
         est coupé immédiatement. Le rôle « secrétaire » ne donne pas accès au contenu médical des dossiers.
