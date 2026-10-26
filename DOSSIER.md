@@ -200,6 +200,30 @@ réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de doll
 risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
 conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
 
+## Reprise des anciens comptes rendus Word (médecins)
+
+Le bouton **Reprise Word** de l'agenda fait entrer les anciens rapports de consultation et comptes rendus
+d'échocardiographie dans les dossiers.
+
+1. Choisir un ou plusieurs fichiers **.docx**, par exemple dans le dossier Google Drive de l'ordinateur (Google Drive
+   pour ordinateur), ou après les avoir téléchargés depuis drive.google.com. Un ancien fichier **.doc** doit d'abord
+   être ouvert dans Word puis enregistré au format .docx.
+2. Chaque fichier est lu sur l'ordinateur :
+   - l'**identité** (nom, prénom, date de naissance ou âge, date du document) est repérée sur place, d'après les
+     modèles du cabinet ; quand le nom du fichier est « nom_prenom », il sert à séparer le nom du prénom ;
+   - le reste du texte est envoyé à Claude **sans le nom, la date de naissance ni les téléphones**, qui sont remplacés
+     par [PATIENT], [NAISSANCE] et [TÉLÉPHONE]. Claude propose les antécédents, les traitements (en cours ou arrêtés),
+     chaque visite datée avec ses valeurs (TA, FC, poids, INR, FEVG…) et, pour une échographie, toutes les mesures et
+     le « AU TOTAL ». Comptez environ 2 à 5 centimes de dollar par fichier. Un fichier déjà lu n'est ni relu ni refacturé.
+3. **Vérifier et valider** : tout se corrige à côté du texte d'origine. Une visite ou un traitement peut être décoché, et
+   les points douteux sont listés en haut de la page. Si un dossier du même nom existe, on peut le **compléter** au lieu
+   d'en créer un nouveau. Il est alors complété sans rien effacer.
+
+Rien n'entre dans un dossier avant la validation. Les visites deviennent des consultations, et leurs valeurs
+alimentent les courbes et les alertes. Les échographies deviennent des comptes rendus d'ETT imprimables. Chaque reprise
+est journalisée, et le fichier source reste noté dans la liste de reprise. Sans clé Anthropic, seule l'identité est lue
+automatiquement : le reste se remplit à la main d'après le texte affiché.
+
 ## 3. Rôles du personnel
 
 Dans **Gérer les comptes**, chaque compte a un rôle :

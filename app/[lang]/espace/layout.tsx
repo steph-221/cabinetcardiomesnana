@@ -4,6 +4,7 @@ import {
   BookA,
   CalendarClock,
   CalendarDays,
+  FileInput,
   FolderOpen,
   HardDrive,
   History,
@@ -88,6 +89,12 @@ async function Onglets({ langue }: { langue: string }) {
           <Onglet href={`${base}/bibliotheque`}>
             <Library className="h-4 w-4" aria-hidden />
             Bibliothèque
+          </Onglet>
+        )}
+        {accesMedical(utilisateur) && (
+          <Onglet href={`${base}/reprise`}>
+            <FileInput className="h-4 w-4" aria-hidden />
+            Reprise Word
           </Onglet>
         )}
         {utilisateur.admin && (
