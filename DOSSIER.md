@@ -187,6 +187,22 @@ deviner.
 4. Quand une nouvelle recommandation paraît (en général fin août, au congrès de l'ESC), l'ajouter et **Marquer
    remplacée** l'ancienne : elle n'est plus citée.
 
+**Sites et revues suivis** (bouton dans la Bibliothèque) :
+
+- **Suivre toutes les recommandations de l'ESC** ajoute en un clic la page qui les liste toutes. Les autres sites se
+  suivent par l'adresse de leur page de liste ou par le flux RSS d'une revue (cherchez « RSS » sur son site).
+- Chaque liste est relue au plus une fois par jour, à l'ouverture de la page, ou à la demande (**Vérifier**). Les
+  publications parues depuis le début du suivi sont marquées **Nouveau** pendant 60 jours, et la Bibliothèque
+  signale leur nombre.
+- Seuls les titres, les liens et les dates sont relevés : le contenu reste sur le site de l'éditeur. Pour qu'une
+  publication puisse être citée par l'assistant, l'ouvrir, télécharger son PDF puis cliquer sur **Ajouter à la
+  bibliothèque** : le titre, l'année et le lien sont déjà remplis. Elle apparaît ensuite « Dans la bibliothèque ».
+- **Accès abonné** : la page de connexion, l'identifiant et le mot de passe d'un abonnement (revue, société savante)
+  sont enregistrés chiffrés dans la base, avec la même clé que le jeton Google Drive (`SESSION_SECRET`). Le mot de passe
+  n'est affiché qu'en cliquant sur **Afficher**, et chaque affichage est inscrit au journal. Le site ne se connecte
+  jamais lui-même aux revues : la connexion se fait dans le navigateur, avec ces identifiants. Si `SESSION_SECRET`
+  change, il faut ressaisir les mots de passe.
+
 **Contrôle de qualité** : chaque réponse se note **Juste** ou **À revoir**, avec un commentaire. Une réponse juste peut
 devenir une **fiche validée** de la bibliothèque, citée ensuite comme « Dr Taouab », avec ses sources d'origine. Les
 questions, les réponses et les sources citées sont conservées et journalisées.

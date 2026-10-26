@@ -85,6 +85,7 @@ export async function creerFiche(q: Question, medecin: string, par: string) {
       type: "fiche",
       langue: "fr",
       url: "",
+      publicationId: null,
     },
     par,
   );
