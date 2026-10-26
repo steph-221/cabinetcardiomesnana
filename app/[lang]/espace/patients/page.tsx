@@ -8,7 +8,7 @@ import { jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { age, libellePatient, rechercherPatients, type ResumePatient } from "../../../dossier/patients";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "./commun";
+import { BaseNonConfiguree, ErreurLecture } from "./commun";
 
 export const metadata: Metadata = {
   title: "Patients",
@@ -21,8 +21,7 @@ export default async function Patients({ params, searchParams }: PageProps<"/[la
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">Patients</h1>
         <Link
           href={`/${lang}/espace/patients/nouveau`}

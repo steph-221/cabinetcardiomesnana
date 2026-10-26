@@ -7,7 +7,7 @@ import { ajouterJours, jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { suivisAvant, type SuiviPatient } from "../../../dossier/suivis";
-import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 import { LigneSuivi } from "../patients/liste-suivis";
 
 export const metadata: Metadata = {
@@ -21,8 +21,7 @@ export default async function Suivis({ params }: PageProps<"/[lang]/espace/suivi
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
-      <Retour href={`/${lang}/espace`}>Retour à l&apos;agenda</Retour>
-      <h1 className="mt-4 flex items-center gap-2 text-2xl font-bold text-slate-900">
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
         <CalendarClock className="h-6 w-6 text-red-600" aria-hidden />
         Suivis
       </h1>

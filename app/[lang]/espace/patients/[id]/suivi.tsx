@@ -156,7 +156,7 @@ export function SuiviMedical({
         </section>
       )}
 
-      <section id="consultations" className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 p-6 text-sm">
+      <section id="consultations" className="mt-6 scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Stethoscope className="h-5 w-5 text-red-600" aria-hidden />
