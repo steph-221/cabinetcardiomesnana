@@ -25,7 +25,9 @@ export type Source = {
   creePar: string;
 };
 
-export type NouvelleSource = Pick<Source, "titre" | "organisme" | "annee" | "type" | "langue" | "url">;
+export type NouvelleSource = Pick<Source, "titre" | "organisme" | "annee" | "type" | "langue" | "url"> & {
+  publicationId: number | null;
+};
 
 export type Passage = {
   id: number;
@@ -61,8 +63,9 @@ export async function listerSources(): Promise<Source[]> {
 export async function creerSource(s: NouvelleSource, par: string) {
   const sql = await base();
   const [ligne] = await sql`
-    INSERT INTO sources (titre, organisme, annee, type, langue, url, cree_par)
-    VALUES (${s.titre}, ${s.organisme}, ${s.annee}, ${s.type}, ${s.langue}, ${s.url}, ${par})
+    INSERT INTO sources (titre, organisme, annee, type, langue, url, publication_id, cree_par)
+    VALUES (${s.titre}, ${s.organisme}, ${s.annee}, ${s.type}, ${s.langue}, ${s.url},
+      (SELECT id FROM publications WHERE id = ${s.publicationId}), ${par})
     RETURNING id`;
   return ligne.id as number;
 }

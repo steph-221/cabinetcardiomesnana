@@ -18,7 +18,15 @@ import { journaliser } from "../../../dossier/journal";
 
 export async function commencerImport(
   langue: string,
-  meta: { titre: string; organisme: string; annee: string; type: string; langue: string; url: string },
+  meta: {
+    titre: string;
+    organisme: string;
+    annee: string;
+    type: string;
+    langue: string;
+    url: string;
+    publication?: number | null;
+  },
 ): Promise<{ id: number } | { erreur: string }> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   const titre = String(meta.titre ?? "")
@@ -43,6 +51,7 @@ export async function commencerImport(
     type: meta.type,
     langue: meta.langue === "en" ? "en" : "fr",
     url,
+    publicationId: Number.isInteger(meta.publication) && meta.publication! > 0 ? meta.publication! : null,
   };
   const id = await creerSource(source, utilisateur.identifiant);
   return { id };

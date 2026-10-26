@@ -23,7 +23,18 @@ async function lirePdf(fichier: File): Promise<Page[]> {
   return text.map((texte, i) => ({ page: i + 1, texte }));
 }
 
-export function ImportSource({ langue }: { langue: string }) {
+// Valeurs pré-remplies quand la source vient d'une publication d'un site suivi
+export type Preremplissage = {
+  publication: number;
+  titre: string;
+  organisme: string;
+  annee: number | null;
+  type: string;
+  langue: "fr" | "en";
+  url: string;
+};
+
+export function ImportSource({ langue, initial }: { langue: string; initial?: Preremplissage }) {
   const [mode, setMode] = useState<"pdf" | "texte">("pdf");
   const [etat, setEtat] = useState<{ erreur?: string; progres?: string; fait?: string }>({});
   const [occupe, setOccupe] = useState(false);
@@ -60,6 +71,7 @@ export function ImportSource({ langue }: { langue: string }) {
         type: String(formData.get("type") ?? ""),
         langue: String(formData.get("langueSource") ?? ""),
         url: String(formData.get("url") ?? ""),
+        publication: initial?.publication ?? null,
       });
       if ("erreur" in debut) throw new Error(debut.erreur);
 
@@ -135,20 +147,28 @@ export function ImportSource({ langue }: { langue: string }) {
           required
           maxLength={200}
           placeholder="Insuffisance cardiaque aiguë et chronique"
+          defaultValue={initial?.titre}
           className={champ}
         />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Organisme ou auteur
-        <input name="organisme" maxLength={100} defaultValue="ESC" className={champ} />
+        <input name="organisme" maxLength={100} defaultValue={initial ? initial.organisme : "ESC"} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Année de l&apos;édition
-        <input name="annee" inputMode="numeric" maxLength={4} placeholder="2023" className={champ} />
+        <input
+          name="annee"
+          inputMode="numeric"
+          maxLength={4}
+          placeholder="2023"
+          defaultValue={initial?.annee ?? undefined}
+          className={champ}
+        />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Type
-        <select name="type" defaultValue="recommandation" className={champ}>
+        <select name="type" defaultValue={initial?.type ?? "recommandation"} className={champ}>
           {typesSource
             .filter((t) => t.cle !== "fiche")
             .map((t) => (
@@ -160,7 +180,7 @@ export function ImportSource({ langue }: { langue: string }) {
       </label>
       <label className="text-sm font-medium text-slate-700">
         Langue du texte
-        <select name="langueSource" defaultValue="en" className={champ}>
+        <select name="langueSource" defaultValue={initial?.langue ?? "en"} className={champ}>
           <option value="en">Anglais</option>
           <option value="fr">Français</option>
         </select>
@@ -172,6 +192,7 @@ export function ImportSource({ langue }: { langue: string }) {
           type="url"
           maxLength={500}
           placeholder="https://academic.oup.com/eurheartj/…"
+          defaultValue={initial?.url}
           className={champ}
         />
         <span className="mt-1 block text-xs font-normal text-slate-500">
