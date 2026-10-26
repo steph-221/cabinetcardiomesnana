@@ -1,60 +1,15 @@
-// Dictée vocale : 1) transcription par Google Speech-to-Text (compte de service de l'agenda, projet Google Cloud
-// du cabinet) ; 2) correction et rangement par rubrique par Claude, avec le vocabulaire de cardiologie et le lexique
-// du cabinet. L'audio n'est jamais conservé. Variables d'environnement : voir DOSSIER.md.
+// Amélioration facultative de la dictée par Claude (Anthropic) : correction des termes et rangement par rubrique,
+// avec le vocabulaire de cardiologie et le lexique du cabinet. La reconnaissance vocale se fait dans le navigateur,
+// et une première correction gratuite y est déjà appliquée (correction-locale.ts). Clé : ANTHROPIC_API_KEY.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { compteServiceConfigure, jetonAcces } from "../agenda/google";
-import { bornesConstantes, mesures, type Constantes } from "./consultations";
-import { glossaire, indicesReconnaissance } from "./vocabulaire";
+import { rubriques, type Correction } from "./correction-locale";
+import { bornes, bornesConstantes, mesures, type Constantes } from "./mesures";
+import { glossaire } from "./vocabulaire";
 
-export const dicteeConfiguree = () => compteServiceConfigure() && Boolean(process.env.ANTHROPIC_API_KEY);
+export const claudeConfigure = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
-// --- 1. Transcription ---
-
-// Morceau d'audio WAV 16 kHz mono (moins d'une minute : limite de la reconnaissance synchrone de Google)
-export async function transcrire(wav: ArrayBuffer, lexique: string[]) {
-  const reponse = await fetch("https://speech.googleapis.com/v1/speech:recognize", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${await jetonAcces("https://www.googleapis.com/auth/cloud-platform")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      config: {
-        encoding: "LINEAR16",
-        sampleRateHertz: 16000,
-        languageCode: "fr-FR",
-        model: "latest_long",
-        enableAutomaticPunctuation: true,
-        // Indices : sigles, termes et médicaments de cardiologie, plus les mots appris par le cabinet
-        speechContexts: [{ phrases: indicesReconnaissance(lexique), boost: 10 }],
-      },
-      audio: { content: Buffer.from(wav).toString("base64") },
-    }),
-    cache: "no-store",
-  });
-  // Le détail renvoyé par Google (API non activée, facturation absente…) aide au diagnostic dans les journaux
-  if (!reponse.ok) throw new Error(`Reconnaissance vocale Google : erreur ${reponse.status} ${await reponse.text()}`);
-  const { results = [] } = (await reponse.json()) as {
-    results?: { alternatives?: { transcript?: string }[] }[];
-  };
-  return results
-    .map((r) => r.alternatives?.[0]?.transcript?.trim() ?? "")
-    .filter(Boolean)
-    .join(" ");
-}
-
-// --- 2. Correction ---
-
-export const rubriques = ["motif", "examen", "ecg", "autres", "conclusion", "conduite"] as const;
-export type Rubrique = (typeof rubriques)[number];
 const champsChiffres = [...(Object.keys(bornesConstantes) as (keyof Constantes)[]), ...mesures.map((m) => m.cle)];
-
-export type Correction = {
-  rubriques: Record<Rubrique, string>;
-  valeurs: Partial<Record<(typeof champsChiffres)[number], number>>;
-  incertains: { entendu: string; propose: string }[];
-};
 
 const nombreOuRien = { anyOf: [{ type: "number" }, { type: "null" }] };
 const schema = {
@@ -87,7 +42,7 @@ const schema = {
 };
 
 // Consignes fixes (mises en cache par l'API) ; le lexique du cabinet et la dictée viennent ensuite
-const CONSIGNES = `Tu mets au propre la dictée d'un cardiologue, transcrite automatiquement par reconnaissance vocale, pour remplir un rapport de consultation de cardiologie en français.
+const CONSIGNES = `Tu mets au propre la dictée d'un cardiologue, transcrite automatiquement par la reconnaissance vocale du navigateur (souvent sans ponctuation), pour remplir un rapport de consultation de cardiologie en français.
 
 Règles :
 1. Corrige les erreurs de reconnaissance (mots déformés, homophones, sigles mal compris) à l'aide du glossaire et du lexique du cabinet. Exemples : « bi soprolol » → « bisoprolol », « ache vé gé » → « HVG », « sin trom » → « Sintrom ».
@@ -132,14 +87,10 @@ export async function corriger(transcription: string, lexique: { entendu: string
 
 // Ne garde que des valeurs vraisemblables : une valeur hors bornes est retirée (elle reste dans le texte)
 function verifier(c: Correction): Correction {
-  const bornes: Record<string, [number, number]> = {
-    ...bornesConstantes,
-    ...Object.fromEntries(mesures.map((m) => [m.cle, [m.min, m.max] as [number, number]])),
-  };
   const valeurs: Correction["valeurs"] = {};
   for (const [cle, v] of Object.entries(c.valeurs ?? {})) {
     const [min, max] = bornes[cle] ?? [0, -1];
-    if (typeof v === "number" && v >= min && v <= max) valeurs[cle as keyof Correction["valeurs"]] = v;
+    if (typeof v === "number" && v >= min && v <= max) valeurs[cle] = v;
   }
   return {
     rubriques: Object.fromEntries(

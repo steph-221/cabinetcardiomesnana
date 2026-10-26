@@ -9,7 +9,8 @@ import { exigerUtilisateur } from "../../../../../../agenda/session";
 import { lireConsultation, mesures } from "../../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../../dossier/patients";
 import { delais, suivisCourants } from "../../../../../../dossier/suivis";
-import { dicteeConfiguree } from "../../../../../../dossier/dictee";
+import { claudeConfigure } from "../../../../../../dossier/dictee";
+import { lireLexique } from "../../../../../../dossier/lexique";
 import { Retour } from "../../../commun";
 import { BoutonSupprimerConsultation, FormulaireConsultation } from "../../../consultation";
 
@@ -51,7 +52,9 @@ async function Formulaire({
   return (
     <>
       <Retour href={`/${langue}/espace/patients/${id}#consultations`}>{libellePatient(patient)}</Retour>
-      <h1 className="mt-4 mb-1 text-2xl font-bold text-slate-900">Consultation du {consultation.date.split("-").reverse().join("/")}</h1>
+      <h1 className="mt-4 mb-1 text-2xl font-bold text-slate-900">
+        Consultation du {consultation.date.split("-").reverse().join("/")}
+      </h1>
       <p className="mb-6 text-sm text-slate-500">
         Saisie par {consultation.creePar}
         {consultation.modifiePar !== consultation.creePar && `, modifiée par ${consultation.modifiePar}`}
@@ -63,7 +66,10 @@ async function Formulaire({
         tailleConnue={null}
         definitions={mesures}
         choixSuivi={{ quoi: suivisCourants, delais }}
-        dictee={dicteeConfiguree()}
+        dictee={{
+          lexique: (await lireLexique()).map(({ entendu, correct }) => ({ entendu, correct })),
+          claude: claudeConfigure(),
+        }}
         aujourdhui={jourLocal(new Date())}
       />
       <div className="mt-12 border-t border-slate-200 pt-6">

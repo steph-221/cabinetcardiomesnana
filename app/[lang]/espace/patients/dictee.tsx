@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookPlus, Check, LoaderCircle, Mic, RotateCcw, Square } from "lucide-react";
-import type { Correction, Rubrique } from "../../../dossier/dictee";
+import { BookPlus, Check, LoaderCircle, Mic, RotateCcw, Sparkles, Square } from "lucide-react";
+import { corrigerLocalement, type Correction, type Rubrique } from "../../../dossier/correction-locale";
 import { ajouterAuLexique } from "../lexique/actions";
 
 const DUREE_MAX = 5 * 60; // secondes
-const FREQUENCE = 16000;
-const MORCEAU = 50 * FREQUENCE; // la reconnaissance synchrone de Google accepte moins d'une minute par envoi
 
 const libelles: Record<Rubrique, string> = {
   motif: "Motif",
@@ -18,149 +16,145 @@ const libelles: Record<Rubrique, string> = {
   conduite: "Conduite à tenir",
 };
 
-// Audio enregistré (WebM, MP4…) → WAV 16 kHz mono, découpé en morceaux de 50 s
-async function versWav(enregistrement: Blob) {
-  const contexte = new AudioContext();
-  const decode = await contexte.decodeAudioData(await enregistrement.arrayBuffer());
-  await contexte.close();
-  const hors = new OfflineAudioContext(1, Math.max(1, Math.ceil(decode.duration * FREQUENCE)), FREQUENCE);
-  const source = hors.createBufferSource();
-  source.buffer = decode;
-  source.connect(hors.destination);
-  source.start();
-  const echantillons = (await hors.startRendering()).getChannelData(0);
-
-  const morceaux: Blob[] = [];
-  for (let debut = 0; debut < echantillons.length; debut += MORCEAU) {
-    const partie = echantillons.subarray(debut, debut + MORCEAU);
-    const vue = new DataView(new ArrayBuffer(44 + partie.length * 2));
-    const ecrire = (pos: number, texte: string) => [...texte].forEach((c, i) => vue.setUint8(pos + i, c.charCodeAt(0)));
-    ecrire(0, "RIFF");
-    vue.setUint32(4, 36 + partie.length * 2, true);
-    ecrire(8, "WAVE");
-    ecrire(12, "fmt ");
-    vue.setUint32(16, 16, true);
-    vue.setUint16(20, 1, true); // PCM
-    vue.setUint16(22, 1, true); // mono
-    vue.setUint32(24, FREQUENCE, true);
-    vue.setUint32(28, FREQUENCE * 2, true);
-    vue.setUint16(32, 2, true);
-    vue.setUint16(34, 16, true);
-    ecrire(36, "data");
-    vue.setUint32(40, partie.length * 2, true);
-    partie.forEach((v, i) => vue.setInt16(44 + i * 2, Math.max(-1, Math.min(1, v)) * 0x7fff, true));
-    morceaux.push(new Blob([vue], { type: "audio/wav" }));
-  }
-  return morceaux;
-}
-
-async function envoyer<T>(url: string, init: RequestInit): Promise<T> {
-  const reponse = await fetch(url, init);
-  const resultat = (await reponse.json().catch(() => ({}))) as T & { erreur?: string };
-  if (!reponse.ok) throw new Error(resultat.erreur ?? "Erreur inattendue.");
-  return resultat;
-}
+// Reconnaissance vocale du navigateur (Chrome, Edge, Safari) : gratuite, le texte arrive pendant que l'on parle
+type Resultat = { isFinal: boolean; 0: { transcript: string } };
+type Reconnaissance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<Resultat> }) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type FenetreAvecDictee = {
+  SpeechRecognition?: new () => Reconnaissance;
+  webkitSpeechRecognition?: new () => Reconnaissance;
+};
+const Moteur = () =>
+  typeof window === "undefined"
+    ? undefined
+    : ((window as unknown as FenetreAvecDictee).SpeechRecognition ??
+      (window as unknown as FenetreAvecDictee).webkitSpeechRecognition);
 
 type Etape =
   | { nom: "pret" }
-  | { nom: "enregistrement"; secondes: number }
-  | { nom: "traitement"; message: string }
-  | { nom: "relecture"; brut: string; correction: Correction }
-  | { nom: "brut"; brut: string; erreur: string }
+  | { nom: "enregistrement"; secondes: number; texte: string; provisoire: string }
+  | { nom: "relecture"; brut: string; correction: Correction; parClaude: boolean }
   | { nom: "erreur"; message: string };
 
-// Dictée de toute la consultation : le texte corrigé est relu puis inséré dans le formulaire (rien n'est enregistré
-// avant « Enregistrer la consultation »)
+// Dictée de toute la consultation : texte corrigé gratuitement, amélioré par Claude si on le demande, relu puis inséré
+// dans le formulaire (rien n'est enregistré avant « Enregistrer la consultation »)
 export function DicteeConsultation({
   langue,
   libellesValeurs,
+  lexique,
+  claude,
   inserer,
 }: {
   langue: string;
   libellesValeurs: Record<string, string>;
+  lexique: { entendu: string; correct: string }[];
+  claude: boolean;
   inserer: (c: Correction) => void;
 }) {
   const [etape, setEtape] = useState<Etape>({ nom: "pret" });
-  const enregistreur = useRef<MediaRecorder | null>(null);
+  const reconnaissance = useRef<Reconnaissance | null>(null);
+  const actif = useRef(false);
+  const texte = useRef("");
+  const provisoire = useRef("");
   const minuteur = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debut = useRef(0);
+  const appris = useRef([...lexique]);
 
   useEffect(
     () => () => {
+      actif.current = false;
       if (minuteur.current) clearInterval(minuteur.current);
-      enregistreur.current?.stream.getTracks().forEach((t) => t.stop());
+      reconnaissance.current?.stop();
     },
     [],
   );
 
-  async function commencer() {
-    let flux: MediaStream;
-    try {
-      flux = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-      });
-    } catch {
-      setEtape({ nom: "erreur", message: "Le micro n'est pas accessible : autorisez-le dans le navigateur." });
+  const afficher = () =>
+    setEtape({
+      nom: "enregistrement",
+      secondes: Math.floor((Date.now() - debut.current) / 1000),
+      texte: texte.current,
+      provisoire: provisoire.current,
+    });
+
+  function commencer() {
+    const Classe = Moteur();
+    if (!Classe) {
+      setEtape({ nom: "erreur", message: "Ce navigateur ne sait pas dicter : utilisez Chrome, Edge ou Safari." });
       return;
     }
-    const morceaux: Blob[] = [];
-    const recorder = new MediaRecorder(flux);
-    recorder.ondataavailable = (e) => e.data.size && morceaux.push(e.data);
-    recorder.onstop = () => {
-      flux.getTracks().forEach((t) => t.stop());
-      traiter(new Blob(morceaux, { type: recorder.mimeType }));
+    texte.current = "";
+    provisoire.current = "";
+    debut.current = Date.now();
+    actif.current = true;
+
+    const r = new Classe();
+    r.lang = "fr-FR";
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (e) => {
+      let enCours = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const morceau = e.results[i][0].transcript;
+        if (e.results[i].isFinal) texte.current = `${texte.current} ${morceau}`.trim();
+        else enCours += morceau;
+      }
+      provisoire.current = enCours;
+      afficher();
     };
-    enregistreur.current = recorder;
-    recorder.start(1000);
-    const debut = Date.now();
-    setEtape({ nom: "enregistrement", secondes: 0 });
+    let bloquee = false;
+    r.onerror = (e) => {
+      const message =
+        e.error === "not-allowed" || e.error === "service-not-allowed"
+          ? "Le micro n'est pas autorisé : autorisez-le dans le navigateur."
+          : e.error === "network"
+            ? "La dictée du navigateur a besoin d'Internet. Vérifiez la connexion."
+            : null;
+      // « no-speech », « aborted » : la reconnaissance redémarre d'elle-même (onend)
+      if (!message) return;
+      bloquee = true;
+      actif.current = false;
+      setEtape({ nom: "erreur", message });
+    };
+    // Le navigateur s'arrête après un silence : on relance tant que le médecin n'a pas terminé
+    r.onend = () => {
+      if (actif.current && Date.now() - debut.current < DUREE_MAX * 1000) {
+        r.start();
+        return;
+      }
+      if (minuteur.current) clearInterval(minuteur.current);
+      if (!bloquee) terminer();
+    };
+    reconnaissance.current = r;
+    r.start();
+    afficher();
     minuteur.current = setInterval(() => {
-      const secondes = Math.floor((Date.now() - debut) / 1000);
-      if (secondes >= DUREE_MAX) arreter();
-      else setEtape({ nom: "enregistrement", secondes });
+      if (Date.now() - debut.current >= DUREE_MAX * 1000) arreter();
+      else afficher();
     }, 500);
   }
 
   function arreter() {
-    if (minuteur.current) clearInterval(minuteur.current);
-    minuteur.current = null;
-    if (enregistreur.current?.state === "recording") enregistreur.current.stop();
+    actif.current = false;
+    reconnaissance.current?.stop();
   }
 
-  async function traiter(enregistrement: Blob) {
-    let brut = "";
-    try {
-      setEtape({ nom: "traitement", message: "Préparation de l'audio…" });
-      const morceaux = await versWav(enregistrement);
-      const textes: string[] = [];
-      for (const [i, morceau] of morceaux.entries()) {
-        setEtape({
-          nom: "traitement",
-          message:
-            morceaux.length > 1 ? `Reconnaissance vocale ${i + 1}/${morceaux.length}…` : "Reconnaissance vocale…",
-        });
-        const { texte } = await envoyer<{ texte: string }>("/api/dictee/transcription", {
-          method: "POST",
-          headers: { "Content-Type": "audio/wav" },
-          body: morceau,
-        });
-        if (texte) textes.push(texte);
-      }
-      brut = textes.join(" ");
-      if (!brut) {
-        setEtape({ nom: "erreur", message: "Aucune parole reconnue. Parlez plus près du micro et recommencez." });
-        return;
-      }
-      setEtape({ nom: "traitement", message: "Correction des termes de cardiologie…" });
-      const correction = await envoyer<Correction>("/api/dictee/correction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texte: brut }),
-      });
-      setEtape({ nom: "relecture", brut, correction });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Erreur inattendue.";
-      setEtape(brut ? { nom: "brut", brut, erreur: message } : { nom: "erreur", message });
+  function terminer() {
+    const brut = `${texte.current} ${provisoire.current}`.trim();
+    reconnaissance.current = null;
+    if (!brut) {
+      setEtape({ nom: "erreur", message: "Aucune parole reconnue. Parlez plus près du micro et recommencez." });
+      return;
     }
+    setEtape({ nom: "relecture", brut, correction: corrigerLocalement(brut, appris.current), parClaude: false });
   }
 
   const bouton = "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium";
@@ -181,23 +175,24 @@ export function DicteeConsultation({
       )}
 
       {etape.nom === "enregistrement" && (
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={arreter} className={`${bouton} bg-slate-900 text-white hover:bg-slate-800`}>
-            <Square className="h-4 w-4" aria-hidden />
-            Terminer la dictée
-          </button>
-          <span className="inline-flex items-center gap-2 text-sm text-red-700">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" aria-hidden />
-            Enregistrement {Math.floor(etape.secondes / 60)}:{String(etape.secondes % 60).padStart(2, "0")}
-          </span>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={arreter} className={`${bouton} bg-slate-900 text-white hover:bg-slate-800`}>
+              <Square className="h-4 w-4" aria-hidden />
+              Terminer la dictée
+            </button>
+            <span className="inline-flex items-center gap-2 text-sm text-red-700">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" aria-hidden />
+              Enregistrement {Math.floor(etape.secondes / 60)}:{String(etape.secondes % 60).padStart(2, "0")}
+            </span>
+          </div>
+          <p className="min-h-12 rounded-lg bg-white p-3 text-sm text-slate-900">
+            {etape.texte} <span className="text-slate-400">{etape.provisoire}</span>
+            {!etape.texte && !etape.provisoire && (
+              <span className="text-slate-400">Parlez, le texte s&apos;affiche ici…</span>
+            )}
+          </p>
         </div>
-      )}
-
-      {etape.nom === "traitement" && (
-        <p className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-          {etape.message}
-        </p>
       )}
 
       {etape.nom === "erreur" && (
@@ -216,31 +211,18 @@ export function DicteeConsultation({
         </div>
       )}
 
-      {etape.nom === "brut" && (
-        <Relecture
-          langue={langue}
-          brut={etape.brut}
-          avertissement={`${etape.erreur} Voici le texte tel qu'il a été reconnu.`}
-          correction={{
-            rubriques: { motif: "", examen: "", ecg: "", autres: "", conclusion: etape.brut, conduite: "" },
-            valeurs: {},
-            incertains: [],
-          }}
-          libellesValeurs={libellesValeurs}
-          inserer={(c) => {
-            inserer(c);
-            setEtape({ nom: "pret" });
-          }}
-          annuler={() => setEtape({ nom: "pret" })}
-        />
-      )}
-
       {etape.nom === "relecture" && (
         <Relecture
+          // Une nouvelle correction (Claude) repart d'une relecture vierge
+          key={etape.parClaude ? "claude" : "gratuite"}
           langue={langue}
           brut={etape.brut}
           correction={etape.correction}
+          parClaude={etape.parClaude}
+          claude={claude}
           libellesValeurs={libellesValeurs}
+          ameliore={(correction) => setEtape({ ...etape, correction, parClaude: true })}
+          apprendre={(entendu, correct) => appris.current.push({ entendu, correct })}
           inserer={(c) => {
             inserer(c);
             setEtape({ nom: "pret" });
@@ -256,31 +238,79 @@ function Relecture({
   langue,
   brut,
   correction,
-  avertissement,
+  parClaude,
+  claude,
   libellesValeurs,
+  ameliore,
+  apprendre,
   inserer,
   annuler,
 }: {
   langue: string;
   brut: string;
   correction: Correction;
-  avertissement?: string;
+  parClaude: boolean;
+  claude: boolean;
   libellesValeurs: Record<string, string>;
+  ameliore: (c: Correction) => void;
+  apprendre: (entendu: string, correct: string) => void;
   inserer: (c: Correction) => void;
   annuler: () => void;
 }) {
   const [textes, setTextes] = useState(correction.rubriques);
   const [appris, setAppris] = useState<Record<string, string>>({});
+  const [claudeEnCours, setClaudeEnCours] = useState(false);
+  const [erreurClaude, setErreurClaude] = useState("");
   const valeurs = Object.entries(correction.valeurs);
   const champ =
     "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 
+  async function ameliorer() {
+    setClaudeEnCours(true);
+    setErreurClaude("");
+    try {
+      const reponse = await fetch("/api/dictee/correction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texte: brut }),
+      });
+      const resultat = (await reponse.json().catch(() => ({}))) as Correction & { erreur?: string };
+      if (!reponse.ok) throw new Error(resultat.erreur ?? "Erreur inattendue.");
+      ameliore(resultat);
+    } catch (e) {
+      setErreurClaude(e instanceof Error ? e.message : "Erreur inattendue.");
+      setClaudeEnCours(false);
+    }
+  }
+
   return (
     <div className="space-y-4 text-sm">
-      <h3 className="font-semibold text-slate-900">Relecture de la dictée</h3>
-      {avertissement && (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold text-slate-900">
+          Relecture de la dictée{" "}
+          <span className="font-normal text-slate-500">
+            ({parClaude ? "améliorée par Claude" : "correction gratuite"})
+          </span>
+        </h3>
+        {claude && !parClaude && (
+          <button
+            type="button"
+            onClick={ameliorer}
+            disabled={claudeEnCours}
+            className="inline-flex items-center gap-2 rounded-full border border-violet-300 px-3 py-1.5 text-xs font-medium text-violet-800 hover:bg-violet-50 disabled:opacity-50"
+          >
+            {claudeEnCours ? (
+              <LoaderCircle className="h-3 w-3 animate-spin" aria-hidden />
+            ) : (
+              <Sparkles className="h-3 w-3" aria-hidden />
+            )}
+            Améliorer avec Claude <span className="font-normal text-violet-600">(≈ 2 centimes)</span>
+          </button>
+        )}
+      </div>
+      {erreurClaude && (
         <p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">
-          {avertissement}
+          {erreurClaude}
         </p>
       )}
 
@@ -305,6 +335,7 @@ function Relecture({
                       e.preventDefault();
                       const correct = String(new FormData(e.currentTarget).get("correct") ?? "");
                       if (await ajouterAuLexique(langue, m.entendu, correct)) {
+                        apprendre(m.entendu, correct);
                         setAppris((a) => ({ ...a, [m.entendu]: correct }));
                       }
                     }}

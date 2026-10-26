@@ -1,5 +1,5 @@
-// Vocabulaire de cardiologie pour la dictée : il oriente la reconnaissance vocale (indices transmis à Google)
-// et sert de référence à la correction. À compléter au besoin ; le lexique du cabinet (base) s'y ajoute.
+// Vocabulaire de cardiologie pour la dictée : référence de la correction gratuite (dans le navigateur) et de
+// l'amélioration par Claude. À compléter au besoin ; le lexique du cabinet (base) s'y ajoute.
 
 // Sigles usuels et leur sens, tels qu'on les écrit dans un compte rendu
 export const sigles: [string, string][] = [
@@ -181,13 +181,6 @@ export const medicaments = [
   "Vastarel",
   "metformine",
 ];
-
-// Indices pour la reconnaissance vocale (Google limite chaque indice à 100 caractères)
-export function indicesReconnaissance(lexique: string[]) {
-  return [...new Set([...sigles.map(([s]) => s), ...termes, ...medicaments, ...lexique])]
-    .filter((p) => p.length <= 100)
-    .slice(0, 1000);
-}
 
 // Glossaire écrit pour la correction
 export const glossaire = [

@@ -102,45 +102,45 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
 
 ## Dictée vocale (médecins)
 
-En haut du formulaire de consultation, **Dicter la consultation** enregistre la voix du médecin (5 minutes au plus).
-Le texte est ensuite :
+En haut du formulaire de consultation, **Dicter la consultation** écoute le médecin (5 minutes au plus). **C'est
+gratuit et il n'y a rien à configurer.**
 
-1. **transcrit** par la reconnaissance vocale de Google (français), guidée par le vocabulaire de cardiologie
-   (sigles, termes, médicaments) et par le lexique du cabinet ;
-2. **corrigé et rangé** par Claude (Anthropic) dans les rubriques du rapport : motif, examen clinique, ECG, autres,
-   conclusion, conduite à tenir. Les valeurs dictées (« TA 13/8 », « FC quarante-cinq », « FEVG 55 % »…) remplissent
-   aussi les champs chiffrés. La consigne lui interdit d'ajouter quoi que ce soit qui n'a pas été dicté ;
-3. **relu par le médecin** : les mots douteux sont signalés (« sin trom » → Sintrom), chaque rubrique se corrige sur
-   place, et le texte reconnu avant correction reste consultable. **Insérer dans la consultation** ajoute le texte à
-   la suite de ce qui est déjà saisi ; rien n'est enregistré avant **Enregistrer la consultation**.
+1. **Reconnaissance de la voix** : celle du navigateur (Chrome, Edge ou Safari ; pas Firefox), la même que la dictée
+   du téléphone. Le texte s'affiche pendant que l'on parle. Elle a besoin d'Internet.
+2. **Correction gratuite**, faite dans le navigateur avec le vocabulaire de cardiologie et le lexique du cabinet :
+   - commandes dictées : « à la ligne », « point », « virgule », « deux points », « pour cent »… ;
+   - sigles épelés ou mal écrits : « f e v g » → FEVG, « e t t » → ETT, « avk » → AVK ;
+   - médicaments mal reconnus : « sin trom » → Sintrom, « bisoprolole » → bisoprolol (signalés pour vérification) ;
+   - valeurs chiffrées, qui remplissent aussi les champs : « TA 13 8 » → 130/80 mmHg, « fréquence cardiaque 45 »,
+     « INR 2,83 », « FEVG 55 % », « poids 60 », « taille 1,56 », « créatinine 12 mg/l », « LDL 1,2 g/l » ;
+   - rangement dans les rubriques annoncées : « motif », « examen », « ECG », « autres », « conclusion »,
+     « conduite à tenir ». Sans rubrique annoncée, le texte va en conclusion.
+3. **Relecture par le médecin** : les mots douteux sont signalés, chaque rubrique se corrige sur place, le texte
+   reconnu avant correction reste consultable. **Insérer dans la consultation** ajoute le texte à la suite de ce qui
+   est déjà saisi ; rien n'est enregistré avant **Enregistrer la consultation**.
 
-Pour dicter, annoncez les rubriques et la mise en forme : « motif : contrôle sous Sintrom… à la ligne… examen :
-RAS… conclusion : bradycardie sinusale… conduite à tenir : arrêt du Cardix, Holter dans un mois ».
+Exemple de dictée : « motif : contrôle sous Sintrom, à la ligne, examen : RAS, TA 13 8, fréquence cardiaque 62, à
+la ligne, conclusion : bon équilibre tensionnel, à la ligne, conduite à tenir : continuer même traitement ».
 
 **Le lexique apprend** : un mot mal reconnu se corrige avec **Retenir dans le lexique** pendant la relecture, ou sur
-la page **Lexique** (bouton sur l'agenda). Il est transmis à toutes les dictées suivantes.
+la page **Lexique** (bouton sur l'agenda). La correction s'applique à toutes les dictées suivantes.
 
-**L'audio n'est jamais conservé**. Seul le texte dicté est envoyé à Claude, sans le nom ni l'identité du patient.
+### Facultatif : « Améliorer avec Claude »
 
-### Mise en service (une seule fois)
+Pour une dictée difficile (sans rubriques annoncées, phrases longues), le bouton **Améliorer avec Claude** fait
+corriger et ranger le texte par Claude (Anthropic) : environ 2 centimes de dollar par dictée, et seulement quand on
+clique. Seul le texte dicté est envoyé, sans le nom ni l'identité du patient. Pour l'activer :
 
-1. **Reconnaissance vocale Google** : sur <https://console.cloud.google.com/>, dans le projet de l'agenda :
-   - **Facturation** : la reconnaissance vocale est payante (environ 2 centimes de dollar par minute dictée, avec
-     un petit quota gratuit chaque mois). Un compte de facturation doit être relié au projet ;
-   - **API et services → Bibliothèque** : activer **Cloud Speech-to-Text API**.
+1. Sur <https://console.anthropic.com/>, créer un compte pour le cabinet, ajouter quelques dollars de crédits (et une
+   limite de dépense mensuelle dans **Settings → Limits**), puis **API Keys → Create Key**.
+2. Projet Vercel → **Settings → Environment Variables** : ajouter `ANTHROPIC_API_KEY` avec cette clé (les trois
+   environnements), puis redéployer.
 
-   Le compte de service de l'agenda (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`) sert aussi à la dictée :
-   aucune autre clé Google n'est nécessaire.
-2. **Claude (Anthropic)** : sur <https://console.anthropic.com/>, créer un compte pour le cabinet, ajouter un moyen
-   de paiement ou des crédits, puis **API Keys → Create Key**. Compter environ 2 centimes de dollar par dictée.
-3. Projet Vercel → **Settings → Environment Variables** : ajouter `ANTHROPIC_API_KEY` avec la clé de l'étape 2
-   (les trois environnements), puis redéployer.
+Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement gratuite.
 
-Le bouton **Dicter la consultation** n'apparaît que lorsque tout est configuré. Le navigateur demande l'autorisation
-d'utiliser le micro à la première dictée.
-
-**Données de santé** : la voix part chez Google et le texte chez Anthropic, hors du Maroc. Ce transfert doit figurer
-dans la demande d'autorisation à la CNDP (voir plus bas).
+**Données de santé** : la voix passe par les serveurs de Google (Chrome, Edge) ou d'Apple (Safari), et, si l'on
+utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
+d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
 
 ## 3. Rôles du personnel
 
@@ -159,8 +159,8 @@ liste à côté de son nom puis **Changer**.
 
 Les dossiers contiennent des données de santé, « sensibles » au sens de la loi 09-08 : leur traitement demande une
 **autorisation préalable de la CNDP** (<https://www.cndp.ma>), pas une simple déclaration. La base Neon est hébergée
-hors du Maroc, tout comme Google Drive, la reconnaissance vocale de Google et Claude (Anthropic) pour la dictée : ces
-transferts doivent être indiqués dans la demande. À faire par le cabinet avant d'y saisir de vrais
+hors du Maroc, tout comme Google Drive, la dictée du navigateur (Google ou Apple) et Claude (Anthropic) s'il est
+utilisé : ces transferts doivent être indiqués dans la demande. À faire par le cabinet avant d'y saisir de vrais
 dossiers. Les mentions légales du site seront complétées en conséquence.
 
 - Les données sont chiffrées pendant le transfert et sur les disques de Neon ; seul le site y a accès.

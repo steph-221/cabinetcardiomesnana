@@ -28,11 +28,6 @@ const config = () => ({
   agenda: process.env.GOOGLE_CALENDAR_ID,
 });
 
-export const compteServiceConfigure = () => {
-  const { email, cle } = config();
-  return Boolean(email && cle);
-};
-
 export const agendaConfigure = () => {
   const { email, cle, agenda } = config();
   return Boolean(email && cle && agenda);
@@ -40,23 +35,20 @@ export const agendaConfigure = () => {
 
 const base64url = (texte: string | Buffer) => Buffer.from(texte).toString("base64url");
 
-const AGENDA = "https://www.googleapis.com/auth/calendar";
-const jetons = new Map<string, { valeur: string; expire: number }>();
+let jeton: { valeur: string; expire: number } | null = null;
 
-// Échange un JWT signé avec la clé du compte de service contre un jeton d'accès.
-// La portée par défaut est l'agenda ; la dictée vocale demande celle de Google Cloud (reconnaissance vocale).
-export async function jetonAcces(portee = AGENDA) {
-  const jeton = jetons.get(portee);
+// Échange un JWT signé avec la clé du compte de service contre un jeton d'accès
+async function jetonAcces() {
   if (jeton && jeton.expire > Date.now() + 60_000) return jeton.valeur;
   const { email, cle } = config();
-  if (!email || !cle) throw new Error("Compte de service Google non configuré");
+  if (!email || !cle) throw new Error("Agenda Google non configuré");
 
   const maintenant = Math.floor(Date.now() / 1000);
   const entete = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const contenu = base64url(
     JSON.stringify({
       iss: email,
-      scope: portee,
+      scope: "https://www.googleapis.com/auth/calendar",
       aud: "https://oauth2.googleapis.com/token",
       iat: maintenant,
       exp: maintenant + 3600,
@@ -75,7 +67,7 @@ export async function jetonAcces(portee = AGENDA) {
   });
   if (!reponse.ok) throw new Error(`Authentification Google refusée (${reponse.status})`);
   const { access_token, expires_in } = (await reponse.json()) as { access_token: string; expires_in: number };
-  jetons.set(portee, { valeur: access_token, expire: Date.now() + expires_in * 1000 });
+  jeton = { valeur: access_token, expire: Date.now() + expires_in * 1000 };
   return access_token;
 }
 

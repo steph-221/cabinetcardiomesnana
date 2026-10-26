@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { Save, Trash2 } from "lucide-react";
 import { imc, surfaceCorporelle } from "../../../dossier/calculs";
 import type { Consultation } from "../../../dossier/consultations";
-import type { Correction } from "../../../dossier/dictee";
+import type { Correction } from "../../../dossier/correction-locale";
 import { enregistrerConsultationPatient, retirerConsultation } from "./actions";
 import { DicteeConsultation } from "./dictee";
 import { ChampsSuivi, type Choix } from "./suivis";
@@ -54,7 +54,8 @@ export function FormulaireConsultation({
   tailleConnue: number | null;
   definitions: readonly { cle: string; libelle: string; unite: string }[];
   choixSuivi: Choix;
-  dictee: boolean;
+  // Lexique du cabinet pour la correction gratuite ; claude : amélioration par Claude disponible
+  dictee: { lexique: { entendu: string; correct: string }[]; claude: boolean };
   aujourdhui: string;
 }) {
   const formulaire = useRef<HTMLFormElement>(null);
@@ -98,18 +99,18 @@ export function FormulaireConsultation({
 
   return (
     <>
-      {dictee && (
-        <div className="mb-6">
-          <DicteeConsultation
-            langue={langue}
-            libellesValeurs={{
-              ...libellesConstantes,
-              ...Object.fromEntries(definitions.map((d) => [d.cle, d.libelle])),
-            }}
-            inserer={inserer}
-          />
-        </div>
-      )}
+      <div className="mb-6">
+        <DicteeConsultation
+          langue={langue}
+          libellesValeurs={{
+            ...libellesConstantes,
+            ...Object.fromEntries(definitions.map((d) => [d.cle, d.libelle])),
+          }}
+          lexique={dictee.lexique}
+          claude={dictee.claude}
+          inserer={inserer}
+        />
+      </div>
       <form ref={formulaire} action={envoyer} className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
           <label className={etiquette}>
