@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ExternalLink, Globe, Library, MessagesSquare } from "lucide-react";
+import { ExternalLink, FileDown, Globe, Library, MessagesSquare } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
@@ -46,8 +46,9 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
       </div>
       <p className="mt-1 text-sm text-slate-500">
         Les sources dans lesquelles l&apos;assistant cherche ses réponses. Il ne cite que les sources en vigueur : quand
-        une recommandation paraît, ajoutez-la et marquez l&apos;ancienne « remplacée ». Les recommandations de
-        l&apos;ESC se téléchargent sur{" "}
+        une recommandation paraît, ajoutez-la et marquez l&apos;ancienne « remplacée ». Les sites suivis peuvent être
+        copiés en entier dans le Google Drive du cabinet (copie privée) : leurs publications s&apos;ajoutent alors
+        toutes seules. Les recommandations de l&apos;ESC se téléchargent sur{" "}
         <a
           href="https://www.escardio.org/guidelines/clinical-practice-guidelines/all-esc-practice-guidelines/"
           target="_blank"
@@ -146,6 +147,17 @@ async function Contenu({
                         aria-label="Ouvrir la version officielle"
                       >
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      </a>
+                    )}
+                    {s.copieId && (
+                      <a
+                        href={`/api/bibliotheque/ouvrir/${s.copieId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ms-2 inline-flex text-emerald-700"
+                        aria-label="Ouvrir la copie privée"
+                      >
+                        <FileDown className="h-3.5 w-3.5" aria-hidden />
                       </a>
                     )}
                   </p>

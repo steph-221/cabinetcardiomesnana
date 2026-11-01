@@ -2,6 +2,7 @@
 
 import { refresh } from "next/cache";
 import { exigerUtilisateur } from "../../../../agenda/session";
+import { activerCopie, arreterCopie, mettreEnFile } from "../../../../dossier/copies";
 import { estTypeSource } from "../../../../dossier/sources";
 import { journaliser } from "../../../../dossier/journal";
 import {
@@ -115,5 +116,28 @@ export async function retirerSite(langue: string, id: number) {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerSite(id);
   await journaliser(utilisateur.identifiant, "site suivi retiré", null, `n° ${id}`);
+  refresh();
+}
+
+// --- Copie privée du site dans le Google Drive du cabinet ---
+
+export async function activerCopieSite(langue: string, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await activerCopie(id);
+  await journaliser(utilisateur.identifiant, "copie privée d'un site activée", null, `site n° ${id}`);
+  refresh();
+}
+
+// Reprend tout le site : les pages modifiées sont recopiées, les erreurs réessayées
+export async function mettreAJourCopie(langue: string, id: number) {
+  await exigerUtilisateur(langue, "medical");
+  await mettreEnFile(id, true);
+  refresh();
+}
+
+export async function arreterCopieSite(langue: string, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await arreterCopie(id);
+  await journaliser(utilisateur.identifiant, "copie privée d'un site arrêtée", null, `site n° ${id}`);
   refresh();
 }

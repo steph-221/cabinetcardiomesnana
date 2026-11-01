@@ -194,9 +194,31 @@ deviner.
 - Chaque liste est relue au plus une fois par jour, à l'ouverture de la page, ou à la demande (**Vérifier**). Les
   publications parues depuis le début du suivi sont marquées **Nouveau** pendant 60 jours, et la Bibliothèque
   signale leur nombre.
-- Seuls les titres, les liens et les dates sont relevés : le contenu reste sur le site de l'éditeur. Pour qu'une
-  publication puisse être citée par l'assistant, l'ouvrir, télécharger son PDF puis cliquer sur **Ajouter à la
-  bibliothèque** : le titre, l'année et le lien sont déjà remplis. Elle apparaît ensuite « Dans la bibliothèque ».
+- **Copie privée dans Google Drive** (bouton **Copier le site dans Google Drive** sous chaque site) : le site est
+  recopié pour l'usage personnel du cabinet, jamais republié ni partagé. Un navigateur sans fenêtre (Chromium piloté
+  par Playwright) ouvre la page de liste puis chaque publication, comme le ferait un médecin, et enregistre :
+  - chaque **page** en un seul fichier HTML autonome (styles, images et polices inclus, scripts retirés), avec en haut
+    un bandeau « Copie privée du … — page d'origine » ;
+  - les **fichiers** proposés par ces pages (PDF, diaporamas, documents Word…, 80 Mo au plus chacun), tels quels.
+
+  Tout est rangé dans le Drive du cabinet : dossier « Cabinet — Bibliothèque (copies privées) », un sous-dossier par
+  site. La copie se fait par lots d'environ 100 secondes, avec une pause d'une seconde entre deux adresses ; la page
+  enchaîne les lots tant qu'il reste des adresses (**Pause** / **Reprendre**). Les nouvelles publications relevées
+  chaque jour sont copiées à la visite suivante de la page. **Mettre à jour la copie** reprend tout le site : seules
+  les pages dont le texte a changé sont renvoyées dans Drive (l'ancienne version va à la corbeille). **Arrêter**
+  vide la file ; les copies faites restent dans Drive.
+- **Bibliothèque automatique** : le texte de chaque publication copiée (sa page et ses PDF, page par page) entre dans
+  la bibliothèque, au nom de « copie automatique », avec un lien vers la copie privée (icône verte) en plus du lien
+  officiel. L'assistant peut donc la citer sans téléchargement à la main. La page de liste elle-même n'est pas indexée,
+  ni une publication déjà ajoutée à la main.
+- **Sites protégés** : certains éditeurs (par exemple academic.oup.com, où se trouve le texte intégral des
+  recommandations de l'ESC dans l'European Heart Journal) bloquent les robots (« Just a moment… » de Cloudflare). La
+  copie ne les contourne pas : l'adresse est marquée « Copie refusée par le site ». Ouvrir le lien, télécharger le
+  PDF, puis **Ajouter à la bibliothèque** comme avant.
+- Ouvrir une copie (lien **Copie de la page** ou nom du fichier) : la page s'affiche sans aucun script ; un fichier
+  de plus de 4 Mo s'ouvre directement dans Google Drive (compte Google du cabinet). Réservé aux médecins.
+- Google Drive doit être connecté (voir plus haut) ; la portée `drive.file` suffit, le site ne voit que ses propres
+  copies.
 - **Accès abonné** : la page de connexion, l'identifiant et le mot de passe d'un abonnement (revue, société savante)
   sont enregistrés chiffrés dans la base, avec la même clé que le jeton Google Drive (`SESSION_SECRET`). Le mot de passe
   n'est affiché qu'en cliquant sur **Afficher**, et chaque affichage est inscrit au journal. Le site ne se connecte
