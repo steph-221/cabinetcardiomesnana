@@ -10,7 +10,7 @@ import { remplacerSourceCopie, sourceManuelle } from "./bibliotheque";
 import { copierAdresse, CopieBloquee, documentsLies, type Copie } from "./copie-site";
 import { compterEnFile } from "./copies";
 import { envoyerCopie, ErreurDrive, expliquerErreurDrive, mettreALaCorbeille } from "./drive";
-import { ouvrirNavigateur } from "./navigateur";
+import { ErreurNavigateur, ouvrirNavigateur } from "./navigateur";
 import type { TypeSource } from "./sources";
 
 // Durée d'un lot (la route a 300 secondes au plus) et pause entre deux adresses
@@ -135,11 +135,14 @@ async function traiter(element: Element, navigateur: () => Promise<Browser>) {
   try {
     copie = await copierAdresse(element.url, navigateur);
   } catch (erreur) {
+    if (erreur instanceof ErreurNavigateur) {
+      await sql`UPDATE copies SET statut = 'a_copier', essais = essais - 1 WHERE id = ${element.id}`;
+      throw erreur;
+    }
     const bloquee = erreur instanceof CopieBloquee;
-    const message =
-      erreur instanceof Error && erreur.message.length < 200 && !/^page\.|browser|playwright/i.test(erreur.message)
-        ? erreur.message
-        : "Copie impossible.";
+    // Première ligne de l'erreur, sans le détail technique de Playwright (journal d'appel)
+    const ligne = erreur instanceof Error ? (erreur.message.split("\n").find((l) => l.trim()) ?? "").trim() : "";
+    const message = ligne ? ligne.replace(/^page\.\w+:\s*/, "").slice(0, 180) : "Copie impossible.";
     if (!bloquee) console.error(element.url, erreur);
     await sql`
       UPDATE copies SET statut = ${bloquee ? "bloquee" : "erreur"}, erreur = ${message} WHERE id = ${element.id}`;
@@ -204,6 +207,7 @@ export async function copierUnLot(siteId: number): Promise<ResultatLot> {
       await new Promise((r) => setTimeout(r, PAUSE));
     }
   } catch (erreur) {
+    if (erreur instanceof ErreurNavigateur) return { erreur: erreur.message };
     if (erreurDrive(erreur)) return { erreur: expliquerErreurDrive(erreur) };
     throw erreur;
   } finally {
