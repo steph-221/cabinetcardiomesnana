@@ -125,5 +125,87 @@ describe("compatibilité PDF", () => {
   it("le signe moins typographique est remplacé par un tiret dans les PDF", async () => {
     const { propre } = await import("../pdf");
     expect(propre("220 − âge")).toBe("220 - âge");
+    expect(propre("103\u202f680 complexes")).toBe("103 680 complexes");
+  });
+});
+
+describe("Holter", () => {
+  const holter = trouverModele("holter")!;
+  it("nombre de complexes et charge d'ESV : 24 h à 72 bpm", () => {
+    const l = holter.calculs({ duree: 24, fcMoy: 72, nbESV: 10368 }, homme).join(" ").replaceAll("\u202f", " ");
+    expect(l).toContain("103 680");
+    expect(l).toContain("10 %");
+  });
+  it("charge > 10 %, TV non soutenue, pause et FA paroxystique", () => {
+    const t = textes(
+      holter.propositions(
+        { duree: 24, fcMoy: 72, nbESV: 20000, salvesTV: 2, detailTV: "5 complexes à 160 bpm", pauseMax: 3.4, fa: "paroxystique", fcMin: 38 },
+        homme,
+      ),
+    );
+    expect(t).toContain("Charge d'extrasystoles ventriculaires élevée");
+    expect(t).toContain("Tachycardie ventriculaire non soutenue (2 salves) : 5 complexes à 160 bpm");
+    expect(t).toContain("Pause maximale de 3,4 s");
+    expect(t).toContain("Fibrillation atriale paroxystique");
+    expect(t).toContain("Bradycardie");
+  });
+  it("enregistrement sans anomalie", () => {
+    const t = textes(holter.propositions({ duree: 24, fcMoy: 72, fcMin: 48, nbESV: 300, salvesTV: 0, pauseMax: 1.8, fa: "absente" }, homme));
+    expect(t).toContain("Pas d'arythmie significative");
+    expect(t).not.toContain("Charge");
+  });
+});
+
+describe("Doppler veineux", () => {
+  const veineux = trouverModele("doppler-veineux")!;
+  it("thrombose absente, reflux et adénopathie", () => {
+    const t = textes(
+      veineux.propositions(
+        { cote: "droit", thrombose: "absente", segments: "fémoral, poplité", refluxGVS: 0.2, adenopathie: "inguinale" },
+        homme,
+      ),
+    );
+    expect(t).toContain("Pas de thrombose veineuse profonde du membre inférieur droit sur les segments examinés (fémoral, poplité)");
+    expect(t).toContain("Pas de signe d'insuffisance veineuse");
+    expect(t).toContain("Adénopathie associée");
+  });
+  it("reflux de la grande saphène à 1,2 s ; thrombose proximale", () => {
+    expect(textes(veineux.propositions({ refluxGVS: 1.2 }, homme))).toContain("Reflux de la grande saphène (1,2 s");
+    expect(textes(veineux.propositions({ thrombose: "proximale (fémoro-poplitée ou iliaque)" }, homme))).toContain("proximale");
+  });
+  it("signale une incohérence de compressibilité", () => {
+    expect(veineux.calculs({ compressibilite: "non compressible", thrombose: "absente" }, homme)[0]).toContain("Vérifier");
+  });
+});
+
+describe("Doppler artériel : IPS", () => {
+  const arteriel = trouverModele("doppler-arteriel")!;
+  it("prend la pression de cheville la plus haute sur la brachiale", () => {
+    const l = arteriel.calculs({ pasBras: 150, pasTibialeD: 120, pasPedieuseD: 135, pasTibialeG: 90 }, homme);
+    expect(l).toEqual(["IPS droit : 0,9", "IPS gauche : 0,6"]);
+  });
+  it("paliers : normal, limite, artériopathie, incompressible", () => {
+    const ips = (cheville: number) => textes(arteriel.propositions({ pasBras: 100, pasTibialeD: cheville }, homme));
+    expect(ips(110)).toContain("normal");
+    expect(ips(95)).toContain("limite");
+    expect(ips(80)).toContain("artériopathie oblitérante des membres inférieurs, légère à modérée");
+    expect(ips(50)).toContain("modérée à sévère");
+    expect(ips(30)).toContain("sévère (ischémie critique possible)");
+    expect(ips(150)).toContain("incompressibles");
+  });
+});
+
+describe("Doppler TSA", () => {
+  const tsa = trouverModele("doppler-tsa")!;
+  it("sténose de l'ACI d'après la vitesse", () => {
+    const t = textes(tsa.propositions({ psvD: 100, psvG: 180 }, homme));
+    expect(t).toContain("ACI droite : vitesse systolique 100 cm/s, sténose < 50 %.");
+    expect(t).toContain("ACI gauche : vitesse systolique 180 cm/s, sténose de 50 à 69 %");
+    expect(textes(tsa.propositions({ psvD: 250 }, homme))).toContain("sténose ≥ 70 %");
+  });
+  it("flux vertébral inversé et épaisseur intima-média", () => {
+    const t = textes(tsa.propositions({ vertebraleG: "flux inversé", epaisseur: 1.1 }, homme));
+    expect(t).toContain("vol sous-clavier");
+    expect(t).toContain("Épaisseur intima-média augmentée");
   });
 });

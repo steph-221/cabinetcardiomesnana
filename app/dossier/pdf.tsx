@@ -13,7 +13,7 @@ import type { LigneOrdonnance } from "./ordonnances";
 import { age, libellePatient, type Patient } from "./patients";
 
 // Les polices intégrées des PDF ne connaissent que l'alphabet latin courant : le reste est remplacé
-const REMPLACEMENTS: Record<string, string> = { "−": "-", "₂": "2", "≥": ">=", "≤": "<=", "→": "->", "≈": "~", " ": "\n" };
+const REMPLACEMENTS: Record<string, string> = { "\u202f": " ", "−": "-", "₂": "2", "≥": ">=", "≤": "<=", "→": "->", "≈": "~", " ": "\n" };
 const AUTORISES = /[\n -ÿŒœŠšŸŽžƒˆ˜–—‘-„†-•…‰‹›€™]/;
 export function propre(texte: string) {
   return [...texte.normalize("NFC")]
