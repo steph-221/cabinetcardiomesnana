@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import {
   BookA,
+  Calculator,
   CalendarClock,
   CalendarDays,
   FileInput,
@@ -83,6 +84,12 @@ async function Onglets({ langue }: { langue: string }) {
           <Onglet href={`${base}/assistant`}>
             <MessagesSquare className="h-4 w-4" aria-hidden />
             Assistant
+          </Onglet>
+        )}
+        {accesMedical(utilisateur) && (
+          <Onglet href={`${base}/calculateurs`}>
+            <Calculator className="h-4 w-4" aria-hidden />
+            Calculateurs
           </Onglet>
         )}
         {accesMedical(utilisateur) && (
