@@ -487,7 +487,7 @@ export async function capturerPage(navigateur: Browser, adresse: string): Promis
     if (reponse.status() >= 400) throw new Error(`Le site a répondu ${reponse.status()}.`);
 
     // Laisse la page finir de se construire, et fait défiler pour charger les images « paresseuses »
-    await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
+    await page.waitForLoadState("load", { timeout: 8_000 }).catch(() => {});
     await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
     await page.evaluate(executer(DEFILER, null)).catch(() => {});
     await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});

@@ -249,6 +249,7 @@ function LiensCopie({ copies }: { copies: Copie[] }) {
               {c.statut === "bloquee" ? "Copie refusée par le site" : "Copie impossible"}
               {c.profondeur > 1 && c.titre ? ` : ${c.titre.slice(0, 40)}` : ""}
             </a>
+            {c.erreur && <span className="text-slate-500">({c.erreur})</span>}
           </li>
         ),
       )}
