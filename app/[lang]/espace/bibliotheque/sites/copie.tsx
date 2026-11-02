@@ -51,14 +51,29 @@ export function CopieSite({
     setEnCours(true);
     setMessage("");
     try {
+      let echecs = 0;
       for (;;) {
-        const reponse = await fetch("/api/bibliotheque/copie", {
+        // Un appel coupé par le serveur (délai dépassé) n'arrête pas la copie : l'adresse sera reprise
+        const lot = await fetch("/api/bibliotheque/copie", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ site: id }),
-        });
-        if (!reponse.ok) throw new Error(await reponse.text());
-        const lot = (await reponse.json()) as Lot;
+        })
+          .then(async (reponse) => {
+            if (reponse.status === 401 || reponse.status === 403) throw new Error(await reponse.text());
+            if (!reponse.ok) return null;
+            return (await reponse.json()) as Lot;
+          })
+          .catch((erreur: unknown) => {
+            if (erreur instanceof Error && erreur.message.length < 200 && !/fetch/i.test(erreur.message)) throw erreur;
+            return null;
+          });
+        if (!lot) {
+          if (++echecs >= 4) throw new Error("Le serveur ne répond pas. Cliquez sur Reprendre dans un instant.");
+          await new Promise((r) => setTimeout(r, 3000));
+          continue;
+        }
+        echecs = 0;
         if ("erreur" in lot) {
           setMessage(lot.erreur);
           break;

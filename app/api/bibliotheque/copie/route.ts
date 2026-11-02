@@ -5,8 +5,8 @@ import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
 import { copierUnLot } from "../../../dossier/copie-lot";
 import { compteDrive, driveConfigure } from "../../../dossier/drive";
 
-// Le navigateur sans fenêtre et les gros PDF demandent du temps : un lot s'arrête de lui-même après 35 secondes (le lot en cours se termine avant)
-export const maxDuration = 300;
+// Un appel copie une adresse, parfois deux, et s'arrête avant 60 secondes : la page enchaîne les appels
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   // Seule la page du site peut lancer une copie (pas un autre site ouvert dans le navigateur)

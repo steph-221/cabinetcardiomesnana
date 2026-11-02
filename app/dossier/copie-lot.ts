@@ -14,7 +14,9 @@ import { ErreurNavigateur, ouvrirNavigateur } from "./navigateur";
 import type { TypeSource } from "./sources";
 
 // Durée d'un lot (courte, pour que la page affiche l'avancement ; la route a 300 secondes au plus) et pause entre deux adresses
-const DUREE_LOT = 35_000;
+const DUREE_LOT = 12_000;
+// Une adresse qui dépasse ce délai est abandonnée (la fonction est coupée à 60 secondes)
+const DELAI_ADRESSE = 40_000;
 const PAUSE = 500;
 // Une adresse dont la copie a été interrompue trois fois (page trop lourde…) est laissée de côté
 const ESSAIS_MAX = 3;
@@ -33,13 +35,13 @@ type Element = {
   site: { id: number; nom: string; organisme: string; type: TypeSource; langue: "fr" | "en" };
 };
 
-// Prend l'adresse suivante de la file. Une adresse restée « en cours » plus de 10 minutes (lot interrompu) est
+// Prend l'adresse suivante de la file. Une adresse restée « en cours » plus de 2 minutes (appel interrompu) est
 // reprise, au plus trois fois.
 async function prendreSuivante(siteId: number): Promise<Element | null> {
   const sql = await base();
   await sql`
     UPDATE copies SET statut = 'erreur', erreur = 'La copie a été interrompue plusieurs fois (page trop lourde ?).'
-    WHERE site_id = ${siteId} AND statut = 'en_cours' AND pris_le < now() - interval '10 minutes'
+    WHERE site_id = ${siteId} AND statut = 'en_cours' AND pris_le < now() - interval '2 minutes'
       AND essais >= ${ESSAIS_MAX}`;
   const [l] = await sql`
     WITH suivante AS (
@@ -47,7 +49,7 @@ async function prendreSuivante(siteId: number): Promise<Element | null> {
       WHERE id = (
         SELECT c.id FROM copies c JOIN sites_suivis s ON s.id = c.site_id AND s.copie
         WHERE c.site_id = ${siteId}
-          AND (c.statut = 'a_copier' OR (c.statut = 'en_cours' AND c.pris_le < now() - interval '10 minutes'))
+          AND (c.statut = 'a_copier' OR (c.statut = 'en_cours' AND c.pris_le < now() - interval '2 minutes'))
         ORDER BY c.profondeur, c.id
         LIMIT 1
         FOR UPDATE OF c SKIP LOCKED
@@ -126,6 +128,8 @@ async function indexer(element: Element, copie: Copie) {
   );
 }
 
+class DelaiDepasse extends Error {}
+
 // Les erreurs de Google Drive arrêtent le lot : l'adresse retourne dans la file
 const erreurDrive = (e: unknown) => e instanceof ErreurDrive || (e instanceof Error && /Google Drive/.test(e.message));
 
@@ -203,7 +207,18 @@ export async function copierUnLot(siteId: number): Promise<ResultatLot> {
     while (Date.now() - debut < DUREE_LOT) {
       const element = await prendreSuivante(siteId);
       if (!element) break;
-      faites.push(await traiter(element, ouvrir));
+      faites.push(
+        await Promise.race([
+          traiter(element, ouvrir),
+          new Promise<never>((_, rejeter) => setTimeout(() => rejeter(new DelaiDepasse()), DELAI_ADRESSE).unref?.()),
+        ]).catch(async (erreur) => {
+          if (!(erreur instanceof DelaiDepasse)) throw erreur;
+          const sql = await base();
+          const message = "La page met trop de temps à se copier.";
+          await sql`UPDATE copies SET statut = 'erreur', erreur = ${message} WHERE id = ${element.id}`;
+          return { titre: element.titrePublication ?? element.url, statut: "erreur", erreur: message };
+        }),
+      );
       await new Promise((r) => setTimeout(r, PAUSE));
     }
   } catch (erreur) {
