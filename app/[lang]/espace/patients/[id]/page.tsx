@@ -26,6 +26,7 @@ import { accesMedical, exigerUtilisateur } from "../../../../agenda/session";
 import { alertes } from "../../../../dossier/calculs";
 import { listerConsultations } from "../../../../dossier/consultations";
 import { compteDrive } from "../../../../dossier/drive";
+import { modelesExamen } from "../../../../dossier/comptes-rendus";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
 import type { DonneesETT } from "../../../../dossier/ett";
 import { journaliser } from "../../../../dossier/journal";
@@ -369,6 +370,17 @@ function Examens({
               Compte rendu d&apos;ETT
             </Link>
           )}
+          {medical &&
+            modelesExamen.map((m) => (
+              <Link
+                key={m.cle}
+                href={`/${langue}/espace/patients/${patientId}/examen/${m.cle}`}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <FilePlus2 className="h-4 w-4" aria-hidden />
+                {m.bouton}
+              </Link>
+            ))}
           {medical && (
             <Link
               href={`/${langue}/espace/patients/${patientId}/redaction`}
@@ -400,8 +412,8 @@ function Examens({
       ) : (
         <ul className="mt-4 divide-y divide-slate-100">
           {examens.map((e) => {
-            // Compte rendu d'ETT saisi sur le site : le PDF se regénère depuis les mesures
-            const ett = Boolean(e.valeurs.ett);
+            // Compte rendu (ETT, ECG, MAPA, effort) saisi sur le site : le PDF se regénère depuis les mesures
+            const ett = Boolean(e.valeurs.ett || e.valeurs.cr);
             return (
               <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0 flex-1">

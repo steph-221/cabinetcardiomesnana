@@ -179,6 +179,22 @@ résultats), puis **Rédiger le compte rendu**.
   dossier sans nom ni coordonnées partent chez Claude. Même clé `ANTHROPIC_API_KEY` que la dictée.
 - Le prompt, les modèles par examen et les exemples sont dans `app/dossier/prompts/` (à adapter à votre style).
 
+## Comptes rendus d'ECG, de MAPA et d'épreuve d'effort (médecins)
+
+Dans un dossier, section **Examens** : boutons **ECG**, **MAPA** et **Épreuve d'effort**, comme pour l'ETT. On remplit
+les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent à jour pendant la saisie (un clic sur
+**Ajouter** les reprend, vous les corrigez). Le PDF est généré et rangé dans Drive si Drive est connecté.
+
+- **ECG** : QT corrigé (Fridericia et Bazett), bradycardie ou tachycardie, BAV du 1er degré, QRS élargis, axe, FA rapide.
+- **MAPA** : baisse nocturne et profil (dipper, non-dipper, riser), HTA confirmée, blouse blanche ou masquée (non
+  traité), HTA contrôlée ou non (traité), validité de l'enregistrement.
+- **Épreuve d'effort** : FMT (220 − âge) et pourcentage atteint, test maximal ou sous-maximal, sous-décalage de ST, score
+  de Duke (tapis), double produit, réponse tensionnelle. Un test négatif mais sous-maximal est proposé « non concluant ».
+
+Chaque page rappelle l'origine des seuils (ESC/ESH 2018, AHA/ACCF/HRS 2009, ESC 2019…). **Relisez-les contre vos
+recommandations avant de vous y fier.** Les modèles sont dans `app/dossier/comptes-rendus/definitions/` : un fichier par
+examen, facile à ajuster ou à compléter (Holter, doppler…).
+
 ## Bibliothèque et assistant à références (médecins)
 
 L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les
