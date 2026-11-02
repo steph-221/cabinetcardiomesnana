@@ -202,7 +202,7 @@ deviner.
   - les **fichiers** proposés par ces pages (PDF, diaporamas, documents Word…, 80 Mo au plus chacun), tels quels.
 
   Tout est rangé dans le Drive du cabinet : dossier « Cabinet — Bibliothèque (copies privées) », un sous-dossier par
-  site. La copie se fait par lots d'environ 100 secondes, avec une pause d'une seconde entre deux adresses ; la page
+  site. La copie se fait par petits lots d'environ 35 secondes (le compteur avance à chaque lot), avec une courte pause entre deux adresses ; la page
   enchaîne les lots tant qu'il reste des adresses (**Pause** / **Reprendre**). Les nouvelles publications relevées
   chaque jour sont copiées à la visite suivante de la page. **Mettre à jour la copie** reprend tout le site : seules
   les pages dont le texte a changé sont renvoyées dans Drive (l'ancienne version va à la corbeille). **Arrêter**

@@ -13,9 +13,9 @@ import { envoyerCopie, ErreurDrive, expliquerErreurDrive, mettreALaCorbeille } f
 import { ErreurNavigateur, ouvrirNavigateur } from "./navigateur";
 import type { TypeSource } from "./sources";
 
-// Durée d'un lot (la route a 300 secondes au plus) et pause entre deux adresses
-const DUREE_LOT = 100_000;
-const PAUSE = 1_000;
+// Durée d'un lot (courte, pour que la page affiche l'avancement ; la route a 300 secondes au plus) et pause entre deux adresses
+const DUREE_LOT = 35_000;
+const PAUSE = 500;
 // Une adresse dont la copie a été interrompue trois fois (page trop lourde…) est laissée de côté
 const ESSAIS_MAX = 3;
 
@@ -193,7 +193,7 @@ export type ResultatLot =
   | { faites: { titre: string; statut: string; erreur: string }[]; restantes: number }
   | { erreur: string };
 
-// Copie les adresses en attente pendant environ 100 secondes, puis rend la main (la page relance un lot)
+// Copie les adresses en attente pendant environ 35 secondes, puis rend la main (la page relance un lot)
 export async function copierUnLot(siteId: number): Promise<ResultatLot> {
   const debut = Date.now();
   let navigateur: Browser | null = null;

@@ -1,11 +1,11 @@
-// Copie privée des sites suivis : traite un lot de la file (environ 100 secondes), à la demande de la page
+// Copie privée des sites suivis : traite un lot de la file (environ 35 secondes), à la demande de la page
 // « Sites et revues suivis », qui relance un lot tant qu'il reste des adresses. Médecins seulement.
 
 import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
 import { copierUnLot } from "../../../dossier/copie-lot";
 import { compteDrive, driveConfigure } from "../../../dossier/drive";
 
-// Le navigateur sans fenêtre et les gros PDF demandent du temps : un lot s'arrête de lui-même après 100 secondes
+// Le navigateur sans fenêtre et les gros PDF demandent du temps : un lot s'arrête de lui-même après 35 secondes (le lot en cours se termine avant)
 export const maxDuration = 300;
 
 export async function POST(request: Request) {

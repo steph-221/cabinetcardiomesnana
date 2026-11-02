@@ -488,9 +488,9 @@ export async function capturerPage(navigateur: Browser, adresse: string): Promis
 
     // Laisse la page finir de se construire, et fait défiler pour charger les images « paresseuses »
     await page.waitForLoadState("load", { timeout: 15_000 }).catch(() => {});
-    await page.waitForLoadState("networkidle", { timeout: 6_000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
     await page.evaluate(executer(DEFILER, null)).catch(() => {});
-    await page.waitForLoadState("networkidle", { timeout: 4_000 }).catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
     for (let n = 0; n < lectures.length; ) {
       const lot = lectures.slice(n);
       n = lectures.length;

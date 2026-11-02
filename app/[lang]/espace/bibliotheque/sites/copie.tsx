@@ -135,6 +135,7 @@ export function CopieSite({
           <HardDriveDownload className="h-3.5 w-3.5" aria-hidden />
           Copie privée dans Google Drive
           {enCours && <RefreshCw className="ms-1 h-3 w-3 animate-spin" aria-hidden />}
+          {enCours && <span className="font-normal">en cours, environ 15 secondes par page</span>}
         </p>
         <div className="flex flex-wrap gap-1">
           {enCours ? (
