@@ -47,7 +47,7 @@ async function Contenu({
       <h1 className="mt-3 text-2xl font-bold text-slate-900">{calculateur.titre}</h1>
       <p className="mt-1 text-sm text-slate-500">{calculateur.resume}</p>
       <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
-        <CalculateurInteractif calculateur={calculateur} />
+        <CalculateurInteractif slug={calculateur.slug} />
       </section>
       {calculateur.notes?.map((n) => (
         <p key={n} className="mt-3 text-xs text-slate-500">
