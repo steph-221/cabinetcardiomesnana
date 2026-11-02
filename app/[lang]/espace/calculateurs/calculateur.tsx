@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Calculateur, Champ, Valeurs } from "../../../dossier/calculateurs/types";
+import { trouverCalculateur } from "../../../dossier/calculateurs";
+import type { Champ, Valeurs } from "../../../dossier/calculateurs/types";
 
 const couleurs = {
   faible: "bg-emerald-50 text-emerald-900",
@@ -12,7 +13,9 @@ const couleurs = {
 };
 
 // Interface générique d'un calculateur : cases et choix, résultat immédiat (rien n'est enregistré)
-export function CalculateurInteractif({ calculateur }: { calculateur: Calculateur }) {
+// On reçoit seulement l'identifiant : un calculateur contient une fonction, qui ne passe pas du serveur au client
+export function CalculateurInteractif({ slug }: { slug: string }) {
+  const calculateur = trouverCalculateur(slug)!;
   const [valeurs, setValeurs] = useState<Valeurs>({});
   const resultat = calculateur.evaluer(valeurs);
   const regler = (cle: string, valeur: boolean | string | number | undefined) => setValeurs((v) => ({ ...v, [cle]: valeur }));
