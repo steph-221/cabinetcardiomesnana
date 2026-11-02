@@ -208,6 +208,14 @@ Chaque page rappelle l'origine des seuils (ESC/ESH 2018, AHA/ACCF/HRS 2009, ESC 
 recommandations avant de vous y fier.** Les modèles sont dans `app/dossier/comptes-rendus/definitions/` : un fichier par
 examen, facile à ajuster ou à compléter (Holter, doppler…).
 
+### Vérifier les seuils cliniques
+
+Tous les seuils appliqués par ces comptes rendus (et par l'ETT) sont listés dans
+`app/dossier/comptes-rendus/seuils.ts` : la règle, la source citée et un degré de confiance (« sûr » ou « à confirmer »).
+Un test (`seuils.test.ts`) contrôle chaque règle sur ses valeurs limites : si un seuil est modifié dans le code sans mettre
+l'inventaire à jour, ou l'inverse, il échoue. Il ne dit pas que le seuil est juste : cela demande de le relire dans la
+recommandation. Quand une valeur est corrigée, il faut la changer dans la définition de l'examen **et** dans l'inventaire.
+
 ## Bibliothèque et assistant à références (médecins)
 
 L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les
