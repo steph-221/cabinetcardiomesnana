@@ -10,6 +10,7 @@ import {
   FolderOpen,
   HardDrive,
   History,
+  Landmark,
   Library,
   LogOut,
   MessagesSquare,
@@ -74,6 +75,10 @@ async function Onglets({ langue }: { langue: string }) {
               <span className="sr-only"> en retard</span>
             </span>
           )}
+        </Onglet>
+        <Onglet href={accesMedical(utilisateur) ? `${base}/comptabilite` : `${base}/comptabilite/factures`}>
+          <Landmark className="h-4 w-4" aria-hidden />
+          Comptabilité
         </Onglet>
         {accesMedical(utilisateur) && (
           <Onglet href={`${base}/lexique`}>

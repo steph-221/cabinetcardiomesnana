@@ -4,6 +4,8 @@
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { cabinet } from "../cabinet";
 import { surfaceCorporelle } from "./calculs";
+import type { Facture, Paiement } from "./compta";
+import { libelleMode, montant, montantEnLettres, totalLignes } from "./compta-calculs";
 import type { Consultation } from "./consultations";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
@@ -339,6 +341,102 @@ export function pdfETT(d: DonneesETT, date: string, patient: Patient) {
             </View>
           </View>
         )}
+        <Text style={s.signature}>Signature et cachet</Text>
+        <Pied />
+      </Page>
+    </Document>,
+  );
+}
+
+// --- Facture (honoraires) ---
+
+export function pdfFacture(f: Facture, paiements: Paiement[], patient: Patient | null) {
+  const reste = f.totalCts - f.payeCts;
+  const colonnes = { designation: { width: "52%" }, quantite: { width: "10%", textAlign: "right" as const }, prix: { width: "19%", textAlign: "right" as const }, total: { width: "19%", textAlign: "right" as const } };
+  const mad = (cts: number) => `${montant(cts)} MAD`;
+  return renderToBuffer(
+    <Document title={`Facture ${f.numero}`} author={cabinet.medecin}>
+      <Page size="A4" style={s.page}>
+        <Entete />
+        {cabinet.ice && <Text style={[s.gris, { fontSize: 8 }]}>ICE : {propre(cabinet.ice)}</Text>}
+        <Text style={s.titre}>FACTURE N° {f.numero}</Text>
+        {f.annulee && (
+          <Text style={{ textAlign: "center", color: "#b91c1c", fontFamily: "Helvetica-Bold", marginBottom: 8 }}>
+            ANNULEE{f.motifAnnulation ? ` — ${propre(f.motifAnnulation)}` : ""}
+          </Text>
+        )}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
+          <View>
+            <Text style={s.gris}>Patient</Text>
+            <Text style={s.gras}>{propre(f.patientNom)}</Text>
+            {patient?.cin ? <Text style={s.gris}>CIN : {propre(patient.cin)}</Text> : null}
+          </View>
+          <View style={s.droite}>
+            <Text>
+              {propre(cabinet.adresse.ville)}, le {jourLong(f.date)}
+            </Text>
+            <Text style={s.gris}>Médecin : {propre(f.praticienNom)}</Text>
+          </View>
+        </View>
+
+        <View style={[s.ligneTableau, { borderBottomColor: "#0f172a", borderBottomWidth: 1 }]}>
+          <Text style={[s.gras, colonnes.designation]}>Désignation</Text>
+          <Text style={[s.gras, colonnes.quantite]}>Qté</Text>
+          <Text style={[s.gras, colonnes.prix]}>Prix unitaire</Text>
+          <Text style={[s.gras, colonnes.total]}>Montant</Text>
+        </View>
+        {f.lignes.map((l, i) => (
+          <View key={i} style={s.ligneTableau} wrap={false}>
+            <Text style={colonnes.designation}>{propre(l.libelle)}</Text>
+            <Text style={colonnes.quantite}>{fr(l.quantite, 2)}</Text>
+            <Text style={colonnes.prix}>{mad(l.prixCts)}</Text>
+            <Text style={colonnes.total}>{mad(Math.round(l.quantite * l.prixCts))}</Text>
+          </View>
+        ))}
+
+        <View style={{ marginTop: 10, alignSelf: "flex-end", width: "50%" }} wrap={false}>
+          {f.remiseCts > 0 && (
+            <>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={s.gris}>Sous-total</Text>
+                <Text>{mad(totalLignes(f.lignes))}</Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={s.gris}>Remise</Text>
+                <Text>- {mad(f.remiseCts)}</Text>
+              </View>
+            </>
+          )}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 3 }}>
+            <Text style={[s.gras, { fontSize: 12 }]}>TOTAL</Text>
+            <Text style={[s.gras, { fontSize: 12 }]}>{mad(f.totalCts)}</Text>
+          </View>
+          {f.payeCts > 0 && (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 3 }}>
+              <Text style={s.gris}>Déjà réglé</Text>
+              <Text>{mad(f.payeCts)}</Text>
+            </View>
+          )}
+          {!f.annulee && reste > 0 && f.payeCts > 0 && (
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={s.gras}>Reste à payer</Text>
+              <Text style={s.gras}>{mad(reste)}</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={{ marginTop: 16 }}>
+          Arrêtée la présente facture à la somme de{" "}
+          <Text style={s.gras}>{propre(montantEnLettres(f.totalCts))}</Text>.
+        </Text>
+        {paiements.length > 0 && (
+          <Text style={[s.gris, { marginTop: 6 }]}>
+            Règlement :{" "}
+            {propre(paiements.map((p) => `${jour(p.date)} ${libelleMode(p.mode).toLowerCase()} ${mad(p.montantCts)}`).join(" ; "))}
+            {!f.annulee && reste === 0 ? " — acquittée." : "."}
+          </Text>
+        )}
+        {f.note && <Text style={[s.gris, { marginTop: 6 }]}>{propre(f.note)}</Text>}
         <Text style={s.signature}>Signature et cachet</Text>
         <Pied />
       </Page>
