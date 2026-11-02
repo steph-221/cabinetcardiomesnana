@@ -15,7 +15,7 @@ const couleurs = {
 export function CalculateurInteractif({ calculateur }: { calculateur: Calculateur }) {
   const [valeurs, setValeurs] = useState<Valeurs>({});
   const resultat = calculateur.evaluer(valeurs);
-  const regler = (cle: string, valeur: boolean | string) => setValeurs((v) => ({ ...v, [cle]: valeur }));
+  const regler = (cle: string, valeur: boolean | string | number | undefined) => setValeurs((v) => ({ ...v, [cle]: valeur }));
 
   const groupes = new Map<string, Champ[]>();
   for (const c of calculateur.champs) groupes.set(c.groupe ?? "", [...(groupes.get(c.groupe ?? "") ?? []), c]);
@@ -28,7 +28,21 @@ export function CalculateurInteractif({ calculateur }: { calculateur: Calculateu
           <ul className="space-y-2">
             {champs.map((c) => (
               <li key={c.cle}>
-                {c.type === "case" ? (
+                {c.type === "nombre" ? (
+                  <label className="flex flex-wrap items-center gap-2 text-slate-700">
+                    {c.libelle}
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      min="0"
+                      value={typeof valeurs[c.cle] === "number" ? (valeurs[c.cle] as number) : ""}
+                      onChange={(e) => regler(c.cle, e.target.value === "" ? undefined : e.target.valueAsNumber)}
+                      className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm"
+                    />
+                    {c.unite && <span className="text-slate-500">{c.unite}</span>}
+                  </label>
+                ) : c.type === "case" ? (
                   <label className="flex cursor-pointer items-start gap-2 text-slate-700">
                     <input
                       type="checkbox"

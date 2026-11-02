@@ -57,3 +57,62 @@ describe("CHA₂DS₂-VA", () => {
     expect(cha2ds2vaCalculateur.evaluer({ hta: true, diabete: true }).gravite).toBe("eleve");
   });
 });
+
+import { dfgCkdEpi, qtc } from "./definitions/mesures";
+import { cha2ds2vasc } from "./definitions/scores";
+import { dfg } from "../calculs";
+
+describe("CHA₂DS₂-VASc", () => {
+  const v = (valeurs: Record<string, boolean | string>) => cha2ds2vasc.evaluer(valeurs);
+  it("points de la publication", () => {
+    // femme (1) + HTA (1) + 75 ans ou plus (2) = 4
+    expect(v({ femme: true, hta: true, age: "2" }).score).toBe(4);
+    // ICC 1 + HTA 1 + diabète 1 + AVC 2 + vasculaire 1 + femme 1 + 75+ 2 = maximum 9
+    expect(v({ icc: true, hta: true, diabete: true, avc: true, vasculaire: true, femme: true, age: "2" }).score).toBe(9);
+  });
+  it("le sexe féminin seul ne justifie pas l'anticoagulation", () => {
+    expect(v({ femme: true }).gravite).toBe("faible");
+    expect(v({ femme: true, hta: true }).gravite).toBe("moyen");
+    expect(v({ femme: true, hta: true, diabete: true }).gravite).toBe("eleve");
+    expect(v({ hta: true }).gravite).toBe("moyen");
+    expect(v({ hta: true, diabete: true }).gravite).toBe("eleve");
+  });
+});
+
+describe("QTc de Fridericia", () => {
+  const qtcDe = (qt: number, fc: number, sexe = "H") => qtc.evaluer({ qt, fc, sexe });
+  it("QT inchangé à 60 bpm", () => {
+    expect(qtcDe(400, 60).libelle).toContain("Fridericia 400 ms");
+    expect(qtcDe(400, 60).libelle).toContain("Bazett 400 ms");
+  });
+  it("QT 400 ms à 75 bpm : Fridericia 431, Bazett 447", () => {
+    // RR = 0,8 s : 400 / 0,8^(1/3) = 430,9 ; 400 / 0,8^(1/2) = 447,2
+    const l = qtcDe(400, 75).libelle;
+    expect(l).toContain("Fridericia 431 ms");
+    expect(l).toContain("Bazett 447 ms");
+  });
+  it("seuils selon le sexe et risque élevé à 500 ms", () => {
+    expect(qtcDe(475, 60, "H").gravite).toBe("eleve");
+    expect(qtcDe(475, 60, "F").gravite).toBe("faible");
+    expect(qtcDe(500, 60, "F").gravite).toBe("tres-eleve");
+  });
+  it("valeurs manquantes", () => {
+    expect(qtc.evaluer({}).gravite).toBe("neutre");
+  });
+});
+
+describe("DFG CKD-EPI 2021", () => {
+  it("valeurs de référence", () => {
+    // Homme de 50 ans, créatinine 1,0 mg/dL : 142 × (1/0,9)^-1,2 × 0,9938^50 ≈ 91,7
+    expect(dfg(10, 50, "M")).toBeCloseTo(91.7, 0);
+    // Femme de 60 ans, créatinine 0,7 mg/dL (= κ) : 142 × 0,9938^60 × 1,012 ≈ 98,9
+    expect(dfg(7, 60, "F")).toBeCloseTo(98.9, 0);
+    // Homme de 70 ans, créatinine 2,0 mg/dL : 142 × 0,3836 × 0,6471 ≈ 35,2
+    expect(dfg(20, 70, "M")).toBeCloseTo(35.2, 0);
+  });
+  it("le calculateur donne le stade", () => {
+    const r = dfgCkdEpi.evaluer({ creatinine: 20, age: 70, sexe: "H" });
+    expect(r.libelle).toContain("stade G3b");
+    expect(dfgCkdEpi.evaluer({}).gravite).toBe("neutre");
+  });
+});

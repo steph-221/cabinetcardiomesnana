@@ -56,9 +56,13 @@ async function Contenu({
       ))}
       <p className="mt-3 text-xs text-slate-500">
         Source :{" "}
-        <a href={calculateur.source.url} className="underline" target="_blank" rel="noreferrer">
-          {calculateur.source.libelle}
-        </a>
+        {calculateur.source.url ? (
+          <a href={calculateur.source.url} className="underline" target="_blank" rel="noreferrer">
+            {calculateur.source.libelle}
+          </a>
+        ) : (
+          calculateur.source.libelle
+        )}
         . {calculateur.verification}
       </p>
     </>
