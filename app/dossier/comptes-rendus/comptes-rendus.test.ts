@@ -209,3 +209,68 @@ describe("Doppler TSA", () => {
     expect(t).toContain("Épaisseur intima-média augmentée");
   });
 });
+
+describe("Coroscanner : CAD-RADS", () => {
+  const scanner = trouverModele("coroscanner")!;
+  const cad = (v: Record<string, string | number>) => scanner.calculs(v, homme).join(" ");
+  const aucune = "pas de sténose";
+  it("0 : aucune sténose et score calcique nul", () => {
+    expect(cad({ tc: aucune, iva: aucune, cx: aucune, cd: aucune, agatston: 0 })).toContain("CAD-RADS 0");
+  });
+  it("1 : plaque sans sténose (score calcique > 0) ou sténose minime", () => {
+    expect(cad({ tc: aucune, iva: aucune, cx: aucune, cd: aucune, agatston: 40 })).toContain("CAD-RADS 1");
+    expect(cad({ iva: "minime (1 à 24 %)" })).toContain("CAD-RADS 1");
+  });
+  it("2 et 3 d'après la sténose la plus serrée", () => {
+    expect(cad({ iva: "légère (25 à 49 %)", cd: "minime (1 à 24 %)" })).toContain("CAD-RADS 2");
+    expect(cad({ iva: "modérée (50 à 69 %)", cd: "légère (25 à 49 %)" })).toContain("CAD-RADS 3");
+  });
+  it("4A : une ou deux artères ≥ 70 % ; 4B : trois artères ou tronc commun ≥ 50 %", () => {
+    expect(cad({ iva: "sévère (70 à 99 %)", cx: "sévère (70 à 99 %)" })).toContain("CAD-RADS 4A");
+    expect(cad({ iva: "sévère (70 à 99 %)", cx: "sévère (70 à 99 %)", cd: "sévère (70 à 99 %)" })).toContain("CAD-RADS 4B");
+    expect(cad({ tc: "modérée (50 à 69 %)" })).toContain("CAD-RADS 4B");
+  });
+  it("5 : occlusion", () => {
+    expect(cad({ cd: "occlusion (100 %)", iva: "sévère (70 à 99 %)" })).toContain("CAD-RADS 5");
+  });
+  it("segments non évaluables : catégorie provisoire", () => {
+    expect(cad({ iva: "légère (25 à 49 %)", cx: "non évaluable" })).toContain("provisoire");
+  });
+  it("sans artère renseignée : pas de CAD-RADS", () => {
+    expect(cad({ agatston: 120 })).not.toContain("CAD-RADS");
+    expect(cad({ agatston: 120 })).toContain("catégorie A2");
+  });
+  it("propose la conduite à discuter", () => {
+    expect(textes(scanner.propositions({ iva: "modérée (50 à 69 %)", agatston: 250 }, homme))).toContain("test fonctionnel");
+  });
+});
+
+describe("Coronarographie", () => {
+  const coro = trouverModele("coronarographie")!;
+  it("atteinte mono, bi, tritronculaire et tronc commun", () => {
+    const grave = "sévère (70 à 99 %)";
+    expect(textes(coro.propositions({ iva: grave }, homme))).toContain("monotronculaire");
+    expect(textes(coro.propositions({ iva: grave, cd: grave }, homme))).toContain("bitronculaire");
+    expect(textes(coro.propositions({ iva: grave, cx: grave, cd: "occlusion (100 %)" }, homme))).toContain("tritronculaire");
+    expect(textes(coro.propositions({ tc: "modérée (50 à 69 %)" }, homme))).toContain("tronc commun gauche");
+  });
+  it("coronaires normales, lésions non significatives, sténose intermédiaire", () => {
+    const n = "pas de sténose";
+    expect(textes(coro.propositions({ tc: n, iva: n, cx: n, cd: n }, homme))).toContain("angiographiquement normales");
+    expect(textes(coro.propositions({ iva: "légère (25 à 49 %)" }, homme))).toContain("non significatives");
+    expect(textes(coro.propositions({ iva: "modérée (50 à 69 %)" }, homme))).toContain("FFR, iFR");
+  });
+  it("FFR et iFR : seuils 0,80 et 0,89", () => {
+    expect(textes(coro.propositions({ ffr: 0.78 }, homme))).toContain("significative (seuil 0,80)");
+    expect(textes(coro.propositions({ ffr: 0.86 }, homme))).toContain("non significative");
+    expect(textes(coro.propositions({ ifr: 0.85 }, homme))).toContain("significative (seuil 0,89)");
+  });
+  it("FEVG et geste", () => {
+    const t = textes(coro.propositions({ fevg: 35, geste: "angioplastie avec stent actif", detailGeste: "IVA moyenne, stent 3,0 x 18 mm" }, homme));
+    expect(t).toContain("Altération de la fonction systolique");
+    expect(t).toContain("Angioplastie avec stent actif : IVA moyenne, stent 3,0 x 18 mm.");
+  });
+  it("compte les artères ≥ 70 %", () => {
+    expect(coro.calculs({ iva: "sévère (70 à 99 %)", cx: "légère (25 à 49 %)" }, homme)[0]).toContain("1 sur 3");
+  });
+});

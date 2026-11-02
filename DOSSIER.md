@@ -179,10 +179,10 @@ résultats), puis **Rédiger le compte rendu**.
   dossier sans nom ni coordonnées partent chez Claude. Même clé `ANTHROPIC_API_KEY` que la dictée.
 - Le prompt, les modèles par examen et les exemples sont dans `app/dossier/prompts/` (à adapter à votre style).
 
-## Comptes rendus d'ECG, Holter, MAPA, épreuve d'effort et Doppler (médecins)
+## Comptes rendus d'ECG, Holter, MAPA, effort, Doppler, coroscanner et coronarographie (médecins)
 
 Dans un dossier, section **Examens** : boutons **ECG**, **Holter**, **MAPA**, **Épreuve d'effort**, **Doppler veineux**,
-**Doppler artériel MI** et **Doppler TSA**, comme pour l'ETT. On remplit
+**Doppler artériel MI**, **Doppler TSA**, **Coroscanner** et **Coronarographie**, comme pour l'ETT. On remplit
 les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent à jour pendant la saisie (un clic sur
 **Ajouter** les reprend, vous les corrigez). Le PDF est généré et rangé dans Drive si Drive est connecté.
 
@@ -194,6 +194,11 @@ les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent 
 - **Doppler artériel MI** : IPS de chaque côté (cheville la plus haute sur brachiale la plus haute) et palier (normal,
   limite, artériopathie, incompressible).
 - **Doppler TSA** : sténose de l'ACI d'après la vitesse systolique, flux vertébral inversé, épaisseur intima-média.
+- **Coroscanner** : score calcique (catégorie A0 à A3) et **CAD-RADS 2.0 calculé** d'après la sténose choisie pour chaque
+  artère (tronc commun, IVA, circonflexe, coronaire droite), avec la conduite « à discuter » de la catégorie ; une artère
+  non évaluable rend la catégorie provisoire.
+- **Coronarographie** : atteinte mono, bi ou tritronculaire, tronc commun, sténose intermédiaire à évaluer (FFR ≤ 0,80,
+  iFR ≤ 0,89), FEVG, geste réalisé et complications.
 - **MAPA** : baisse nocturne et profil (dipper, non-dipper, riser), HTA confirmée, blouse blanche ou masquée (non
   traité), HTA contrôlée ou non (traité), validité de l'enregistrement.
 - **Épreuve d'effort** : FMT (220 − âge) et pourcentage atteint, test maximal ou sous-maximal, sous-décalage de ST, score
