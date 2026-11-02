@@ -16,6 +16,7 @@ import {
   Phone,
   Pill,
   Printer,
+  Receipt,
   ScrollText,
   TriangleAlert,
 } from "lucide-react";
@@ -146,6 +147,10 @@ async function Dossier({
               Demander à l&apos;assistant
             </Link>
           )}
+          <Link href={`/${langue}/espace/comptabilite/factures/nouvelle?patient=${id}`} className={bouton}>
+            <Receipt className="h-4 w-4" aria-hidden />
+            Facturer
+          </Link>
           {utilisateur.admin && (
             <Link href={`/${langue}/espace/journal?patient=${id}`} className={bouton}>
               <History className="h-4 w-4" aria-hidden />
