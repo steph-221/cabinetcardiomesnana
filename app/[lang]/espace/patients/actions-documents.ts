@@ -7,7 +7,7 @@ import { exigerUtilisateur } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
 import { compteDrive, envoyerExamen, mettreALaCorbeille } from "../../../dossier/drive";
 import { champsETT, type DonneesETT } from "../../../dossier/ett";
-import { ajouterExamen, rangerFichierExamen } from "../../../dossier/examens";
+import { ajouterExamen, rangerFichierExamen, typesExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
 import {
   creerOrdonnance,
@@ -157,6 +157,35 @@ export async function nouveauCompteRenduETT(
   } catch (erreur) {
     console.error(erreur);
     return echec("Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.", formData);
+  }
+  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+}
+
+// --- Compte rendu rédigé par Claude à partir d'une dictée, relu et corrigé par le médecin ---
+
+export async function enregistrerCompteRendu(
+  langue: string,
+  patientId: number,
+  type: string,
+  date: string,
+  compteRendu: string,
+): Promise<string | null> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!typesExamen.includes(type)) return "Type d'examen inconnu.";
+  if (!estJour(date) || date > jourLocal(new Date())) return "Vérifiez la date de l'examen.";
+  const corps = compteRendu.trim().slice(0, 20_000);
+  if (!corps) return "Le compte rendu est vide.";
+  if (!(await lirePatient(patientId))) return "Dossier introuvable.";
+  try {
+    await ajouterExamen(
+      patientId,
+      { type, date, conclusion: corps, valeurs: { redaction: true }, fichier: null },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, "compte rendu enregistré", patientId, `${type} ${date}`);
+  } catch (erreur) {
+    console.error(erreur);
+    return "Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.";
   }
   redirect(`/${langue}/espace/patients/${patientId}#examens`);
 }

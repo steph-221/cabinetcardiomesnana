@@ -17,6 +17,7 @@ import {
   Pill,
   Printer,
   ScrollText,
+  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
@@ -358,15 +359,26 @@ function Examens({
           <FileText className="h-5 w-5 text-red-600" aria-hidden />
           Examens
         </h2>
-        {medical && (
-          <Link
-            href={`/${langue}/espace/patients/${patientId}/ett`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <FilePlus2 className="h-4 w-4" aria-hidden />
-            Compte rendu d&apos;ETT
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {medical && (
+            <Link
+              href={`/${langue}/espace/patients/${patientId}/ett`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              <FilePlus2 className="h-4 w-4" aria-hidden />
+              Compte rendu d&apos;ETT
+            </Link>
+          )}
+          {medical && (
+            <Link
+              href={`/${langue}/espace/patients/${patientId}/redaction`}
+              className="inline-flex items-center gap-2 rounded-full border border-violet-300 px-4 py-2 text-sm text-violet-800 hover:bg-violet-50"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Rédiger par dictée
+            </Link>
+          )}
+        </div>
       </div>
       {drive ? (
         <EnvoiExamens

@@ -9,6 +9,7 @@ export const typesExamen = [
   "Holter ECG",
   "MAPA",
   "Épreuve d'effort",
+  "Échographie cardiaque d'effort",
   "Biologie",
   "Doppler vasculaire",
   "Coroscanner",

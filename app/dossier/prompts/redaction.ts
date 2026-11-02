@@ -74,6 +74,16 @@ const VALEURS_USUELLES = `# VALEURS USUELLES (à valider par le médecin ; ASE/E
 - Effort : FMT = 220 − âge ; test maximal si ≥ 85 % de la FMT.
 - Surface corporelle de Mosteller : √(taille en cm × poids en kg / 3600) ; IMC = poids / taille² (m).`;
 
+// Extraits de la bibliothèque, joints à la demande (et non au prompt système, qui reste identique et se met en cache)
+export function blocReferences(references: NonNullable<OptionsPrompt["references"]>) {
+  return `# RÉFÉRENCES (extraits de la bibliothèque du cabinet)\n${references
+    .map(
+      (r) =>
+        `<reference titre="${r.titre.replaceAll('"', "'")}${r.page ? ` — p. ${r.page}` : ""}">\n${r.texte}\n</reference>`,
+    )
+    .join("\n")}`;
+}
+
 export function promptRedaction(o: OptionsPrompt) {
   const parties = [
     ROLE(o),
@@ -88,13 +98,7 @@ export function promptRedaction(o: OptionsPrompt) {
       .join("\n\n")}`,
     `# EXEMPLES (dictée → compte rendu tel qu'il doit être rendu)\n${exemples.map(texteExemple).join("\n\n")}`,
   ];
-  if (o.references?.length) {
-    parties.push(
-      `# RÉFÉRENCES (extraits de la bibliothèque du cabinet)\n${o.references
-        .map((r) => `<reference titre="${r.titre}${r.page ? ` — p. ${r.page}` : ""}">\n${r.texte}\n</reference>`)
-        .join("\n")}`,
-    );
-  }
+  if (o.references?.length) parties.push(blocReferences(o.references));
   return parties.join("\n\n");
 }
 

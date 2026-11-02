@@ -164,6 +164,21 @@ Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement grat
 utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
 d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
 
+## Rédiger un compte rendu par dictée (médecins)
+
+Dans un dossier, section **Examens** → **Rédiger par dictée**. Choisir le type d'examen (ETT, échographie d'effort,
+Doppler, ECG, Holter, MAPA, épreuve d'effort, coroscanner, coronarographie, biologie), **Dicter** (ou saisir les
+résultats), puis **Rédiger le compte rendu**.
+
+- Claude met la dictée en forme dans le modèle du cabinet, fait les calculs (masse VG, FMT, surface corporelle…),
+  propose le « AU TOTAL » avec les diagnostics différentiels et la conduite « à discuter ». Ce qui n'est pas dicté reste
+  « [À COMPLÉTER] ».
+- Un encadré **À vérifier** liste les incohérences et les données manquantes (5 au plus). Il n'est pas enregistré.
+- Le texte est modifiable ; **Enregistrer dans les examens** le range dans le dossier (rien n'est enregistré avant).
+- Les passages utiles de la bibliothèque (ESC, RCP) sont joints à la demande. Seuls le texte dicté et un résumé du
+  dossier sans nom ni coordonnées partent chez Claude. Même clé `ANTHROPIC_API_KEY` que la dictée.
+- Le prompt, les modèles par examen et les exemples sont dans `app/dossier/prompts/` (à adapter à votre style).
+
 ## Bibliothèque et assistant à références (médecins)
 
 L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les
