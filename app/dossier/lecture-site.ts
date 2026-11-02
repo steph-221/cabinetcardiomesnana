@@ -12,7 +12,7 @@ const REDIRECTIONS_MAX = 4;
 const PUBLICATIONS_MAX = 300;
 
 // Adresses internes (réseau local, machine elle-même) : refusées, le serveur ne doit lire que des sites publics
-function adresseInterne(ip: string) {
+export function adresseInterne(ip: string) {
   if (isIP(ip) === 6) {
     const v6 = ip.toLowerCase();
     if (v6.startsWith("::ffff:")) return adresseInterne(v6.slice(7));
@@ -31,7 +31,7 @@ function adresseInterne(ip: string) {
   );
 }
 
-async function verifierAdresse(url: URL) {
+export async function verifierAdresse(url: URL) {
   if (url.protocol !== "https:") throw new Error("Le site doit être en https.");
   const hote = url.hostname.replace(/^\[|\]$/g, "");
   const ips = isIP(hote) ? [hote] : (await lookup(hote, { all: true })).map((r) => r.address);

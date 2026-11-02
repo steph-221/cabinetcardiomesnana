@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
-import { ExternalLink, FolderOpen, TriangleAlert } from "lucide-react";
+import { ExternalLink, FileDown, FolderOpen, TriangleAlert } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { exigerUtilisateur } from "../../../../agenda/session";
 import type { Reponse } from "../../../../dossier/assistant";
@@ -185,6 +185,17 @@ async function Contenu({
                     >
                       <ExternalLink className="h-3 w-3" aria-hidden />
                       {passage.page ? `Ouvrir à la page ${passage.page}` : "Ouvrir la source"}
+                    </a>
+                  )}
+                  {passage.source.copie && (
+                    <a
+                      href={lienPage(`/api/bibliotheque/ouvrir/${passage.source.copie}`, passage.page)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`${passage.source.url ? "" : "ms-auto "}inline-flex items-center gap-1 text-xs font-normal text-emerald-800 underline`}
+                    >
+                      <FileDown className="h-3 w-3" aria-hidden />
+                      Copie privée
                     </a>
                   )}
                 </p>

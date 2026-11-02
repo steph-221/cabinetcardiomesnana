@@ -17,7 +17,7 @@ export type Reponse = {
     id: number;
     page: number | null;
     texte: string;
-    source: { id: number; libelle: string; type: string; url: string };
+    source: { id: number; libelle: string; type: string; url: string; copie?: number | null };
   }[];
   termes: { en: string[]; fr: string[] };
   contexte: string | null;
@@ -110,7 +110,13 @@ export async function repondre(question: string, contexte: string | null): Promi
     id: p.id,
     page: p.page,
     texte: p.texte,
-    source: { id: p.source.id, libelle: libelleSource(p.source), type: p.source.type, url: p.source.url },
+    source: {
+      id: p.source.id,
+      libelle: libelleSource(p.source),
+      type: p.source.type,
+      url: p.source.url,
+      copie: p.source.copieId,
+    },
   }));
   if (!passages.length) {
     return {
