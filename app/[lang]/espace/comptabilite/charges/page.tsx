@@ -2,15 +2,22 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Repeat } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { jourLocal } from "../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../agenda/session";
 import { baseConfiguree } from "../../../../dossier/base";
-import { listerCharges, listerPraticiens, type Charge } from "../../../../dossier/compta";
+import {
+  genererChargesRecurrentes,
+  listerCharges,
+  listerPraticiens,
+  listerRecurrentes,
+  type Charge,
+  type ChargeRecurrente,
+} from "../../../../dossier/compta";
 import { bornes, libelleMode, mad, periodeValide, periodeVoisine, titrePeriode } from "../../../../dossier/compta-calculs";
 import { BaseNonConfiguree, ErreurLecture } from "../../patients/commun";
-import { BoutonRetirerCharge, FormulaireCharge } from "../formulaires";
+import { BoutonRetirerCharge, FormulaireCharge, FormulaireRecurrente } from "../formulaires";
 
 export const metadata: Metadata = {
   title: "Charges du cabinet",
@@ -51,9 +58,12 @@ async function Contenu({
   const { du, au } = bornes(periode);
 
   let charges: Charge[] | null = null;
+  let recurrentes: ChargeRecurrente[] = [];
   let praticiens: Awaited<ReturnType<typeof listerPraticiens>> = [];
   try {
-    [charges, praticiens] = await Promise.all([listerCharges(du, au), listerPraticiens()]);
+    // Crée d'abord les charges récurrentes échues (loyer, salaire…), puis lit le mois
+    await genererChargesRecurrentes(aujourdhui);
+    [charges, praticiens, recurrentes] = await Promise.all([listerCharges(du, au), listerPraticiens(), listerRecurrentes()]);
   } catch (erreur) {
     console.error(erreur);
   }
@@ -109,6 +119,9 @@ async function Contenu({
                   <td className="px-4 py-3 whitespace-nowrap">{jour(c.date)}</td>
                   <td className="px-4 py-3">
                     {c.libelle}
+                    {c.automatique && (
+                      <span className="ms-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-normal text-blue-700">récurrente</span>
+                    )}
                     <span className="block text-xs text-slate-500">
                       {[c.fournisseur, libelleMode(c.mode)].filter(Boolean).join(" · ")}
                     </span>
@@ -125,6 +138,54 @@ async function Contenu({
           </table>
         </div>
       )}
+
+      <section className="mt-12 rounded-2xl border border-slate-200 p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Repeat className="h-5 w-5 text-red-600" aria-hidden />
+          Charges récurrentes
+        </h2>
+        <p className="mt-1 mb-4 text-sm text-slate-500">
+          Loyer, salaire, abonnements… Une charge est créée automatiquement chaque mois à la date choisie (le 31 devient
+          le dernier jour des mois plus courts) ; les mois manqués sont rattrapés à l&apos;ouverture de cette page.
+          Modifier une récurrence ne change que les mois à venir. Supprimer une charge créée automatiquement ne la
+          recrée pas.
+        </p>
+        {recurrentes.length > 0 && (
+          <ul className="mb-6 space-y-3">
+            {recurrentes.map((r) => (
+              <li key={r.id} className={`rounded-xl border p-4 ${r.actif ? "border-slate-200" : "border-slate-100 bg-slate-50 opacity-70"}`}>
+                <details>
+                  <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="font-medium text-slate-900">
+                      {r.libelle}
+                      {!r.actif && <span className="ms-2 text-xs font-normal text-slate-500">(arrêtée)</span>}
+                    </span>
+                    <span className="text-slate-600">
+                      {mad(r.montantCts)} · le {r.jour} de chaque mois · {r.praticienNom ?? "cabinet"}
+                    </span>
+                  </summary>
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <FormulaireRecurrente
+                      key={`${r.id}-${r.montantCts}-${r.jour}-${r.actif}-${r.libelle}`}
+                      langue={langue}
+                      praticiens={praticiens.filter((p) => p.actif).map((p) => ({ id: p.id, nom: p.nom }))}
+                      aujourdhui={aujourdhui}
+                      modele={r}
+                    />
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+        <FormulaireRecurrente
+          key={recurrentes.length}
+          langue={langue}
+          praticiens={praticiens.filter((p) => p.actif).map((p) => ({ id: p.id, nom: p.nom }))}
+          aujourdhui={aujourdhui}
+          modele={null}
+        />
+      </section>
     </>
   );
 }

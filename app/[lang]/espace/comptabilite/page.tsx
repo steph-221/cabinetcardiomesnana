@@ -7,7 +7,7 @@ import { estLangue } from "../../../cabinet";
 import { jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
-import { bilan, listerPraticiens, miseEnCommun, serieAnnuelle, type Bilan } from "../../../dossier/compta";
+import { bilan, genererChargesRecurrentes, listerPraticiens, miseEnCommun, serieAnnuelle, type Bilan } from "../../../dossier/compta";
 import {
   bornes,
   libelleMode,
@@ -56,6 +56,7 @@ async function Tableau({
 
   let donnees: { b: Bilan; medecins: Awaited<ReturnType<typeof listerPraticiens>>; commun: boolean; serie: Awaited<ReturnType<typeof serieAnnuelle>> } | null = null;
   try {
+    await genererChargesRecurrentes(aujourdhui); // charges récurrentes échues, avant de calculer
     const [b, medecins, commun, serie] = await Promise.all([
       bilan(du, au),
       listerPraticiens(),

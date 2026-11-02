@@ -1,7 +1,8 @@
 // Livres de recettes et de dépenses en CSV pour le comptable (médecins seulement)
 
 import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
-import { listerCharges, paiementsDeLaPeriode } from "../../../dossier/compta";
+import { jourLocal } from "../../../agenda/creneaux";
+import { genererChargesRecurrentes, listerCharges, paiementsDeLaPeriode } from "../../../dossier/compta";
 import { bornes, libelleMode, periodeValide } from "../../../dossier/compta-calculs";
 import { journaliser } from "../../../dossier/journal";
 
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
   const type = url.searchParams.get("type");
   if (!periodeValide(p) || (type !== "recettes" && type !== "charges")) return new Response("Demande invalide.", { status: 400 });
   const { du, au } = bornes(p);
+  if (type === "charges") await genererChargesRecurrentes(jourLocal(new Date()));
 
   const lignes =
     type === "recettes"

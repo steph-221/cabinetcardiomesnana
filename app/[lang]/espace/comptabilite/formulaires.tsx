@@ -19,9 +19,11 @@ import {
   reglerActe,
   reglerPartage,
   reglerPraticien,
+  reglerRecurrente,
   retirerActe,
   retirerCharge,
   retirerPaiement,
+  retirerRecurrente,
 } from "./actions";
 
 const champ =
@@ -566,5 +568,132 @@ function BoutonRetirerActe({ langue, id }: { langue: string; id: number }) {
       <Trash2 className="h-3 w-3" aria-hidden />
       Retirer
     </button>
+  );
+}
+
+// --- Charges récurrentes ---
+
+export function FormulaireRecurrente({
+  langue,
+  praticiens,
+  aujourdhui,
+  modele,
+}: {
+  langue: string;
+  praticiens: Praticien[];
+  aujourdhui: string;
+  modele: {
+    id: number;
+    categorie: string;
+    libelle: string;
+    fournisseur: string;
+    montantCts: number;
+    mode: string;
+    praticienId: number | null;
+    jour: number;
+    debut: string;
+    fin: string | null;
+    actif: boolean;
+  } | null;
+}) {
+  const [etat, envoyer] = useActionState(reglerRecurrente.bind(null, langue, modele?.id ?? null), null);
+  const v = etat?.valeurs;
+  return (
+    <form action={envoyer} className="grid gap-3 sm:grid-cols-6">
+      <label className={`${libelleChamp} sm:col-span-3`}>
+        Libellé
+        <input name="libelle" required maxLength={150} placeholder="Loyer du cabinet" defaultValue={v?.libelle ?? modele?.libelle} className={champ} />
+      </label>
+      <label className={`${libelleChamp} sm:col-span-2`}>
+        Catégorie
+        <select name="categorie" required defaultValue={v?.categorie ?? modele?.categorie ?? ""} className={champ}>
+          <option value="" disabled>
+            Choisir…
+          </option>
+          {categoriesCharges.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={libelleChamp}>
+        Montant (MAD)
+        <input name="montant" required inputMode="decimal" defaultValue={v?.montant ?? (modele ? pourChamp(modele.montantCts) : "")} className={champ} />
+      </label>
+      <label className={libelleChamp}>
+        Jour du mois
+        <input name="jour" required inputMode="numeric" maxLength={2} defaultValue={v?.jour ?? modele?.jour ?? 1} className={champ} />
+      </label>
+      <label className={libelleChamp}>
+        À partir du
+        <input type="date" name="debut" required defaultValue={v?.debut ?? modele?.debut ?? aujourdhui} className={champ} />
+      </label>
+      <label className={libelleChamp}>
+        Jusqu&apos;au (facultatif)
+        <input type="date" name="fin" defaultValue={v?.fin ?? modele?.fin ?? ""} className={champ} />
+      </label>
+      <label className={libelleChamp}>
+        Payée par
+        <select name="mode" defaultValue={v?.mode ?? modele?.mode ?? "virement"} className={champ}>
+          {modesPaiement
+            .filter((m) => m.valeur !== "mutuelle")
+            .map((m) => (
+              <option key={m.valeur} value={m.valeur}>
+                {m.libelle}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label className={`${libelleChamp} sm:col-span-2`}>
+        À la charge de
+        <select name="imputation" defaultValue={v?.imputation ?? modele?.praticienId ?? "commune"} className={champ}>
+          <option value="commune">Le cabinet (commune)</option>
+          {praticiens.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nom} seulement
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={`${libelleChamp} sm:col-span-2`}>
+        Fournisseur (facultatif)
+        <input name="fournisseur" maxLength={120} defaultValue={v?.fournisseur ?? modele?.fournisseur} className={champ} />
+      </label>
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-6">
+        <Envoyer className={modele ? boutonSombre : boutonPlein}>
+          {modele ? (
+            "Enregistrer"
+          ) : (
+            <>
+              <Plus className="h-4 w-4" aria-hidden />
+              Ajouter la récurrence
+            </>
+          )}
+        </Envoyer>
+        {modele && (
+          <>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="actif" defaultChecked={modele.actif} className="h-4 w-4" />
+              Active
+            </label>
+            <button
+              type="submit"
+              formAction={retirerRecurrente.bind(null, langue, modele.id)}
+              formNoValidate
+              className="ms-auto inline-flex items-center gap-1 rounded-md px-2 py-2 text-xs text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3 w-3" aria-hidden />
+              Supprimer la récurrence
+            </button>
+          </>
+        )}
+      </div>
+      {etat && (
+        <div className="sm:col-span-6">
+          <Erreur etat={etat} />
+        </div>
+      )}
+    </form>
   );
 }

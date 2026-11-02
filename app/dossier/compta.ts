@@ -266,6 +266,7 @@ export type Charge = {
   mode: ModePaiement;
   praticienId: number | null; // null = charge commune
   praticienNom: string | null;
+  automatique: boolean; // créée par une charge récurrente
   creePar: string;
 };
 
@@ -301,14 +302,113 @@ export async function listerCharges(du: string, au: string): Promise<Charge[]> {
     mode: l.mode as ModePaiement,
     praticienId: (l.praticien_id as number | null) ?? null,
     praticienNom: (l.praticien_nom as string | null) ?? null,
+    automatique: l.recurrente_id !== null && l.recurrente_id !== undefined,
     creePar: l.cree_par as string,
   }));
 }
 
+// Supprimer une charge créée par une récurrence : le mois est mémorisé pour ne pas être recréé
 export async function supprimerCharge(id: number) {
   const sql = await base();
-  const [ligne] = await sql`DELETE FROM charges WHERE id = ${id} RETURNING libelle, montant_cts`;
+  const [ligne] = await sql`
+    WITH supprimee AS (
+      DELETE FROM charges WHERE id = ${id} RETURNING libelle, montant_cts, recurrente_id, mois
+    ), memoire AS (
+      INSERT INTO charges_recurrentes_sautees (recurrente_id, mois)
+      SELECT recurrente_id, mois FROM supprimee WHERE recurrente_id IS NOT NULL AND mois IS NOT NULL
+      ON CONFLICT DO NOTHING
+    )
+    SELECT libelle, montant_cts FROM supprimee`;
   return ligne ? { libelle: ligne.libelle as string, montantCts: ligne.montant_cts as number } : null;
+}
+
+// --- Charges récurrentes ---
+
+export type ChargeRecurrente = {
+  id: number;
+  categorie: string;
+  libelle: string;
+  fournisseur: string;
+  montantCts: number;
+  mode: ModePaiement;
+  praticienId: number | null;
+  praticienNom: string | null;
+  jour: number; // jour du mois (le 31 devient le dernier jour des mois plus courts)
+  debut: string;
+  fin: string | null;
+  actif: boolean;
+};
+
+export async function listerRecurrentes(): Promise<ChargeRecurrente[]> {
+  const sql = await base();
+  const lignes = await sql`
+    SELECT r.*, pr.nom AS praticien_nom FROM charges_recurrentes r LEFT JOIN praticiens pr ON pr.id = r.praticien_id
+    ORDER BY r.actif DESC, r.libelle, r.id`;
+  return lignes.map((l) => ({
+    id: l.id as number,
+    categorie: l.categorie as string,
+    libelle: l.libelle as string,
+    fournisseur: l.fournisseur as string,
+    montantCts: l.montant_cts as number,
+    mode: l.mode as ModePaiement,
+    praticienId: (l.praticien_id as number | null) ?? null,
+    praticienNom: (l.praticien_nom as string | null) ?? null,
+    jour: l.jour as number,
+    debut: l.debut as string,
+    fin: (l.fin as string | null) ?? null,
+    actif: l.actif as boolean,
+  }));
+}
+
+export type SaisieRecurrente = Omit<ChargeRecurrente, "id" | "praticienNom">;
+
+export async function enregistrerRecurrente(id: number | null, c: SaisieRecurrente, par: string) {
+  const sql = await base();
+  if (id === null) {
+    await sql`INSERT INTO charges_recurrentes (categorie, libelle, fournisseur, montant_cts, mode, praticien_id, jour, debut, fin, actif, cree_par)
+              VALUES (${c.categorie}, ${c.libelle}, ${c.fournisseur}, ${c.montantCts}, ${c.mode}, ${c.praticienId}, ${c.jour}, ${c.debut}, ${c.fin}, ${c.actif}, ${par})`;
+  } else {
+    await sql`UPDATE charges_recurrentes SET categorie = ${c.categorie}, libelle = ${c.libelle}, fournisseur = ${c.fournisseur},
+                montant_cts = ${c.montantCts}, mode = ${c.mode}, praticien_id = ${c.praticienId}, jour = ${c.jour},
+                debut = ${c.debut}, fin = ${c.fin}, actif = ${c.actif} WHERE id = ${id}`;
+  }
+}
+
+// Les charges déjà créées restent (elles font partie des comptes) ; seule la récurrence disparaît
+export async function supprimerRecurrente(id: number) {
+  const sql = await base();
+  const [ligne] = await sql`DELETE FROM charges_recurrentes WHERE id = ${id} RETURNING libelle`;
+  return (ligne?.libelle as string | undefined) ?? null;
+}
+
+// Crée les charges récurrentes échues jusqu'à `jour` (AAAA-MM-JJ) qui n'existent pas encore.
+// Appelée à l'ouverture des pages de comptabilité : une seule requête, sans effet si tout est à jour,
+// et sûre si deux personnes ouvrent la page en même temps (index unique). Rattrape aussi les mois manqués.
+export async function genererChargesRecurrentes(jour: string) {
+  const sql = await base();
+  const creees = await sql`
+    INSERT INTO charges (date, categorie, libelle, fournisseur, montant_cts, mode, praticien_id, cree_par, recurrente_id, mois)
+    SELECT x.d, r.categorie, r.libelle, r.fournisseur, r.montant_cts, r.mode, r.praticien_id, 'automatique', r.id,
+           to_char(x.d, 'YYYY-MM')
+    FROM charges_recurrentes r
+    CROSS JOIN LATERAL generate_series(
+      0,
+      (date_part('year', ${jour}::date)::int * 12 + date_part('month', ${jour}::date)::int)
+        - (date_part('year', r.debut)::int * 12 + date_part('month', r.debut)::int)
+    ) AS n
+    CROSS JOIN LATERAL (
+      SELECT (date_trunc('month', r.debut)::date + n * interval '1 month')::date AS mois_debut
+    ) m
+    CROSS JOIN LATERAL (
+      SELECT LEAST(m.mois_debut + (r.jour - 1), (m.mois_debut + interval '1 month' - interval '1 day')::date) AS d
+    ) x
+    WHERE r.actif AND x.d >= r.debut AND x.d <= ${jour}::date AND (r.fin IS NULL OR x.d <= r.fin)
+      AND NOT EXISTS (
+        SELECT 1 FROM charges_recurrentes_sautees s WHERE s.recurrente_id = r.id AND s.mois = to_char(x.d, 'YYYY-MM')
+      )
+    ON CONFLICT (recurrente_id, mois) DO NOTHING
+    RETURNING id`;
+  return creees.length;
 }
 
 // --- Bilan d'une période ---

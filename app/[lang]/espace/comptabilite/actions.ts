@@ -11,12 +11,14 @@ import {
   creerFacture,
   enregistrerActe,
   enregistrerPraticien,
+  enregistrerRecurrente,
   lireFacture,
   listerPraticiens,
   reglerMiseEnCommun,
   supprimerActe,
   supprimerCharge,
   supprimerPaiement,
+  supprimerRecurrente,
 } from "../../../dossier/compta";
 import {
   categoriesCharges,
@@ -217,6 +219,80 @@ export async function retirerCharge(langue: string, id: number) {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   const charge = await supprimerCharge(id);
   if (charge) await journaliser(utilisateur.identifiant, "charge supprimée", null, `${charge.libelle} — ${mad(charge.montantCts)}`);
+  refresh();
+}
+
+// --- Charges récurrentes ---
+
+export async function reglerRecurrente(
+  langue: string,
+  id: number | null,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const categorie = texte(formData, "categorie", 60);
+  if (!(categoriesCharges as readonly string[]).includes(categorie)) return echec("Choisissez la catégorie.", formData);
+  const libelle = texte(formData, "libelle", 150);
+  if (!libelle) return echec("Indiquez le libellé de la dépense.", formData);
+  const montantCts = lireMontant(texte(formData, "montant", 12));
+  if (!montantCts) return echec("Montant invalide.", formData);
+  const mode = texte(formData, "mode", 20);
+  if (!estMode(mode)) return echec("Choisissez le mode de paiement.", formData);
+  const jour = Number(texte(formData, "jour", 2));
+  if (!Number.isInteger(jour) || jour < 1 || jour > 31) return echec("Le jour du mois doit être compris entre 1 et 31.", formData);
+
+  const debut = texte(formData, "debut", 10);
+  if (!jourReel(debut)) return echec("Date de début invalide.", formData);
+  // Garde-fou : un début très ancien créerait des dizaines de charges d'un coup
+  const limite = new Date(`${aujourdhui()}T12:00:00Z`);
+  limite.setUTCFullYear(limite.getUTCFullYear() - 2);
+  if (debut < limite.toISOString().slice(0, 10)) return echec("Le début ne peut pas remonter à plus de 2 ans.", formData);
+  const finSaisie = texte(formData, "fin", 10);
+  if (finSaisie && (!jourReel(finSaisie) || finSaisie < debut)) return echec("La date de fin doit être après le début.", formData);
+
+  const imputation = texte(formData, "imputation", 10);
+  let praticienId: number | null = null;
+  if (imputation !== "commune") {
+    praticienId = Number(imputation);
+    if (!(await listerPraticiens()).some((p) => p.id === praticienId)) return echec("Choisissez qui supporte la charge.", formData);
+  }
+
+  try {
+    await enregistrerRecurrente(
+      id,
+      {
+        categorie,
+        libelle,
+        fournisseur: texte(formData, "fournisseur", 120),
+        montantCts,
+        mode,
+        praticienId,
+        jour,
+        debut,
+        fin: finSaisie || null,
+        actif: id === null || formData.get("actif") === "on",
+      },
+      utilisateur.identifiant,
+    );
+    await journaliser(
+      utilisateur.identifiant,
+      id === null ? "charge récurrente créée" : "charge récurrente modifiée",
+      null,
+      `${libelle} — ${mad(montantCts)} le ${jour} de chaque mois`,
+    );
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("La charge récurrente n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return null;
+}
+
+export async function retirerRecurrente(langue: string, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const libelle = await supprimerRecurrente(id);
+  if (libelle) await journaliser(utilisateur.identifiant, "charge récurrente supprimée", null, libelle);
   refresh();
 }
 

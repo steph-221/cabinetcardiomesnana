@@ -47,6 +47,20 @@ Comptabilité → **Réglages** :
 Comptabilité → **Charges** : date, catégorie (loyer, salaires, CNSS, fournitures, maintenance des appareils…),
 montant, mode de paiement, et **à la charge de** : le cabinet (charge commune, partagée) ou un seul médecin.
 
+### Charges récurrentes (loyer, salaire, abonnements…)
+
+Sous la liste des charges : on décrit la dépense une fois (libellé, catégorie, montant, **jour du mois**, date de
+début, date de fin facultative, à la charge du cabinet ou d'un médecin). Ensuite, **une charge est créée
+automatiquement chaque mois** et entre dans le tableau de bord et l'export.
+
+- Aucune tâche planifiée : les charges échues sont créées à l'ouverture du tableau de bord, de la page Charges ou de
+  l'export. Si personne n'ouvre le site pendant des semaines, les mois manqués sont rattrapés à la prochaine ouverture.
+- Le 31 devient le dernier jour des mois plus courts (30 septembre, 28 février…).
+- Modifier le montant ne touche que les mois **à venir** ; les charges déjà créées restent telles quelles.
+- Supprimer une charge créée automatiquement la retire sans la recréer ; **Active** décoché met la récurrence en
+  pause ; supprimer la récurrence conserve les charges déjà créées.
+- Un début jusqu'à 2 ans en arrière crée d'un coup les mois passés (pratique pour reprendre l'année en cours).
+
 ## Tableau de bord
 
 Par mois ou par année : honoraires **encaissés** (comptés à la date du paiement), charges, résultat, reste à
