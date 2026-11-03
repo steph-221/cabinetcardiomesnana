@@ -18,7 +18,7 @@ const capitaliser = (t: string) =>
 
 // « 06/09/2024 », « 2/12/24 » → « 2024-09-06 », « 2024-12-02 » ; null si la date n'existe pas
 export function dateFrancaise(t: string): string | null {
-  const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/);
+  const m = t.trim().match(/^(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{2}|\d{4})$/);
   if (!m) return null;
   const [j, mo] = [Number(m[1]), Number(m[2])];
   const a = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
@@ -48,26 +48,40 @@ export function identiteLocale(texte: string, nomFichier: string): IdentiteLue {
   let naissance: string | null = null;
   let age: number | null = null;
   let dateDocument: string | null = null;
+  let nomLigne = "";
+  let prenomLigne = "";
 
   for (const l of lignes) {
+    // Modèle « Nom : X » puis « Prénom : Y » sur deux lignes (comptes rendus d'ETO)
+    const nomSepare = l.match(/^\s*NOM\s*:\s*([^|:]+?)\s*$/i);
+    if (nomSepare && !nomLigne) nomLigne = nomSepare[1];
+    const prenomSepare = l.match(/^\s*PR[ÉE]NOMS?\s*:\s*([^|:]+?)\s*$/i);
+    if (prenomSepare && !prenomLigne) prenomLigne = prenomSepare[1];
     const consultation = l.match(/^\s*NOM\s*:?\s*(?:ET\s+)?PR[ÉE]NOMS?\s*:?\s*\|\s*(.+)$/i);
     if (consultation && !complet) complet = consultation[1].replace(/\|/g, " ");
     const nomSeul = l.match(
       /^\s*(?:NOM(?:\s+ET\s+PR[ÉE]NOMS?)?|Malade|Patient(?:e)?)\s*:\s*(.+?)(?=\s+(?:Age|Âge)\s*:|\s+Date\s*:|$)/i,
     );
     if (nomSeul && !complet && !/PR[ÉE]NOM\s*:/i.test(l)) complet = nomSeul[1];
-    const ne = l.match(/DATE\s+DE\s+NAISSANCE\s*:?\s*\|?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})/i);
+    const ne = l.match(/DATE\s+DE\s+NAISSANCE\s*:?\s*\|?\s*(\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{2,4})/i);
     if (ne && !naissance) naissance = dateFrancaise(ne[1]);
+    // Le champ « date de naissance » contient parfois seulement l'âge (« 90 ans »)
+    const neAge = l.match(/DATE\s+DE\s+NAISSANCE\s*:?\s*\|?\s*(\d{1,3})\s*ans/i);
+    if (neAge && age === null) age = Number(neAge[1]);
     const a = l.match(/\b(?:Age|Âge)\s*:\s*(\d{1,3})\s*ans/i);
     if (a && age === null) age = Number(a[1]);
-    const d = l.match(/DATE\s*:?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4})/i);
+    const d = l.match(/DATE\s*:?\s*(\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{2,4})/i);
     if (d && !dateDocument && !/naissance/i.test(l)) dateDocument = dateFrancaise(d[1]);
   }
   complet = complet
     .replace(/[^\p{L}\s'-]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return { ...separerNom(complet, nomFichier), naissance, age, dateDocument };
+  const noms =
+    nomLigne && prenomLigne
+      ? { nom: capitaliser(nomLigne.replace(/[^\p{L}\s'-]/gu, " ").trim()), prenom: capitaliser(prenomLigne.replace(/[^\p{L}\s'-]/gu, " ").trim()) }
+      : separerNom(complet, nomFichier);
+  return { ...noms, naissance, age, dateDocument };
 }
 
 const echapper = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
