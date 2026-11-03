@@ -85,7 +85,34 @@ Pas encore branché dans l'écran « Reprise Word » : le module est prêt, il r
   copies (§4).
 - Tests : `reprise.test.ts`, `regroupement.test.ts` (noms fictifs uniquement).
 
-## 7. À faire ensuite (non fait)
+## 7. Lot test de 20 fichiers (extraction faite hors de l'app)
+
+Sans clé API, l'extraction a été faite par Claude Code à partir du texte lu sur Drive, puis déposée dans un fichier
+`.json` que l'app charge (bouton « Fichier d'extraction » de la page Reprise). Les patients arrivent dans la file
+« à valider », qui sert de classement « à vérifier ». Le fichier contient des données de santé : il n'est pas dans
+le dépôt.
+
+Résultat : **20 fichiers lus, 16 extractions, 4 non importés** (3 modèles vides, 1 version antérieure du même jour).
+Les 16 extractions passent la validation de l'app (aucune valeur écartée). Ce que le lot a montré :
+
+- **Modèles vides dans le dossier** : trois fichiers sont des modèles non remplis (consultation vide, échographie vide).
+  Le nom du fichier ne les distingue pas d'un vrai compte rendu : il faut tester le contenu (aucune valeur, aucun
+  nom). À ajouter à la reprise.
+- **Plusieurs versions d'une même visite** : pour un patient, trois fichiers du même jour (consultation commencée,
+  consultation complétée, échographie). Il faut ne garder que la version la plus complète par date, sinon la
+  validation crée des consultations en double.
+- **Le nom du fichier peut tromper sur le genre** : un fichier « … cst » (consultation) est une échographie.
+- **Homonymes** : deux patients de même nom et de prénoms très proches (55 ans en 2025 et 90 ans en 2026) ne sont
+  pas la même personne ; la comparaison des âges les sépare bien.
+- **Deux fichiers pour une même patiente, avec le nom écrit différemment** (une ou deux lettres de différence,
+  sur trois patients du lot) : le regroupement les réunit comme « probable ».
+- **Un seul fichier peut contenir plusieurs visites** (trois dates à la suite) : elles deviennent trois consultations.
+- **Notes inachevées** : une visite s'arrête au milieu d'une phrase (« poids= »), une TA est écrite en cmHg
+  (« 11/7 ») : laissées vides et signalées.
+- **Échographies en texte libre** avec prothèses valvulaires (tricuspide, mitrale, aortique) : les gradients des
+  prothèses n'ont pas de champ dédié.
+
+## 8. À faire ensuite (non fait)
 
 1. **Écran de regroupement** dans « Reprise Word » : proposer les groupes « sûrs » et « probables », cocher/décocher,
    fusionner dans un seul dossier.
@@ -97,4 +124,5 @@ Pas encore branché dans l'écran « Reprise Word » : le module est prêt, il r
 4. **Fichiers .doc** : conversion automatique en .docx, ou lecture directe.
 5. **Type ETO** et **ETT avec prothèses** dans le modèle d'échographie.
 6. **Écarts de cohérence** : comparer le PAPS et les gradients écrits à ceux que l'app calcule.
-7. **Passage sur l'intégralité du dossier** (liste complète, tous les types), puis rapport définitif avec chiffres.
+7. **Détection des modèles vides et des versions multiples d'une même visite** dans la reprise.
+8. **Passage sur l'intégralité du dossier** (liste complète, tous les types), puis rapport définitif avec chiffres.

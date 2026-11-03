@@ -9,7 +9,7 @@ import { baseConfiguree } from "../../../dossier/base";
 import { claudeConfigure } from "../../../dossier/dictee";
 import { listerImports, type Import } from "../../../dossier/import-word";
 import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
-import { BoutonsImport, ChoixFichiers } from "./fichiers";
+import { BoutonsImport, ChoixExtraction, ChoixFichiers } from "./fichiers";
 
 export const metadata: Metadata = {
   title: "Reprise des comptes rendus Word",
@@ -64,6 +64,7 @@ async function Contenu({ langue }: { langue: string }) {
           </p>
         )}
         <ChoixFichiers langue={langue} />
+        <ChoixExtraction langue={langue} />
       </section>
       <section className="mt-8">
         <h2 className="font-semibold text-slate-900">
