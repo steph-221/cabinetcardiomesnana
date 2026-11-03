@@ -22,6 +22,8 @@ Chaque opération est inscrite au **Journal** (administrateur).
   préenregistrés) ou en lignes libres, avec une remise éventuelle.
 - **Encaissement** au moment de la facture (espèces, chèque, carte, virement, mutuelle) : total, **acompte**, ou
   « pas encore payé ». Le solde s'encaisse plus tard depuis la facture.
+- **Dans le dossier du patient** : une section **Factures** liste ses factures (numéro, montant, état, PDF) et le reste à
+  payer ; elle est visible aussi par la secrétaire. Une facture « sans dossier » n'y apparaît pas.
 - **Numérotation continue** par année : `2026-0001`, `2026-0002`… Jamais deux fois le même numéro, même si deux
   personnes facturent en même temps.
 - Une facture n'est **jamais supprimée** : on l'**annule** (avec un motif). Une facture déjà payée ne peut être
