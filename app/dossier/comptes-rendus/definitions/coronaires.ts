@@ -123,7 +123,7 @@ export const coroscanner: ModeleExamen = {
     if (agatston !== null) {
       p.push({
         texte: agatston === 0 ? "Score calcique nul." : `Score calcique à ${fr(agatston)} (catégorie ${categorieCalcique(agatston)}).`,
-        source: "CAC-DRS (SCCT 2021)",
+        source: "CAC-DRS (SCCT 2018, Hecht et al.)",
       });
     }
     const c = cadRads(v);

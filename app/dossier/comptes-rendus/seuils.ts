@@ -321,7 +321,7 @@ export const seuils: Seuil[] = [
     examen: "Coroscanner",
     sujet: "Score calcique",
     regle: "Catégories : 0 = A0 ; 1 à 99 = A1 ; 100 à 299 = A2 ; ≥ 300 = A3.",
-    source: "CAC-DRS (SCCT 2021)",
+    source: "CAC-DRS (SCCT 2018, Hecht et al.)",
     confiance: "sûr",
     motsEn: ["coronary artery calcium score", "Agatston", "CAC-DRS", "100", "300"],
     motsFr: ["score calcique", "Agatston", "calcifications coronaires"],
