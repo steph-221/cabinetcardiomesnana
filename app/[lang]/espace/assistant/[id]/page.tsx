@@ -1,3 +1,4 @@
+import { Surligne } from "../../surligne";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -35,31 +36,6 @@ export default async function ReponseAssistant({ params }: PageProps<"/[lang]/es
 // Le texte de l'assistant peut contenir un peu de Markdown : on garde les retours à la ligne et les listes,
 // sans les marques de gras ni de titre
 const sansMarkdown = (t: string) => t.replace(/\*\*|__/g, "").replace(/^#{1,6} +/gm, "");
-
-// Passage avec les extraits cités surlignés
-function Surligne({ texte, extraits }: { texte: string; extraits: string[] }) {
-  const zones = extraits
-    .flatMap((e) => {
-      const debut = e ? texte.indexOf(e) : -1;
-      return debut < 0 ? [] : [[debut, debut + e.length] as const];
-    })
-    .sort((a, b) => a[0] - b[0]);
-  const morceaux: React.ReactNode[] = [];
-  let curseur = 0;
-  for (const [debut, fin] of zones) {
-    if (fin <= curseur) continue;
-    const d = Math.max(debut, curseur);
-    if (d > curseur) morceaux.push(texte.slice(curseur, d));
-    morceaux.push(
-      <mark key={d} className="rounded bg-amber-100 px-0.5 text-slate-900">
-        {texte.slice(d, fin)}
-      </mark>,
-    );
-    curseur = fin;
-  }
-  morceaux.push(texte.slice(curseur));
-  return <>{morceaux}</>;
-}
 
 async function Contenu({
   langue,

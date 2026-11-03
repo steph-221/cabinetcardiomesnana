@@ -8,6 +8,7 @@ import { jourLocal } from "../../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../../agenda/session";
 import { trouverModele } from "../../../../../../dossier/comptes-rendus";
 import { age, libellePatient, lirePatient } from "../../../../../../dossier/patients";
+import { lireReferences } from "../../../../../../dossier/verification-seuils";
 import { Retour } from "../../../commun";
 import { FormulaireExamen } from "../../../formulaire-examen";
 
@@ -45,6 +46,7 @@ async function Formulaire({
   const patient = Number.isInteger(id) && id > 0 && modele ? await lirePatient(id) : null;
   if (!patient || !modele) notFound();
   const aujourdhui = jourLocal(new Date());
+  const references = await lireReferences().catch(() => ({}));
 
   return (
     <>
@@ -63,6 +65,7 @@ async function Formulaire({
         age={age(patient.naissance, aujourdhui)}
         operateur={utilisateur.admin ? cabinet.medecin : utilisateur.identifiant}
         aujourdhui={aujourdhui}
+        references={references}
       />
     </>
   );

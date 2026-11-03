@@ -30,7 +30,7 @@ describe("prompt de rédaction", () => {
 
   it("ajoute les références quand il y en a", () => {
     const avec = promptRedaction({ medecin: "Dr Test", ville: "Fès", references: [{ titre: "ESC 2021", page: 12, texte: "FEVG ≤ 40 %" }] });
-    expect(avec).toContain('<reference titre="ESC 2021 — p. 12">');
+    expect(avec).toContain('<reference id="R1" titre="ESC 2021 — p. 12">');
     expect(prompt).not.toContain("# RÉFÉRENCES");
   });
 

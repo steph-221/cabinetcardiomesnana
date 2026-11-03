@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ExternalLink, Globe, Library, MessagesSquare } from "lucide-react";
+import { ExternalLink, Globe, Library, MessagesSquare, ShieldCheck } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
@@ -34,6 +34,13 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
           >
             <Globe className="h-4 w-4" aria-hidden />
             Sites et revues suivis
+          </Link>
+          <Link
+            href={`/${lang}/espace/seuils`}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <ShieldCheck className="h-4 w-4" aria-hidden />
+            Vérifier les seuils
           </Link>
           <Link
             href={`/${lang}/espace/assistant`}

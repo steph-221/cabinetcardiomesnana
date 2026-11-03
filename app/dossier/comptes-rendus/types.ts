@@ -19,7 +19,8 @@ export type Contexte = { age: number | null; sexe: "" | "F" | "M" };
 
 export type ValeursExamen = Record<string, string | number>;
 
-export type Proposition = { texte: string; source: string };
+// seuils : identifiants des règles de l'inventaire (seuils.ts) sur lesquelles s'appuie la proposition
+export type Proposition = { texte: string; source: string; seuils?: string[] };
 
 export type ModeleExamen = {
   cle: string; // dans l'adresse : /patients/12/examen/ecg
@@ -43,6 +44,7 @@ export type DonneesExamen = {
   sexe: Contexte["sexe"];
   valeurs: ValeursExamen;
   total: string;
+  references?: string[]; // lignes « [1] document, page : phrase citée » des repères du « AU TOTAL »
 };
 
 export const fr = (n: number, chiffres = 0) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });

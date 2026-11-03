@@ -208,13 +208,36 @@ Chaque page rappelle l'origine des seuils (ESC/ESH 2018, AHA/ACCF/HRS 2009, ESC 
 recommandations avant de vous y fier.** Les modèles sont dans `app/dossier/comptes-rendus/definitions/` : un fichier par
 examen, facile à ajuster ou à compléter (Holter, doppler…).
 
-### Vérifier les seuils cliniques
+### Références et validation par le médecin
 
-Tous les seuils appliqués par ces comptes rendus (et par l'ETT) sont listés dans
-`app/dossier/comptes-rendus/seuils.ts` : la règle, la source citée et un degré de confiance (« sûr » ou « à confirmer »).
-Un test (`seuils.test.ts`) contrôle chaque règle sur ses valeurs limites : si un seuil est modifié dans le code sans mettre
-l'inventaire à jour, ou l'inverse, il échoue. Il ne dit pas que le seuil est juste : cela demande de le relire dans la
-recommandation. Quand une valeur est corrigée, il faut la changer dans la définition de l'examen **et** dans l'inventaire.
+Principe : **tout ce que propose le site est une aide ; le médecin relit, corrige et valide.** Chaque proposition qui
+s'appuie sur une recommandation montre sa référence, et aucune référence n'est présentée comme vérifiée sans votre
+validation.
+
+- **Sous chaque proposition** (ETT, ECG, Holter, MAPA, effort, Doppler, coroscanner, coronarographie) : la phrase de la
+  recommandation, le document avec sa page, un lien **Voir le passage** (le texte de la source, la phrase surlignée) et un
+  lien **Ouvrir le document, page N**. Un badge dit si la règle est *validée par* un médecin, *proposée, à valider*,
+  *à corriger*, ou si la source dit autre chose. Sans passage trouvé, le site l'écrit : « Source non retrouvée dans la
+  bibliothèque » avec la source attendue.
+- **Dans le compte rendu** : chaque proposition ajoutée au « AU TOTAL » porte un repère [1], [2]… et la liste des
+  références (document, page, phrase citée, validée ou non) est imprimée sous le « AU TOTAL », dans l'écran, le PDF et le
+  dossier.
+- **Rédaction par dictée** : Claude cite les extraits de la bibliothèque par un repère [R1], [R2]… et n'invente aucune
+  référence ; chaque repère renvoie au passage et au document. Les références citées sont reprises à la fin du texte
+  enregistré. Un texte sans référence est signalé.
+- **Page Vérifier les seuils** (Bibliothèque → *Vérifier les seuils*) : pour chacune des règles de l'inventaire, **Chercher
+  dans la bibliothèque** fait proposer par Claude un verdict (la source confirme, dit autre chose, ou ne tranche pas) avec la
+  phrase recopiée. La phrase est contrôlée mot pour mot dans le texte du passage : si elle n'y est pas, aucun verdict n'est
+  retenu. Vous lisez le passage, puis **Je valide** ou **À corriger** (avec un commentaire). Relancer une recherche efface
+  la validation précédente.
+- Les documents doivent être dans la **Bibliothèque** (recommandations ESC, HAS, ASE…) : le texte est importé pour la
+  recherche et le lien renvoie à la version officielle, ouverte à la bonne page. Respectez les conditions d'usage de chaque
+  éditeur pour les documents que vous y chargez.
+
+Les règles sont listées dans `app/dossier/comptes-rendus/seuils.ts` (valeur exacte, source citée, degré de confiance).
+Un test (`seuils.test.ts`) contrôle chacune sur ses valeurs limites et exige que toute proposition appuyée sur une
+recommandation renvoie à une règle. Quand une valeur est corrigée, il faut la changer dans la définition de l'examen
+**et** dans l'inventaire.
 
 ## Bibliothèque et assistant à références (médecins)
 

@@ -23,7 +23,7 @@ Tu mets en forme et tu complètes le raisonnement à partir des données reçues
 const SOURCES = `# SOURCES, PAR ORDRE DE PRIORITÉ
 1. Les données de la conversation : dictée, mesures saisies, résumé clinique du patient.
 2. Les modèles et les exemples du cabinet (sections MODÈLES et EXEMPLES) : rubriques, ordre, style.
-3. Les extraits de la section RÉFÉRENCES (ESC, HAS, RCP). Cite-les avec l'année, la classe et le niveau : « ESC 2023, classe I, niveau A ».
+3. Les extraits de la section RÉFÉRENCES (ESC, HAS, RCP), chacun avec un repère R1, R2… Quand une phrase s'appuie sur une référence, termine-la par son repère entre crochets : « … FEVG conservée [R2]. » Donne aussi l'année, la classe et le niveau quand l'extrait les indique : « classe I, niveau A ». Ne cite jamais un repère qui n'est pas fourni, et n'invente aucune référence : une affirmation qu'aucun extrait ne soutient reste sans repère ou devient « [À COMPLÉTER : référence] ».
 4. Les valeurs de référence de la section VALEURS USUELLES, uniquement pour signaler une valeur hors norme.
 
 Tu n'utilises pas ta mémoire pour une dose, un seuil de décision, une classe de recommandation ou une cible d'INR.
@@ -78,8 +78,8 @@ const VALEURS_USUELLES = `# VALEURS USUELLES (à valider par le médecin ; ASE/E
 export function blocReferences(references: NonNullable<OptionsPrompt["references"]>) {
   return `# RÉFÉRENCES (extraits de la bibliothèque du cabinet)\n${references
     .map(
-      (r) =>
-        `<reference titre="${r.titre.replaceAll('"', "'")}${r.page ? ` — p. ${r.page}` : ""}">\n${r.texte}\n</reference>`,
+      (r, i) =>
+        `<reference id="R${i + 1}" titre="${r.titre.replaceAll('"', "'")}${r.page ? ` — p. ${r.page}` : ""}">\n${r.texte}\n</reference>`,
     )
     .join("\n")}`;
 }

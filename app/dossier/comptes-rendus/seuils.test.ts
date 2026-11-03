@@ -7,16 +7,28 @@ import { propositionsETT } from "../ett";
 import { categorieCalcique } from "./definitions/coronaires";
 import { duke } from "./definitions/effort";
 import { trouverModele } from "./index";
+import { avecSeuils, SANS_REFERENCE } from "./references-propositions";
 import { seuils } from "./seuils";
 import type { Contexte, ValeursExamen } from "./types";
 
 const H: Contexte = { age: 50, sexe: "M" };
 const F: Contexte = { age: 50, sexe: "F" };
-const prop = (cle: string, v: ValeursExamen, c: Contexte = H) =>
-  trouverModele(cle)!.propositions(v, c).map((p) => p.texte).join(" | ");
+const ids = new Set(seuils.map((s) => s.id));
+// Toute proposition qui s'appuie sur une recommandation doit renvoyer à une règle de l'inventaire (pour afficher sa référence)
+const texteVerifie = (modele: string, propositions: { texte: string; source: string }[]) =>
+  avecSeuils(modele, propositions)
+    .map((p) => {
+      if (!SANS_REFERENCE.includes(p.source)) {
+        expect(p.seuils.length, `${modele} : « ${p.texte} » (${p.source}) n'a pas de règle`).toBeGreaterThan(0);
+        for (const id of p.seuils) expect(ids.has(id), id).toBe(true);
+      }
+      return p.texte;
+    })
+    .join(" | ");
+const prop = (cle: string, v: ValeursExamen, c: Contexte = H) => texteVerifie(cle, trouverModele(cle)!.propositions(v, c));
 const calc = (cle: string, v: ValeursExamen, c: Contexte = H) => trouverModele(cle)!.calculs(v, c).join(" | ");
-const ett = (valeurs: Record<string, number>, sexe: "M" | "F" = "M") =>
-  propositionsETT({ poids: null, taille: null, valeurs }, sexe).map((p) => p.texte).join(" | ");
+const ett = (valeurs: Record<string, number>, sexe: "M" | "F" = "M", poids: number | null = null, taille: number | null = null) =>
+  texteVerifie("ett", propositionsETT({ poids, taille, valeurs }, sexe));
 
 const sin = "sinusal régulier";
 const base = { traitement: "non traité", nbJour: 40, nbNuit: 12 };
@@ -162,6 +174,13 @@ const verifs: Record<string, () => void> = {
     expect(prop("doppler-veineux", { refluxProfond: 1.1 })).toContain("Reflux veineux profond");
     expect(prop("doppler-veineux", { refluxProfond: 1 })).not.toContain("Reflux veineux profond");
   },
+  "veineux-tvp": () => {
+    expect(prop("doppler-veineux", { thrombose: "absente" })).toContain("Pas de thrombose veineuse profonde");
+    expect(prop("doppler-veineux", { thrombose: "proximale (fémoro-poplitée ou iliaque)" })).toContain("proximale");
+    expect(prop("doppler-veineux", { thrombose: "distale (jambière)" })).toContain("distale");
+    expect(prop("doppler-veineux", { thrombose: "musculaire (surale)" })).toContain("musculaire");
+    expect(prop("doppler-veineux", { thrombose: "superficielle" })).toContain("superficielle");
+  },
   "ips-seuils": () => {
     expect(ips(90)).toContain("artériopathie");
     expect(ips(91)).toContain("limite");
@@ -198,6 +217,7 @@ const verifs: Record<string, () => void> = {
     expect(CAD({ tc: "modérée (50 à 69 %)" })).toContain("CAD-RADS 4B");
     expect(CAD({ tc: "légère (25 à 49 %)" })).toContain("CAD-RADS 2");
     expect(CAD({ cd: "occlusion (100 %)" })).toContain("CAD-RADS 5");
+    expect(prop("coroscanner", { iva: "modérée (50 à 69 %)", agatston: 250 })).toContain("test fonctionnel");
   },
   calcique: () => {
     expect([0, 1, 99, 100, 299, 300].map(categorieCalcique)).toEqual(["A0", "A1", "A1", "A2", "A2", "A3"]);
@@ -231,6 +251,26 @@ const verifs: Record<string, () => void> = {
     expect(ett({ dtd: 58 }, "M")).not.toContain("Dilatation du ventricule gauche");
     expect(ett({ dtd: 53 }, "F")).toContain("Dilatation du ventricule gauche");
     expect(ett({ dtd: 52 }, "F")).not.toContain("Dilatation du ventricule gauche");
+  },
+  "ett-masse": () => {
+    // Surface corporelle de 1,82 m² (70 kg, 170 cm)
+    expect(ett({ dtd: 50, siv: 14, pp: 14 }, "M", 70, 170)).toContain("Hypertrophie ventriculaire gauche concentrique");
+    expect(ett({ dtd: 46, siv: 9, pp: 9 }, "M", 70, 170)).not.toContain("Hypertrophie");
+    // masse indexée d'environ 107 g/m² : au-dessus du seuil de la femme (95), sous celui de l'homme (115)
+    expect(ett({ dtd: 48, siv: 11, pp: 11 }, "F", 70, 170)).toContain("Hypertrophie ventriculaire gauche");
+    expect(ett({ dtd: 48, siv: 11, pp: 11 }, "M", 70, 170)).not.toContain("Hypertrophie");
+  },
+  "ett-rm": () => {
+    expect(ett({ surfMitrale: 1 })).toContain("très serré");
+    expect(ett({ surfMitrale: 1.5 })).toContain("mitral serré");
+    expect(ett({ surfMitrale: 1.6 })).toContain("non serré");
+    expect(ett({ surfMitrale: 4 })).toBe("");
+  },
+  "ett-rao": () => {
+    expect(ett({ surfAo: 0.8, vmaxAo: 4.2, gmAo: 45 })).toContain("Rétrécissement aortique serré");
+    expect(ett({ surfAo: 0.8, vmaxAo: 3, gmAo: 30 })).toContain("Discordance");
+    expect(ett({ vmaxAo: 3.5 })).toContain("moyennement serré");
+    expect(ett({ vmaxAo: 2.5, gmAo: 15, surfAo: 2 })).toBe("");
   },
   "ett-oreillettes": () => {
     expect(ett({ ogSurf: 21 })).toContain("oreillette gauche");

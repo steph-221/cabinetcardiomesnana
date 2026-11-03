@@ -14,6 +14,21 @@ export type Seuil = {
   motsFr: string[];
 };
 
+// Résultat de la vérification d'une règle contre la bibliothèque : l'assistant propose, le médecin valide.
+export type ReferenceSeuil = {
+  seuil: string;
+  verdict: "confirme" | "contredit" | "non_tranche" | "aucune_source";
+  explication: string;
+  citation: string | null; // phrase recopiée du passage (retrouvée mot pour mot dans le texte de la source)
+  passageId: number | null;
+  sourceTitre: string | null;
+  page: number | null;
+  url: string | null;
+  valide: "" | "conforme" | "a_corriger";
+  validePar: string;
+  commentaire: string;
+};
+
 export const seuils: Seuil[] = [
   // --- ECG ---
   {
@@ -342,6 +357,46 @@ export const seuils: Seuil[] = [
     motsFr: ["insuffisance cardiaque", "fraction d'éjection", "préservée", "modérément altérée"],
   },
   // --- ETT (déjà en place) ---
+  {
+    id: "veineux-tvp",
+    examen: "Doppler veineux",
+    sujet: "Thrombose veineuse profonde",
+    regle: "Thrombose proposée selon la compressibilité de la veine ; proximale : anticoagulation et prise en charge urgente à discuter ; distale ou musculaire : anticoagulation ou surveillance échographique ; superficielle : distance à la jonction saphéno-fémorale.",
+    source: "ESC 2019 embolie pulmonaire ; ESVS 2021 thrombose veineuse",
+    confiance: "à confirmer",
+    motsEn: ["deep vein thrombosis", "compression ultrasound", "proximal", "distal", "isolated calf vein thrombosis", "anticoagulation"],
+    motsFr: ["thrombose veineuse profonde", "échographie de compression", "thrombose distale", "anticoagulation"],
+  },
+  {
+    id: "ett-masse",
+    examen: "ETT",
+    sujet: "Hypertrophie ventriculaire gauche",
+    regle: "Masse VG de Devereux indexée à la surface corporelle : > 115 g/m² (homme) ou > 95 g/m² (femme) = hypertrophie ; concentrique si épaisseur relative > 0,42, sinon excentrique.",
+    source: "ASE/EACVI 2015",
+    confiance: "sûr",
+    motsEn: ["left ventricular mass index", "115 g/m2", "95 g/m2", "relative wall thickness 0.42", "concentric hypertrophy"],
+    motsFr: ["masse ventriculaire gauche indexée", "hypertrophie concentrique", "épaisseur relative"],
+  },
+  {
+    id: "ett-rm",
+    examen: "ETT",
+    sujet: "Rétrécissement mitral",
+    regle: "Surface mitrale ≤ 1 cm² : très serré ; ≤ 1,5 cm² : serré ; au-dessus (jusqu'à 4 cm²) : non serré.",
+    source: "ESC valvulopathies",
+    confiance: "à confirmer",
+    motsEn: ["mitral stenosis", "mitral valve area", "1.5 cm2", "clinically significant", "severe"],
+    motsFr: ["rétrécissement mitral", "surface mitrale", "1,5 cm2"],
+  },
+  {
+    id: "ett-rao",
+    examen: "ETT",
+    sujet: "Rétrécissement aortique",
+    regle: "Serré si surface < 1 cm² avec Vmax ≥ 4 m/s ou gradient moyen ≥ 40 mmHg ; surface < 1 cm² avec gradient plus bas : discordance (bas débit possible) ; Vmax ≥ 3 m/s, gradient moyen ≥ 20 mmHg ou surface ≤ 1,5 cm² : moyennement serré.",
+    source: "ESC valvulopathies",
+    confiance: "à confirmer",
+    motsEn: ["aortic stenosis", "severe", "aortic valve area 1.0 cm2", "mean gradient 40 mmHg", "peak velocity 4 m/s", "low-flow low-gradient"],
+    motsFr: ["rétrécissement aortique", "surface aortique", "gradient moyen", "bas débit bas gradient"],
+  },
   {
     id: "ett-dtd",
     examen: "ETT",

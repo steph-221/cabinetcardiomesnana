@@ -18,6 +18,9 @@ import {
 import { age as ageAu, lirePatient, type Patient } from "../../../dossier/patients";
 import { champs, type DonneesExamen, type ValeursExamen } from "../../../dossier/comptes-rendus/types";
 import { trouverModele } from "../../../dossier/comptes-rendus";
+import { referencesCitees } from "../../../dossier/comptes-rendus/references";
+import { trouverSeuil } from "../../../dossier/comptes-rendus/seuils";
+import { lireReferences } from "../../../dossier/verification-seuils";
 import { pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
 import { nomFichier } from "../../../dossier/reponse-pdf";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
@@ -42,6 +45,15 @@ const decimal = (brut: FormDataEntryValue | null) => {
   const n = Number(t);
   return Number.isFinite(n) ? n : undefined;
 };
+
+// Références citées par les repères [1], [2]… du « AU TOTAL » : retrouvées côté serveur d'après les règles choisies
+async function lignesReferences(total: string, brut: FormDataEntryValue | null) {
+  const demandees = String(brut ?? "").split(",").filter(Boolean).slice(0, 20);
+  const ids = demandees.filter((id) => trouverSeuil(id));
+  if (!ids.length || ids.length !== demandees.length) return [];
+  const refs = await lireReferences().catch(() => ({}));
+  return referencesCitees(total, ids, refs).map((l) => l.slice(0, 900));
+}
 
 // --- Ordonnance ---
 
@@ -146,6 +158,7 @@ export async function nouveauCompteRenduETT(
     total: texte(formData, "total", 5000),
   };
   if (!donnees.total) return echec("Rédigez le « AU TOTAL » (les propositions peuvent y être ajoutées).", formData);
+  donnees.references = await lignesReferences(donnees.total, formData.get("references"));
 
   try {
     const id = await ajouterExamen(
@@ -237,6 +250,7 @@ export async function nouveauCompteRenduExamen(
     total: texte(formData, "total", 5000),
   };
   if (!donnees.total) return echec("Rédigez le « AU TOTAL » (les propositions peuvent y être ajoutées).", formData);
+  donnees.references = await lignesReferences(donnees.total, formData.get("references"));
 
   try {
     const id = await ajouterExamen(

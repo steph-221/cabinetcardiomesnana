@@ -1,11 +1,13 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Check, Copy, LoaderCircle, Mic, Sparkles, Square } from "lucide-react";
+import { Check, Copy, ExternalLink, FileSearch, LoaderCircle, Mic, Sparkles, Square } from "lucide-react";
+import type { ReferenceJointe } from "../../../dossier/redaction";
+import { lienPage } from "../../../dossier/sources";
 import { Moteur, type Reconnaissance } from "./dictee";
 import { enregistrerCompteRendu } from "./actions-documents";
 
-type Resultat = { compteRendu: string; verifications: string[]; sources: string[] };
+type Resultat = { compteRendu: string; verifications: string[]; references: ReferenceJointe[] };
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -97,9 +99,15 @@ export function RedactionCompteRendu({
     }
   }
 
+  // Références dont le repère [R1] figure encore dans le texte : elles sont reprises à la fin du compte rendu
+  const citees = (resultat?.references ?? []).filter((r) => new RegExp(`\\[[^\\]]*\\b${r.repere}\\b[^\\]]*\\]`).test(texte));
+  const ligne = (r: ReferenceJointe) =>
+    `[${r.repere}] ${r.titre}${r.page ? `, p. ${r.page}` : ""}${r.url ? ` — ${lienPage(r.url, r.page)}` : ""}`;
+
   function enregistrer() {
     sauvegarder(async () => {
-      const message = await enregistrerCompteRendu(langue, patientId, type, date, texte);
+      const final = citees.length ? `${texte.trim()}\n\nRÉFÉRENCES\n${citees.map(ligne).join("\n")}` : texte;
+      const message = await enregistrerCompteRendu(langue, patientId, type, date, final);
       if (message) setErreur(message);
     });
   }
@@ -193,11 +201,48 @@ export function RedactionCompteRendu({
             Compte rendu (modifiable)
             <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={22} className={`${champ} font-mono`} />
           </label>
-          {resultat.sources.length > 0 && (
-            <p className="text-xs text-slate-500">Recommandations de la bibliothèque jointes : {resultat.sources.join(" · ")}</p>
-          )}
+          <div className="rounded-lg border border-slate-200 p-3 text-xs text-slate-600">
+            <p className="font-medium text-slate-700">Références citées dans ce texte</p>
+            {citees.length === 0 ? (
+              <p className="mt-1 text-amber-800">
+                Aucun repère de référence dans le texte{resultat.references.length === 0 ? " : aucun passage de la bibliothèque n'a été trouvé pour cet examen" : ""}.
+                Les affirmations médicales ne sont alors appuyées sur aucune source : relisez-les avec attention.
+              </p>
+            ) : (
+              <ul className="mt-1 space-y-2">
+                {citees.map((r) => (
+                  <li key={r.repere}>
+                    <span className="font-medium text-slate-800">[{r.repere}]</span> {r.titre}
+                    {r.page ? `, p. ${r.page}` : ""}
+                    <span className="ms-3 inline-flex flex-wrap gap-3">
+                      <a
+                        href={`/${langue}/espace/bibliotheque/passage/${r.passageId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-red-700 underline"
+                      >
+                        <FileSearch className="h-3 w-3" aria-hidden />
+                        Voir le passage
+                      </a>
+                      {r.url && (
+                        <a
+                          href={lienPage(r.url, r.page)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-red-700 underline"
+                        >
+                          <ExternalLink className="h-3 w-3" aria-hidden />
+                          {r.page ? `Ouvrir le document, page ${r.page}` : "Ouvrir le document"}
+                        </a>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <p className="text-xs text-slate-500">
-            Remplacez chaque « [À COMPLÉTER] » ou supprimez la ligne. C&apos;est une proposition : vous relisez, corrigez et signez.
+            Remplacez chaque « [À COMPLÉTER] » ou supprimez la ligne. C&apos;est une aide : vous relisez, corrigez et validez ; les références citées sont reprises à la fin du compte rendu enregistré.
           </p>
           <div className="flex flex-wrap gap-2">
             <button

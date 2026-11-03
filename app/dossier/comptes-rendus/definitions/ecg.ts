@@ -70,7 +70,7 @@ export const ecg: ModeleExamen = {
             : `Fibrillation atriale à ${fr(fc)} bpm.`,
           "ESC 2020 fibrillation atriale",
         );
-      } else if (rythme === "flutter atrial") ajouter(`Flutter atrial à ${fr(fc)} bpm.`, "AHA/ACCF/HRS 2009");
+      } else if (rythme === "flutter atrial") ajouter(`Flutter atrial à ${fr(fc)} bpm.`, "Critère usuel");
     }
     if (pr !== null) {
       if (pr > 200) ajouter(`Bloc auriculo-ventriculaire du 1er degré (PR ${fr(pr)} ms).`, "ESC 2021 stimulation cardiaque");

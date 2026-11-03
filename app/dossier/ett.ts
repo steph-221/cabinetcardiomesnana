@@ -60,6 +60,7 @@ export type DonneesETT = {
   taille: number | null;
   valeurs: ValeursETT;
   total: string; // « AU TOTAL »
+  references?: string[]; // lignes « [1] document, page : phrase citée » des repères du « AU TOTAL »
 };
 
 const nombre = (v: ValeursETT, cle: string) => (typeof v[cle] === "number" ? (v[cle] as number) : null);
@@ -87,7 +88,7 @@ export function calculsETT(d: Pick<DonneesETT, "poids" | "taille" | "valeurs">) 
   };
 }
 
-export type Proposition = { texte: string; source: string };
+export type Proposition = { texte: string; source: string; seuils?: string[] };
 
 // Propositions pour le « AU TOTAL », d'après les seuils usuels (ASE/EACVI, ESC). Rien n'est ajouté sans le médecin.
 export function propositionsETT(d: Pick<DonneesETT, "poids" | "taille" | "valeurs">, sexe: "" | "F" | "M") {

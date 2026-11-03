@@ -12,7 +12,9 @@ import { modeles } from "./prompts/modeles";
 // Types d'examens rédigés ici (la consultation a son propre formulaire)
 export const typesRedaction = Object.keys(modeles).filter((t) => t !== "Consultation");
 
-export type CompteRendu = { compteRendu: string; verifications: string[]; sources: string[] };
+// Références jointes à la demande, numérotées R1, R2… comme dans le texte : le passage permet d'ouvrir le document cité
+export type ReferenceJointe = { repere: string; passageId: number; titre: string; page: number | null; url: string; extrait: string };
+export type CompteRendu = { compteRendu: string; verifications: string[]; references: ReferenceJointe[] };
 
 let client: Anthropic | null = null;
 
@@ -56,5 +58,16 @@ export async function rediger(type: string, dictee: string, contexte: string | n
   const texte = reponse.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
   const { compteRendu, verifications } = separerVerifications(texte);
   if (!compteRendu) throw new Error("Réponse vide");
-  return { compteRendu, verifications: verifications.slice(0, 5), sources: references.map((r) => r.titre) };
+  return {
+    compteRendu,
+    verifications: verifications.slice(0, 5),
+    references: passages.map((p, i) => ({
+      repere: `R${i + 1}`,
+      passageId: p.id,
+      titre: libelleSource(p.source),
+      page: p.page,
+      url: p.source.url,
+      extrait: p.texte.slice(0, 300),
+    })),
+  };
 }

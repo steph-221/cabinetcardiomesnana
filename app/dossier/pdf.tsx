@@ -341,6 +341,16 @@ export function pdfETT(d: DonneesETT, date: string, patient: Patient) {
             </View>
           </View>
         )}
+        {d.references && d.references.length > 0 && (
+          <View wrap={false}>
+            <Text style={s.section}>Références</Text>
+            {d.references.map((l, i) => (
+              <Text key={i} style={{ fontSize: 8, color: "#475569", marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
+          </View>
+        )}
         <Text style={s.signature}>Signature et cachet</Text>
         <Pied />
       </Page>
@@ -412,6 +422,16 @@ export function pdfCompteRendu(d: DonneesExamen, date: string, patient: Patient)
             <View style={s.gras}>
               <Paragraphes texte={d.total} />
             </View>
+          </View>
+        )}
+        {d.references && d.references.length > 0 && (
+          <View wrap={false}>
+            <Text style={s.section}>Références</Text>
+            {d.references.map((l, i) => (
+              <Text key={i} style={{ fontSize: 8, color: "#475569", marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
