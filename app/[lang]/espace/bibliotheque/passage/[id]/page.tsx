@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { lang as langueRacine } from "next/root-params";
 import { ExternalLink, Library } from "lucide-react";
 import { estLangue } from "../../../../../cabinet";
 import { exigerUtilisateur } from "../../../../../agenda/session";
@@ -20,7 +21,7 @@ export default async function PassagePage({
   params,
   searchParams,
 }: PageProps<"/[lang]/espace/bibliotheque/passage/[id]">) {
-  const { lang } = await params;
+  const lang = await langueRacine();
   if (!estLangue(lang)) return null;
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
