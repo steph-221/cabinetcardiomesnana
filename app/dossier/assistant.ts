@@ -60,7 +60,7 @@ Règles :
 6. Réponse courte et structurée : phrases brèves, listes quand c'est utile, sans formule de politesse ni avertissement général. Le médecin garde la décision.`;
 
 // Mots-clés de recherche, en anglais et en français
-async function termesRecherche(question: string, contexte: string | null) {
+export async function termesRecherche(question: string, contexte: string | null) {
   const reponse = await anthropic().beta.messages.create({
     model: "claude-opus-5-5",
     max_tokens: 2000,

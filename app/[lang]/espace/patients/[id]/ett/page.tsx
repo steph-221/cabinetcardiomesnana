@@ -8,6 +8,7 @@ import { jourLocal } from "../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../agenda/session";
 import { listerConsultations } from "../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../dossier/patients";
+import { lireReferences } from "../../../../../dossier/verification-seuils";
 import { Retour } from "../../commun";
 import { FormulaireETT } from "../../documents";
 
@@ -44,6 +45,7 @@ async function Formulaire({
   const consultations = await listerConsultations(id);
   const poids = consultations.find((c) => c.poids !== null)?.poids ?? null;
   const taille = consultations.find((c) => c.taille !== null)?.taille ?? null;
+  const references = await lireReferences().catch(() => ({}));
 
   return (
     <>
@@ -61,6 +63,7 @@ async function Formulaire({
         taille={taille}
         operateur={utilisateur.admin ? cabinet.medecin : utilisateur.identifiant}
         aujourdhui={jourLocal(new Date())}
+        references={references}
       />
     </>
   );

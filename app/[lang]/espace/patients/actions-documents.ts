@@ -7,7 +7,7 @@ import { exigerUtilisateur } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
 import { compteDrive, envoyerExamen, mettreALaCorbeille } from "../../../dossier/drive";
 import { champsETT, type DonneesETT } from "../../../dossier/ett";
-import { ajouterExamen, rangerFichierExamen } from "../../../dossier/examens";
+import { ajouterExamen, rangerFichierExamen, typesExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
 import {
   creerOrdonnance,
@@ -15,8 +15,13 @@ import {
   supprimerOrdonnance,
   type LigneOrdonnance,
 } from "../../../dossier/ordonnances";
-import { lirePatient, type Patient } from "../../../dossier/patients";
-import { pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
+import { age as ageAu, lirePatient, type Patient } from "../../../dossier/patients";
+import { champs, type DonneesExamen, type ValeursExamen } from "../../../dossier/comptes-rendus/types";
+import { trouverModele } from "../../../dossier/comptes-rendus";
+import { referencesCitees } from "../../../dossier/comptes-rendus/references";
+import { trouverSeuil } from "../../../dossier/comptes-rendus/seuils";
+import { lireReferences } from "../../../dossier/verification-seuils";
+import { pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
 import { nomFichier } from "../../../dossier/reponse-pdf";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
 
@@ -40,6 +45,15 @@ const decimal = (brut: FormDataEntryValue | null) => {
   const n = Number(t);
   return Number.isFinite(n) ? n : undefined;
 };
+
+// Références citées par les repères [1], [2]… du « AU TOTAL » : retrouvées côté serveur d'après les règles choisies
+async function lignesReferences(total: string, brut: FormDataEntryValue | null) {
+  const demandees = String(brut ?? "").split(",").filter(Boolean).slice(0, 20);
+  const ids = demandees.filter((id) => trouverSeuil(id));
+  if (!ids.length || ids.length !== demandees.length) return [];
+  const refs = await lireReferences().catch(() => ({}));
+  return referencesCitees(total, ids, refs).map((l) => l.slice(0, 900));
+}
 
 // --- Ordonnance ---
 
@@ -144,6 +158,7 @@ export async function nouveauCompteRenduETT(
     total: texte(formData, "total", 5000),
   };
   if (!donnees.total) return echec("Rédigez le « AU TOTAL » (les propositions peuvent y être ajoutées).", formData);
+  donnees.references = await lignesReferences(donnees.total, formData.get("references"));
 
   try {
     const id = await ajouterExamen(
@@ -153,6 +168,98 @@ export async function nouveauCompteRenduETT(
     );
     await journaliser(utilisateur.identifiant, "compte rendu d'ETT rédigé", patientId, date);
     const copie = await archiver(patient, nomFichier("ETT", patient, date), await pdfETT(donnees, date, patient));
+    if (copie) await rangerFichierExamen(id, copie);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.", formData);
+  }
+  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+}
+
+// --- Compte rendu rédigé par Claude à partir d'une dictée, relu et corrigé par le médecin ---
+
+export async function enregistrerCompteRendu(
+  langue: string,
+  patientId: number,
+  type: string,
+  date: string,
+  compteRendu: string,
+): Promise<string | null> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!typesExamen.includes(type)) return "Type d'examen inconnu.";
+  if (!estJour(date) || date > jourLocal(new Date())) return "Vérifiez la date de l'examen.";
+  const corps = compteRendu.trim().slice(0, 20_000);
+  if (!corps) return "Le compte rendu est vide.";
+  if (!(await lirePatient(patientId))) return "Dossier introuvable.";
+  try {
+    await ajouterExamen(
+      patientId,
+      { type, date, conclusion: corps, valeurs: { redaction: true }, fichier: null },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, "compte rendu enregistré", patientId, `${type} ${date}`);
+  } catch (erreur) {
+    console.error(erreur);
+    return "Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.";
+  }
+  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+}
+
+// --- Compte rendu d'ECG, de MAPA ou d'épreuve d'effort (champs, calculs et propositions : dossier/comptes-rendus) ---
+
+export async function nouveauCompteRenduExamen(
+  langue: string,
+  patientId: number,
+  cle: string,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const modele = trouverModele(cle);
+  if (!modele) return echec("Modèle de compte rendu inconnu.", formData);
+  const patient = await lirePatient(patientId);
+  if (!patient) return echec("Dossier introuvable.", formData);
+  const date = String(formData.get("date") ?? "");
+  if (!estJour(date) || date > jourLocal(new Date())) return echec("Vérifiez la date de l'examen.", formData);
+
+  const valeurs: ValeursExamen = {};
+  for (const champ of champs(modele)) {
+    const brut = String(formData.get(champ.cle) ?? "").trim();
+    if (!brut) continue;
+    if (champ.type === "nombre") {
+      const n = Number(brut.replace(",", "."));
+      if (!Number.isFinite(n) || (champ.min !== undefined && n < champ.min) || (champ.max !== undefined && n > champ.max)) {
+        return echec(
+          `Valeur invalide pour « ${champ.libelle} » (entre ${champ.min} et ${champ.max}${champ.unite ? ` ${champ.unite}` : ""}).`,
+          formData,
+        );
+      }
+      valeurs[champ.cle] = n;
+    } else if (champ.type === "choix") {
+      if (!champ.options?.includes(brut)) return echec(`Choix invalide pour « ${champ.libelle} ».`, formData);
+      valeurs[champ.cle] = brut;
+    } else valeurs[champ.cle] = brut.slice(0, 300);
+  }
+  const donnees: DonneesExamen = {
+    modele: modele.cle,
+    indication: texte(formData, "indication", 300),
+    operateur: texte(formData, "operateur", 100) || cabinet.medecin,
+    age: ageAu(patient.naissance, date),
+    sexe: patient.sexe,
+    valeurs,
+    total: texte(formData, "total", 5000),
+  };
+  if (!donnees.total) return echec("Rédigez le « AU TOTAL » (les propositions peuvent y être ajoutées).", formData);
+  donnees.references = await lignesReferences(donnees.total, formData.get("references"));
+
+  try {
+    const id = await ajouterExamen(
+      patientId,
+      { type: modele.type, date, conclusion: donnees.total, valeurs: { cr: donnees }, fichier: null },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, `compte rendu ${modele.bouton} rédigé`, patientId, date);
+    const copie = await archiver(patient, nomFichier(modele.bouton, patient, date), await pdfCompteRendu(donnees, date, patient));
     if (copie) await rangerFichierExamen(id, copie);
   } catch (erreur) {
     console.error(erreur);

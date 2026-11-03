@@ -164,6 +164,81 @@ Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement grat
 utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
 d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
 
+## Rédiger un compte rendu par dictée (médecins)
+
+Dans un dossier, section **Examens** → **Rédiger par dictée**. Choisir le type d'examen (ETT, échographie d'effort,
+Doppler, ECG, Holter, MAPA, épreuve d'effort, coroscanner, coronarographie, biologie), **Dicter** (ou saisir les
+résultats), puis **Rédiger le compte rendu**.
+
+- Claude met la dictée en forme dans le modèle du cabinet, fait les calculs (masse VG, FMT, surface corporelle…),
+  propose le « AU TOTAL » avec les diagnostics différentiels et la conduite « à discuter ». Ce qui n'est pas dicté reste
+  « [À COMPLÉTER] ».
+- Un encadré **À vérifier** liste les incohérences et les données manquantes (5 au plus). Il n'est pas enregistré.
+- Le texte est modifiable ; **Enregistrer dans les examens** le range dans le dossier (rien n'est enregistré avant).
+- Les passages utiles de la bibliothèque (ESC, RCP) sont joints à la demande. Seuls le texte dicté et un résumé du
+  dossier sans nom ni coordonnées partent chez Claude. Même clé `ANTHROPIC_API_KEY` que la dictée.
+- Le prompt, les modèles par examen et les exemples sont dans `app/dossier/prompts/` (à adapter à votre style).
+
+## Comptes rendus d'ECG, Holter, MAPA, effort, Doppler, coroscanner et coronarographie (médecins)
+
+Dans un dossier, section **Examens** : boutons **ECG**, **Holter**, **MAPA**, **Épreuve d'effort**, **Doppler veineux**,
+**Doppler artériel MI**, **Doppler TSA**, **Coroscanner** et **Coronarographie**, comme pour l'ETT. On remplit
+les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent à jour pendant la saisie (un clic sur
+**Ajouter** les reprend, vous les corrigez). Le PDF est généré et rangé dans Drive si Drive est connecté.
+
+- **ECG** : QT corrigé (Fridericia et Bazett), bradycardie ou tachycardie, BAV du 1er degré, QRS élargis, axe, FA rapide.
+- **Holter** : nombre de complexes et charge d'extrasystoles ventriculaires, TV non soutenue, pauses de 3 secondes ou plus,
+  FA paroxystique (avec renvoi au CHA₂DS₂-VA), bradycardie, qualité du tracé.
+- **Doppler veineux** : thrombose (proximale, distale, musculaire, superficielle), reflux des saphènes et profond, œdème,
+  adénopathie, incohérence de compressibilité signalée.
+- **Doppler artériel MI** : IPS de chaque côté (cheville la plus haute sur brachiale la plus haute) et palier (normal,
+  limite, artériopathie, incompressible).
+- **Doppler TSA** : sténose de l'ACI d'après la vitesse systolique, flux vertébral inversé, épaisseur intima-média.
+- **Coroscanner** : score calcique (catégorie A0 à A3) et **CAD-RADS 2.0 calculé** d'après la sténose choisie pour chaque
+  artère (tronc commun, IVA, circonflexe, coronaire droite), avec la conduite « à discuter » de la catégorie ; une artère
+  non évaluable rend la catégorie provisoire.
+- **Coronarographie** : atteinte mono, bi ou tritronculaire, tronc commun, sténose intermédiaire à évaluer (FFR ≤ 0,80,
+  iFR ≤ 0,89), FEVG, geste réalisé et complications.
+- **MAPA** : baisse nocturne et profil (dipper, non-dipper, riser), HTA confirmée, blouse blanche ou masquée (non
+  traité), HTA contrôlée ou non (traité), validité de l'enregistrement.
+- **Épreuve d'effort** : FMT (220 − âge) et pourcentage atteint, test maximal ou sous-maximal, sous-décalage de ST, score
+  de Duke (tapis), double produit, réponse tensionnelle. Un test négatif mais sous-maximal est proposé « non concluant ».
+
+Chaque page rappelle l'origine des seuils (ESC/ESH 2018, AHA/ACCF/HRS 2009, ESC 2019…). **Relisez-les contre vos
+recommandations avant de vous y fier.** Les modèles sont dans `app/dossier/comptes-rendus/definitions/` : un fichier par
+examen, facile à ajuster ou à compléter (Holter, doppler…).
+
+### Références et validation par le médecin
+
+Principe : **tout ce que propose le site est une aide ; le médecin relit, corrige et valide.** Chaque proposition qui
+s'appuie sur une recommandation montre sa référence, et aucune référence n'est présentée comme vérifiée sans votre
+validation.
+
+- **Sous chaque proposition** (ETT, ECG, Holter, MAPA, effort, Doppler, coroscanner, coronarographie) : la phrase de la
+  recommandation, le document avec sa page, un lien **Voir le passage** (le texte de la source, la phrase surlignée) et un
+  lien **Ouvrir le document, page N**. Un badge dit si la règle est *validée par* un médecin, *proposée, à valider*,
+  *à corriger*, ou si la source dit autre chose. Sans passage trouvé, le site l'écrit : « Source non retrouvée dans la
+  bibliothèque » avec la source attendue.
+- **Dans le compte rendu** : chaque proposition ajoutée au « AU TOTAL » porte un repère [1], [2]… et la liste des
+  références (document, page, phrase citée, validée ou non) est imprimée sous le « AU TOTAL », dans l'écran, le PDF et le
+  dossier.
+- **Rédaction par dictée** : Claude cite les extraits de la bibliothèque par un repère [R1], [R2]… et n'invente aucune
+  référence ; chaque repère renvoie au passage et au document. Les références citées sont reprises à la fin du texte
+  enregistré. Un texte sans référence est signalé.
+- **Page Vérifier les seuils** (Bibliothèque → *Vérifier les seuils*) : pour chacune des règles de l'inventaire, **Chercher
+  dans la bibliothèque** fait proposer par Claude un verdict (la source confirme, dit autre chose, ou ne tranche pas) avec la
+  phrase recopiée. La phrase est contrôlée mot pour mot dans le texte du passage : si elle n'y est pas, aucun verdict n'est
+  retenu. Vous lisez le passage, puis **Je valide** ou **À corriger** (avec un commentaire). Relancer une recherche efface
+  la validation précédente.
+- Les documents doivent être dans la **Bibliothèque** (recommandations ESC, HAS, ASE…) : le texte est importé pour la
+  recherche et le lien renvoie à la version officielle, ouverte à la bonne page. Respectez les conditions d'usage de chaque
+  éditeur pour les documents que vous y chargez.
+
+Les règles sont listées dans `app/dossier/comptes-rendus/seuils.ts` (valeur exacte, source citée, degré de confiance).
+Un test (`seuils.test.ts`) contrôle chacune sur ses valeurs limites et exige que toute proposition appuyée sur une
+recommandation renvoie à une règle. Quand une valeur est corrigée, il faut la changer dans la définition de l'examen
+**et** dans l'inventaire.
+
 ## Bibliothèque et assistant à références (médecins)
 
 L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les

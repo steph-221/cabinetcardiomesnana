@@ -355,4 +355,23 @@ export const migrations: string[][] = [
       PRIMARY KEY (recurrente_id, mois)
     )`,
   ],
+  // 13 — Vérification des seuils cliniques contre la bibliothèque : l'assistant propose un verdict et la phrase citée,
+  // le médecin valide ou demande une correction. Rien n'est considéré comme vérifié sans sa validation.
+  [
+    `CREATE TABLE IF NOT EXISTS seuils_verifies (
+      seuil text PRIMARY KEY,
+      verdict text NOT NULL CHECK (verdict IN ('confirme', 'contredit', 'non_tranche', 'aucune_source')),
+      explication text NOT NULL DEFAULT '',
+      citation text,
+      passage_id integer REFERENCES passages (id) ON DELETE SET NULL,
+      source_titre text,
+      page integer,
+      url text,
+      propose_le timestamptz NOT NULL DEFAULT now(),
+      valide text NOT NULL DEFAULT '' CHECK (valide IN ('', 'conforme', 'a_corriger')),
+      valide_par text NOT NULL DEFAULT '',
+      valide_le timestamptz,
+      commentaire text NOT NULL DEFAULT ''
+    )`,
+  ],
 ];

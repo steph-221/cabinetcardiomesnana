@@ -18,7 +18,7 @@ const libelles: Record<Rubrique, string> = {
 
 // Reconnaissance vocale du navigateur (Chrome, Edge, Safari) : gratuite, le texte arrive pendant que l'on parle
 type Resultat = { isFinal: boolean; 0: { transcript: string } };
-type Reconnaissance = {
+export type Reconnaissance = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
@@ -32,7 +32,7 @@ type FenetreAvecDictee = {
   SpeechRecognition?: new () => Reconnaissance;
   webkitSpeechRecognition?: new () => Reconnaissance;
 };
-const Moteur = () =>
+export const Moteur = () =>
   typeof window === "undefined"
     ? undefined
     : ((window as unknown as FenetreAvecDictee).SpeechRecognition ??

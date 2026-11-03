@@ -139,3 +139,26 @@ export async function rechercherPassages(termes: { en: string[]; fr: string[] },
     },
   }));
 }
+
+// Un passage avec sa source : pour ouvrir « le passage cité » depuis un compte rendu ou la vérification des seuils
+export async function lirePassage(id: number): Promise<Passage | null> {
+  const sql = await base();
+  const [l] = await sql`
+    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url
+    FROM passages p JOIN sources s ON s.id = p.source_id WHERE p.id = ${id}`;
+  return l
+    ? {
+        id: l.id as number,
+        page: l.page as number | null,
+        texte: l.texte as string,
+        source: {
+          id: l.source_id as number,
+          titre: l.titre as string,
+          organisme: l.organisme as string,
+          annee: l.annee as number | null,
+          type: l.type as TypeSource,
+          url: l.url as string,
+        },
+      }
+    : null;
+}

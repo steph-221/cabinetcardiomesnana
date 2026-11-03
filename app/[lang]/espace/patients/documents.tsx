@@ -11,8 +11,12 @@ import {
   type Champ,
   type DonneesETT,
 } from "../../../dossier/ett";
+import { ajouterProposition, referencesCitees } from "../../../dossier/comptes-rendus/references";
+import { avecSeuils } from "../../../dossier/comptes-rendus/references-propositions";
+import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { medicaments } from "../../../dossier/vocabulaire";
 import { nouveauCompteRenduETT, nouvelleOrdonnance, retirerOrdonnance } from "./actions-documents";
+import { LigneReference } from "./reference-seuil";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -194,6 +198,7 @@ export function FormulaireETT({
   taille,
   operateur,
   aujourdhui,
+  references,
 }: {
   langue: string;
   patientId: number;
@@ -202,15 +207,23 @@ export function FormulaireETT({
   taille: number | null;
   operateur: string;
   aujourdhui: string;
+  references: Record<string, ReferenceSeuil>;
 }) {
   const [etat, envoyer] = useActionState(nouveauCompteRenduETT.bind(null, langue, patientId), null);
   const v = (nom: string, initial = "") => (etat ? etat.valeurs[nom] : initial) ?? "";
   const formulaire = useRef<HTMLFormElement>(null);
   const [saisie, setSaisie] = useState(() => ({ valeurs: {}, poids, taille }));
   const [total, setTotal] = useState(v("total"));
+  const [utilisees, setUtilisees] = useState<string[]>([]);
   const calculs = calculsETT(saisie);
-  const propositions = propositionsETT(saisie, sexe);
-  const ajouter = (texte: string) => setTotal((t) => (t.trim() ? `${t.trim()}\n${texte}` : texte));
+  const propositions = avecSeuils("ett", propositionsETT(saisie, sexe));
+  // Chaque proposition ajoutée porte le repère de ses références, citées en bas du compte rendu
+  const ajouter = (p: { texte: string; seuils: string[] }) => {
+    const r = ajouterProposition(total, utilisees, p);
+    setTotal(r.total);
+    setUtilisees(r.utilisees);
+  };
+  const citees = referencesCitees(total, utilisees, references);
 
   const zone = (c: Champ) => (
     <label key={c.cle} className={etiquette}>
@@ -326,17 +339,22 @@ export function FormulaireETT({
             </p>
             <ul className="mt-2 space-y-1">
               {propositions.map((p) => (
-                <li key={p.texte} className="flex flex-wrap items-start gap-2 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => ajouter(p.texte)}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
-                  >
-                    <Plus className="h-3 w-3" aria-hidden />
-                    Ajouter
-                  </button>
-                  <span className="text-slate-800">{p.texte}</span>
-                  <span className="text-xs text-slate-400">{p.source}</span>
+                <li key={p.texte} className="text-sm">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <button
+                      type="button"
+                      onClick={() => ajouter(p)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                    >
+                      <Plus className="h-3 w-3" aria-hidden />
+                      Ajouter
+                    </button>
+                    <span className="text-slate-800">{p.texte}</span>
+                    <span className="text-xs text-slate-400">{p.source}</span>
+                  </div>
+                  {p.seuils.map((id) => (
+                    <LigneReference key={id} langue={langue} id={id} reference={references[id]} />
+                  ))}
                 </li>
               ))}
             </ul>
@@ -350,6 +368,21 @@ export function FormulaireETT({
           onChange={(e) => setTotal(e.target.value)}
           className={champ}
         />
+        <input type="hidden" name="references" value={utilisees.join(",")} />
+        {citees.length > 0 && (
+          <div className="mt-3 text-xs text-slate-600">
+            <p className="font-medium text-slate-700">Références citées (reprises dans le compte rendu)</p>
+            <ul className="mt-1 space-y-1">
+              {citees.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-slate-500">
+          Les propositions sont une aide à la rédaction : vous relisez, corrigez et validez. Les références viennent de la
+          bibliothèque du cabinet ; une référence « non validée » n&apos;a pas encore été relue par un médecin.
+        </p>
       </fieldset>
 
       <Erreur etat={etat} />

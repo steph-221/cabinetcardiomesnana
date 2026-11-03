@@ -7,13 +7,15 @@ import { surfaceCorporelle } from "./calculs";
 import type { Facture, Paiement } from "./compta";
 import { libelleMode, montant, montantEnLettres, totalLignes } from "./compta-calculs";
 import type { Consultation } from "./consultations";
+import { trouverModele } from "./comptes-rendus";
+import { lignesExamen, type DonneesExamen } from "./comptes-rendus/types";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
 import type { LigneOrdonnance } from "./ordonnances";
 import { age, libellePatient, type Patient } from "./patients";
 
 // Les polices intégrées des PDF ne connaissent que l'alphabet latin courant : le reste est remplacé
-const REMPLACEMENTS: Record<string, string> = { "₂": "2", "≥": ">=", "≤": "<=", "→": "->", "≈": "~", " ": "\n" };
+const REMPLACEMENTS: Record<string, string> = { "\u202f": " ", "−": "-", "₂": "2", "≥": ">=", "≤": "<=", "→": "->", "≈": "~", " ": "\n" };
 const AUTORISES = /[\n -ÿŒœŠšŸŽžƒˆ˜–—‘-„†-•…‰‹›€™]/;
 export function propre(texte: string) {
   return [...texte.normalize("NFC")]
@@ -339,6 +341,99 @@ export function pdfETT(d: DonneesETT, date: string, patient: Patient) {
             <View style={s.gras}>
               <Paragraphes texte={d.total} />
             </View>
+          </View>
+        )}
+        {d.references && d.references.length > 0 && (
+          <View wrap={false}>
+            <Text style={s.section}>Références</Text>
+            {d.references.map((l, i) => (
+              <Text key={i} style={{ fontSize: 8, color: "#475569", marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
+          </View>
+        )}
+        <Text style={s.signature}>Signature et cachet</Text>
+        <Pied />
+      </Page>
+    </Document>,
+  );
+}
+
+// --- Compte rendu d'ECG, de MAPA ou d'épreuve d'effort ---
+
+export function pdfCompteRendu(d: DonneesExamen, date: string, patient: Patient) {
+  const modele = trouverModele(d.modele);
+  if (!modele) throw new Error(`Modèle inconnu : ${d.modele}`);
+  const ans = age(patient.naissance, date);
+  const { sections, calculs } = lignesExamen(modele, d);
+  return renderToBuffer(
+    <Document title={`${modele.bouton} ${libellePatient(patient)} ${jour(date)}`} author={cabinet.medecin}>
+      <Page size="A4" style={s.page}>
+        <Entete />
+        <Text style={s.titre}>{propre(modele.titre)}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+          <Text>
+            <Text style={s.gras}>Malade : </Text>
+            {propre(libellePatient(patient))}
+          </Text>
+          {ans !== null && (
+            <Text>
+              <Text style={s.gras}>Âge : </Text>
+              {ans} ans
+            </Text>
+          )}
+          <Text>
+            <Text style={s.gras}>Date : </Text>
+            {jour(date)}
+          </Text>
+        </View>
+        {d.indication && (
+          <Text>
+            <Text style={s.gras}>Indication : </Text>
+            {propre(d.indication)}
+          </Text>
+        )}
+        <Text>
+          <Text style={s.gras}>Opérateur : </Text>
+          {propre(d.operateur)}
+        </Text>
+        {sections.map((sec) => (
+          <View key={sec.titre}>
+            <Text style={s.section}>{propre(sec.titre)}</Text>
+            {sec.lignes.map((l, i) => (
+              <Text key={i} style={{ marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
+          </View>
+        ))}
+        {calculs.length > 0 && (
+          <>
+            <Text style={s.section}>Calculs</Text>
+            {calculs.map((l, i) => (
+              <Text key={i} style={{ marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
+          </>
+        )}
+        {d.total && (
+          <View wrap={false}>
+            <Text style={[s.section, { fontSize: 11 }]}>AU TOTAL</Text>
+            <View style={s.gras}>
+              <Paragraphes texte={d.total} />
+            </View>
+          </View>
+        )}
+        {d.references && d.references.length > 0 && (
+          <View wrap={false}>
+            <Text style={s.section}>Références</Text>
+            {d.references.map((l, i) => (
+              <Text key={i} style={{ fontSize: 8, color: "#475569", marginBottom: 2 }}>
+                {propre(l)}
+              </Text>
+            ))}
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
