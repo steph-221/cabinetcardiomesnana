@@ -194,7 +194,7 @@ les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent 
 - **Doppler artériel MI** : IPS de chaque côté (cheville la plus haute sur brachiale la plus haute) et palier (normal,
   limite, artériopathie, incompressible).
 - **Doppler TSA** : sténose de l'ACI d'après la vitesse systolique, flux vertébral inversé, épaisseur intima-média.
-- **Coroscanner** : score calcique (catégorie A0 à A3) et **CAD-RADS 2.0 calculé** d'après la sténose choisie pour chaque
+- **Coroscanner** : charge de plaque d'après le score calcique (P1 à P4) et **CAD-RADS 2.0 calculé** d'après la sténose choisie pour chaque
   artère (tronc commun, IVA, circonflexe, coronaire droite), avec la conduite « à discuter » de la catégorie ; une artère
   non évaluable rend la catégorie provisoire.
 - **Coronarographie** : atteinte mono, bi ou tritronculaire, tronc commun, sténose intermédiaire à évaluer (FFR ≤ 0,80,
