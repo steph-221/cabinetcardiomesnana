@@ -16,6 +16,7 @@ import {
   Phone,
   Pill,
   Printer,
+  Receipt,
   ScrollText,
   Sparkles,
   TriangleAlert,
@@ -30,6 +31,8 @@ import { modelesExamen } from "../../../../dossier/comptes-rendus";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
 import type { DonneesETT } from "../../../../dossier/ett";
 import { journaliser } from "../../../../dossier/journal";
+import { listerFactures, type Facture } from "../../../../dossier/compta";
+import { libelleStatut, mad } from "../../../../dossier/compta-calculs";
 import { listerOrdonnances, type Ordonnance } from "../../../../dossier/ordonnances";
 import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
@@ -41,6 +44,7 @@ import {
   type Patient,
   type Traitement,
 } from "../../../../dossier/patients";
+import { couleurStatut } from "../../comptabilite/commun";
 import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerOrdonnance } from "../documents";
@@ -84,13 +88,18 @@ async function Dossier({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
-  const [traitements, consultations, examens, drive, suivis, ordonnances] = await Promise.all([
+  const [traitements, consultations, examens, drive, suivis, ordonnances, factures] = await Promise.all([
     medical ? listerTraitements(id) : [],
     medical ? listerConsultations(id) : [],
     listerExamens(id),
     compteDrive().catch(() => null),
     listerSuivisPatient(id),
     medical ? listerOrdonnances(id) : [],
+    // Un souci de lecture des factures ne doit pas empêcher d'ouvrir le dossier
+    listerFactures({ patientId: id, limite: 100 }).catch((erreur) => {
+      console.error(erreur);
+      return null;
+    }),
   ]);
   // FEVG mesurées dans les comptes rendus d'ETT : elles complètent la courbe et les alertes
   const fevgEchos = examens.flatMap((e) => {
@@ -148,6 +157,10 @@ async function Dossier({
               Demander à l&apos;assistant
             </Link>
           )}
+          <Link href={`/${langue}/espace/comptabilite/factures/nouvelle?patient=${id}`} className={bouton}>
+            <Receipt className="h-4 w-4" aria-hidden />
+            Facturer
+          </Link>
           {utilisateur.admin && (
             <Link href={`/${langue}/espace/journal?patient=${id}`} className={bouton}>
               <History className="h-4 w-4" aria-hidden />
@@ -224,6 +237,8 @@ async function Dossier({
       )}
 
       {medical && <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} />}
+
+      {factures && <FacturesPatient langue={langue} patientId={id} factures={factures} />}
 
       <Examens langue={langue} patientId={id} examens={examens} medical={medical} drive={Boolean(drive)} />
 
@@ -555,6 +570,64 @@ function Ordonnances({
                   Imprimer
                 </a>
                 <BoutonSupprimerOrdonnance langue={langue} patientId={patientId} id={o.id} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// Factures du patient : visibles aussi par la secrétaire, qui encaisse
+function FacturesPatient({ langue, patientId, factures }: { langue: string; patientId: number; factures: Facture[] }) {
+  const base = `/${langue}/espace/comptabilite/factures`;
+  const reste = factures.filter((f) => !f.annulee).reduce((somme, f) => somme + f.totalCts - f.payeCts, 0);
+  return (
+    <section id="factures" className="mt-6 scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Receipt className="h-5 w-5 text-red-600" aria-hidden />
+          Factures
+          {reste > 0 && (
+            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+              reste à payer : {mad(reste)}
+            </span>
+          )}
+        </h2>
+        <Link
+          href={`${base}/nouvelle?patient=${patientId}`}
+          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+        >
+          <FilePlus2 className="h-4 w-4" aria-hidden />
+          Nouvelle facture
+        </Link>
+      </div>
+      {factures.length === 0 ? (
+        <p className="text-slate-500">Aucune facture.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {factures.map((f) => (
+            <li key={f.id} className={`flex flex-wrap items-center justify-between gap-3 py-3 ${f.annulee ? "text-slate-400" : ""}`}>
+              <div>
+                <span className="font-mono text-slate-600">{date(f.date)}</span>
+                <Link href={`${base}/${f.id}`} className="ms-3 font-mono text-red-700 hover:underline">
+                  {f.numero}
+                </Link>
+                <span className="ms-3">{f.lignes.map((l) => l.libelle).join(" · ")}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="tabular-nums text-slate-900">{mad(f.totalCts)}</span>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${couleurStatut[f.statut]}`}>{libelleStatut[f.statut]}</span>
+                <a
+                  href={`/api/factures/${f.id}/pdf`}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                >
+                  <Printer className="h-3 w-3" aria-hidden />
+                  PDF
+                </a>
               </div>
             </li>
           ))}

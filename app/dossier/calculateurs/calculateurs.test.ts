@@ -5,7 +5,7 @@ import { hfaIcosHer2 } from "./definitions/hfa-icos-her2";
 
 const hfa = (valeurs: Record<string, boolean | string>) => hfaIcosHer2.evaluer(valeurs);
 
-describe("HFA-ICOS anti-HER2", () => {
+describe("HFA-ICOS anti-HER2 (tableau 3, Lyon 2020)", () => {
   it("aucun facteur : risque faible", () => {
     expect(hfa({})).toMatchObject({ score: 0, libelle: "Risque faible" });
   });
@@ -15,12 +15,18 @@ describe("HFA-ICOS anti-HER2", () => {
   it("deux facteurs moyens 1 : moyen", () => {
     expect(hfa({ hta: true, diabete: true })).toMatchObject({ score: 2, gravite: "moyen" });
   });
-  it("un facteur moyen 2 (radiothérapie) : moyen", () => {
-    expect(hfa({ radiotherapie: true }).gravite).toBe("moyen");
+  it("troponine ou BNP élevé = moyen 2 (2 points) : moyen à lui seul", () => {
+    expect(hfa({ troponine: true })).toMatchObject({ score: 2, gravite: "moyen" });
+    expect(hfa({ peptides: true })).toMatchObject({ score: 2, gravite: "moyen" });
+  });
+  it("arythmie, ancienne anthracycline, radiothérapie : moyen 2", () => {
+    for (const cle of ["arythmie", "anthracycline", "radiotherapie"])
+      expect(hfa({ [cle]: true })).toMatchObject({ score: 2, gravite: "moyen" });
   });
   it("4 points : moyen, 5 points : élevé", () => {
     expect(hfa({ hta: true, diabete: true, irc: true, tabac: true }).gravite).toBe("moyen");
-    expect(hfa({ hta: true, diabete: true, irc: true, tabac: true, obesite: true }).gravite).toBe("eleve");
+    expect(hfa({ hta: true, diabete: true, irc: true, tabac: true, obesite: true })).toMatchObject({ score: 5, gravite: "eleve" });
+    expect(hfa({ troponine: true, peptides: true, hta: true })).toMatchObject({ score: 5, gravite: "eleve" });
   });
   it("FEVG 50-54 % : moyen 2 ; < 50 % : élevé", () => {
     expect(hfa({ fevg: "limite" })).toMatchObject({ score: 2, gravite: "moyen" });
@@ -30,11 +36,16 @@ describe("HFA-ICOS anti-HER2", () => {
     expect(hfa({ age: "65-79" }).gravite).toBe("moyen");
     expect(hfa({ age: "80" }).gravite).toBe("eleve");
   });
-  it("anthracycline antérieure : élevé à elle seule", () => {
-    expect(hfa({ anthracycline: true }).gravite).toBe("eleve");
+  it("anthracycline du schéma actuel : avant = moyen 1, avec le trastuzumab = élevé", () => {
+    expect(hfa({ anthracyclineActuelle: "avant" })).toMatchObject({ score: 1, gravite: "faible" });
+    expect(hfa({ anthracyclineActuelle: "concomitante" }).gravite).toBe("eleve");
   });
-  it("insuffisance cardiaque : très élevé", () => {
+  it("facteurs élevés : infarctus ou pontage, angor, valvulopathie sévère", () => {
+    for (const cle of ["coronaropathie", "angor", "valvulopathie"]) expect(hfa({ [cle]: true }).gravite).toBe("eleve");
+  });
+  it("facteurs très élevés : insuffisance cardiaque, cardiotoxicité antérieure du trastuzumab", () => {
     expect(hfa({ ic: true, hta: true }).gravite).toBe("tres-eleve");
+    expect(hfa({ trastuzumab: true }).gravite).toBe("tres-eleve");
   });
   it("valeurs manquantes ou inconnues : ignorées", () => {
     expect(hfa({ fevg: "inconnue", age: undefined as unknown as string, hta: false }).score).toBe(0);

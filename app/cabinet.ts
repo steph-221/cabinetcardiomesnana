@@ -6,6 +6,8 @@ export const cabinet = {
   // En-tête des ordonnances et comptes rendus (une ligne par élément ; INPE laissé vide tant qu'il n'est pas fourni)
   specialite: "Cardiologue",
   inpe: "",
+  // Identifiant commun de l'entreprise, affiché sur les factures s'il est renseigné
+  ice: "",
   site: "https://www.cabinetcardiomesnana.com",
   // Pour Google (données structurées) : adresse et position du cabinet
   adresse: {
