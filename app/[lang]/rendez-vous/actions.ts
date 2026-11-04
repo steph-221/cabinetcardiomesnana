@@ -1,6 +1,8 @@
 "use server";
 
 import { chevauche, creneauxDuJour, estJour, jourLocal, joursReservables } from "../../agenda/creneaux";
+import { adresseVisiteur, compter } from "../../agenda/limite";
+import { verifierTurnstile } from "../../agenda/turnstile";
 import { agendaConfigure, creerRendezvous, periodesOccupees } from "../../agenda/google";
 
 // Créneaux encore libres pour un jour donné ("HH:MM")
@@ -23,7 +25,7 @@ export type EtatReservation =
   | { statut: "attente" }
   | {
       statut: "erreur";
-      code: "champs" | "creneauPris" | "technique";
+      code: "champs" | "creneauPris" | "technique" | "refus";
       // Valeurs saisies, pour que le formulaire ne se vide pas
       valeurs: { prenom: string; nom: string; telephone: string; motif: string; dateNaissance: string; email: string };
     }
@@ -44,7 +46,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   // Facultatifs
   const dateNaissance = texte(formData, "dateNaissance", 10);
   const email = texte(formData, "email", 100);
-  const erreur = (code: "champs" | "creneauPris" | "technique"): EtatReservation => ({
+  const erreur = (code: "champs" | "creneauPris" | "technique" | "refus"): EtatReservation => ({
     statut: "erreur",
     code,
     valeurs: { prenom, nom, telephone, motif, dateNaissance, email },
@@ -67,6 +69,13 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
     return erreur("champs");
   }
   if (!agendaConfigure()) return erreur("technique");
+
+  // Anti-abus : au plus 5 réservations par heure et 15 par jour pour une même adresse, et vérification
+  // Cloudflare Turnstile si elle est activée
+  const adresse = await adresseVisiteur();
+  const [parHeure, parJour] = await Promise.all([compter(`rdv:h:${adresse}`, 3600), compter(`rdv:j:${adresse}`, 86400)]);
+  if ((parHeure ?? 0) > 5 || (parJour ?? 0) > 15) return erreur("refus");
+  if (!(await verifierTurnstile(texte(formData, "cf-turnstile-response", 4096), adresse))) return erreur("refus");
 
   // Revérifie juste avant d'enregistrer : le créneau a pu être pris entre-temps
   const creneau = joursReservables().includes(jour) ? creneauxDuJour(jour).find((c) => c.heure === heure) : undefined;

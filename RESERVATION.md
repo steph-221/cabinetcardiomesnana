@@ -48,6 +48,17 @@ Projet Vercel → **Settings → Environment Variables** :
 | `COMPTE_ADMIN` | le compte administrateur, sous la forme `identifiant:motdepasse` (ex. `taouab:UnMotDePasseLong`) |
 | `SESSION_SECRET` | une longue chaîne aléatoire d'au moins 32 caractères (par exemple générée par un gestionnaire de mots de passe) |
 
+Variables de sécurité facultatives (recommandées) :
+
+| Variable | Valeur |
+| --- | --- |
+| `TOTP_ADMIN` | secret (base32) d'une application d'authentification (Google Authenticator, Authy, 1Password…). Une fois renseignée, la connexion de l'administrateur demande aussi le code à 6 chiffres. À créer d'abord dans l'application (« saisir une clé de configuration »), puis à recopier ici. |
+| `TURNSTILE_SECRET_KEY` et `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | clés d'un widget Cloudflare Turnstile (gratuit) : vérification anti-robot sur la réservation en ligne |
+
+La connexion est limitée à 10 essais ratés par adresse et 20 par identifiant toutes les 15 minutes (compteurs dans
+Upstash), et chaque connexion, réussie ou ratée, apparaît dans le journal. La réservation en ligne est limitée à
+5 demandes par heure et par adresse. Le mot de passe de `COMPTE_ADMIN` devrait avoir au moins 12 caractères.
+
 Puis **redéployer** le site pour que les variables soient prises en compte. Tant que les variables Google ne sont
 pas renseignées, la page de rendez-vous affiche simplement le numéro du secrétariat.
 

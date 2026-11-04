@@ -139,6 +139,7 @@ const es: Dictionnaire = {
       champs: "Por favor, compruebe su nombre y teléfono (y, si los ha indicado, la fecha de nacimiento y el correo electrónico) y marque la casilla de consentimiento.",
       creneauPris: "Este horario acaba de reservarse. Por favor, elija otro.",
       technique: "Un problema técnico impide la reserva. Por favor, llame a la secretaría.",
+      refus: "Demasiadas solicitudes o verificación imposible. Inténtelo más tarde o llame a la secretaría.",
     },
   },
   pied: {

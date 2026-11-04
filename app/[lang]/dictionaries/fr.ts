@@ -138,6 +138,7 @@ const fr = {
       champs: "Merci de vérifier votre prénom, votre nom, votre numéro de téléphone (et, s'ils sont remplis, la date de naissance et l'e-mail), puis de cocher la case d'accord.",
       creneauPris: "Cet horaire vient d'être réservé. Merci d'en choisir un autre.",
       technique: "Un problème technique empêche la réservation. Merci d'appeler le secrétariat.",
+      refus: "Trop de demandes ou vérification impossible. Merci de réessayer plus tard ou d'appeler le secrétariat.",
     },
   },
   pied: {

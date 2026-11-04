@@ -3,6 +3,7 @@
 // publications n'est ni téléchargé ni conservé.
 
 import { lookup } from "node:dns/promises";
+import { request } from "node:https";
 import { isIP } from "node:net";
 
 export type PublicationLue = { titre: string; url: string; annee: number | null; publieLe: Date | null };
@@ -12,11 +13,20 @@ const REDIRECTIONS_MAX = 4;
 const PUBLICATIONS_MAX = 300;
 
 // Adresses internes (réseau local, machine elle-même) : refusées, le serveur ne doit lire que des sites publics
-function adresseInterne(ip: string) {
+export function adresseInterne(ip: string): boolean {
   if (isIP(ip) === 6) {
     const v6 = ip.toLowerCase();
-    if (v6.startsWith("::ffff:")) return adresseInterne(v6.slice(7));
-    return v6 === "::" || v6 === "::1" || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6);
+    // IPv4 incluse dans une adresse IPv6 : « ::ffff:127.0.0.1 », mais aussi sa forme hexadécimale « ::ffff:7f00:1 »
+    const pointee = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (pointee) return adresseInterne(pointee[1]);
+    const hexa = v6.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hexa) {
+      const n = (parseInt(hexa[1], 16) << 16) | parseInt(hexa[2], 16);
+      return adresseInterne([n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join("."));
+    }
+    // NAT64 (64:ff9b::), 6to4 (2002::), Teredo (2001::/32) et autres préfixes qui encapsulent une IPv4 : refusés
+    if (/^(64:ff9b:|2002:|2001:0?:)/.test(v6)) return true;
+    return v6 === "::" || v6 === "::1" || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6) || /^ff/.test(v6);
   }
   const [a, b] = ip.split(".").map(Number);
   return (
@@ -31,38 +41,73 @@ function adresseInterne(ip: string) {
   );
 }
 
+// Vérifie l'adresse et renvoie celle à laquelle se connecter. La connexion se fait directement sur cette adresse
+// (voir `telecharger`) : une seconde résolution DNS pourrait donner une autre réponse (« DNS rebinding »).
 async function verifierAdresse(url: URL) {
   if (url.protocol !== "https:") throw new Error("Le site doit être en https.");
   const hote = url.hostname.replace(/^\[|\]$/g, "");
-  const ips = isIP(hote) ? [hote] : (await lookup(hote, { all: true })).map((r) => r.address);
-  if (!ips.length || ips.some(adresseInterne)) throw new Error("Adresse non autorisée.");
+  const resolues = isIP(hote) ? [{ address: hote, family: isIP(hote) }] : await lookup(hote, { all: true });
+  if (!resolues.length || resolues.some((r) => adresseInterne(r.address))) throw new Error("Adresse non autorisée.");
+  return resolues[0];
+}
+
+type Reponse = { status: number; location: string | null; contentLength: number; texte: string };
+
+// Requête GET en https directement sur l'adresse déjà vérifiée (le nom de domaine ne sert qu'à la validation du certificat)
+function obtenir(url: URL, cible: { address: string; family: number }) {
+  return new Promise<Reponse>((resolve, reject) => {
+    const requete = request(
+      url,
+      {
+        method: "GET",
+        timeout: 15_000,
+        lookup: (_hote, options, rappel) =>
+          options.all
+            ? (rappel as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [cible])
+            : rappel(null, cible.address, cible.family),
+        headers: {
+          "user-agent": "Mozilla/5.0 (compatible; cabinet-bibliotheque/1.0)",
+          accept:
+            "text/html,application/xhtml+xml,application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.5",
+        },
+      },
+      (reponse) => {
+        const morceaux: Buffer[] = [];
+        let total = 0;
+        reponse.on("data", (m: Buffer) => {
+          total += m.length;
+          if (total > TAILLE_MAX) return reponse.destroy(new Error("La page est trop volumineuse."));
+          morceaux.push(m);
+        });
+        reponse.on("error", reject);
+        reponse.on("end", () =>
+          resolve({
+            status: reponse.statusCode ?? 0,
+            location: (reponse.headers.location as string | undefined) ?? null,
+            contentLength: Number(reponse.headers["content-length"] ?? 0),
+            texte: Buffer.concat(morceaux).toString("utf8"),
+          }),
+        );
+      },
+    );
+    requete.on("timeout", () => requete.destroy(new Error("Le site ne répond pas.")));
+    requete.on("error", reject);
+    requete.end();
+  });
 }
 
 // Télécharge la page de liste (ou le flux), en suivant au plus quelques redirections, toutes vérifiées
 async function telecharger(adresse: string) {
   let url = new URL(adresse);
   for (let i = 0; i <= REDIRECTIONS_MAX; i++) {
-    await verifierAdresse(url);
-    const reponse = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        "user-agent": "Mozilla/5.0 (compatible; cabinet-bibliotheque/1.0)",
-        accept:
-          "text/html,application/xhtml+xml,application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.5",
-      },
-      cache: "no-store",
-    });
-    const suite = reponse.headers.get("location");
-    if (reponse.status >= 300 && reponse.status < 400 && suite) {
-      url = new URL(suite, url);
+    const reponse = await obtenir(url, await verifierAdresse(url));
+    if (reponse.status >= 300 && reponse.status < 400 && reponse.location) {
+      url = new URL(reponse.location, url);
       continue;
     }
-    if (!reponse.ok) throw new Error(`Le site a répondu ${reponse.status}.`);
-    const taille = Number(reponse.headers.get("content-length") ?? 0);
-    if (taille > TAILLE_MAX) throw new Error("La page est trop volumineuse.");
-    const texte = await reponse.text();
-    return { texte: texte.slice(0, TAILLE_MAX), url: url.toString() };
+    if (reponse.status < 200 || reponse.status >= 300) throw new Error(`Le site a répondu ${reponse.status}.`);
+    if (reponse.contentLength > TAILLE_MAX) throw new Error("La page est trop volumineuse.");
+    return { texte: reponse.texte.slice(0, TAILLE_MAX), url: url.toString() };
   }
   throw new Error("Trop de redirections.");
 }

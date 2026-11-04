@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { CalendarCheck, CircleCheck } from "lucide-react";
 import type { Langue } from "../../cabinet";
 import type { Dictionnaire } from "../dictionaries";
@@ -13,6 +13,53 @@ function formaterJour(jour: string, langue: Langue, options: Intl.DateTimeFormat
   return new Intl.DateTimeFormat(langue === "ar" ? "ar-MA" : langue, { ...options, timeZone: "UTC" }).format(
     new Date(Date.UTC(a, m - 1, j)),
   );
+}
+
+// Vérification anti-robot Cloudflare Turnstile (active si NEXT_PUBLIC_TURNSTILE_SITE_KEY est renseignée).
+// Le widget ajoute lui-même le champ « cf-turnstile-response » au formulaire ; le jeton ne sert qu'une fois,
+// d'où la remise à zéro après chaque envoi.
+type Turnstile = {
+  render: (element: HTMLElement, options: { sitekey: string }) => string;
+  reset: (id?: string) => void;
+  remove: (id?: string) => void;
+};
+const CLE_TURNSTILE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+function VerificationRobot({ etat }: { etat: EtatReservation }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const widget = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!CLE_TURNSTILE || !ref.current) return;
+    const element = ref.current;
+    const afficher = () => {
+      const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+      if (ts && !widget.current) widget.current = ts.render(element, { sitekey: CLE_TURNSTILE });
+    };
+    let script = document.querySelector<HTMLScriptElement>("script[data-turnstile]");
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.dataset.turnstile = "1";
+      document.head.appendChild(script);
+    }
+    if ((window as unknown as { turnstile?: Turnstile }).turnstile) afficher();
+    else script.addEventListener("load", afficher);
+    return () => {
+      script.removeEventListener("load", afficher);
+      const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+      if (widget.current) ts?.remove(widget.current);
+      widget.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+    if (etat.statut === "erreur" && widget.current) ts?.reset(widget.current);
+  }, [etat]);
+
+  return CLE_TURNSTILE ? <div ref={ref} /> : null;
 }
 
 const champ =
@@ -200,6 +247,7 @@ export function Reservation({
             {t.motif} <span className="font-normal text-slate-400">({t.facultatif})</span>
             <textarea name="motif" rows={3} maxLength={300} defaultValue={saisi?.motif} className={champ} />
           </label>
+          <VerificationRobot etat={etat} />
           <label className="flex items-start gap-2 text-sm text-slate-600">
             <input type="checkbox" name="consentement" required className="mt-1" />
             <span>{t.consentement}</span>

@@ -59,6 +59,7 @@ export async function verifierIdentifiants(saisi: string, motDePasse: string) {
   const identifiant = normaliser(saisi);
   const a = admin();
   if (a && identifiant === a.identifiant) {
+    if (a.motDePasse.length < 12) console.warn("COMPTE_ADMIN : mot de passe de moins de 12 caractères, à renforcer");
     return timingSafeEqual(sha256(a.motDePasse), sha256(motDePasse)) ? { identifiant, version: "admin" } : null;
   }
   const compte = await lireCompte(identifiant);
