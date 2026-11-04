@@ -79,7 +79,7 @@ async function Formulaire({
 
   return (
     <>
-      <Retour href={`/${langue}/espace/patients/${id}#consultations`}>{libellePatient(patient)}</Retour>
+      <Retour href={`/${langue}/espace/patients/${id}?onglet=consultations`}>{libellePatient(patient)}</Retour>
       <h1 className="mt-4 mb-1 text-2xl font-bold text-slate-900">
         Consultation du {consultation.date.split("-").reverse().join("/")}
       </h1>

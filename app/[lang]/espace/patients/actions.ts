@@ -299,7 +299,7 @@ export async function enregistrerConsultationPatient(
     return echec("La consultation n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
   }
   if (enregistre === null) return echec("Cette consultation n'existe plus.", formData);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 const libellesConstantes: Record<keyof Constantes, string> = {
@@ -315,7 +315,7 @@ export async function retirerConsultation(langue: string, patientId: number, id:
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerConsultation(patientId, id);
   await journaliser(utilisateur.identifiant, "consultation supprimée", patientId);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 // --- Suivis : tout le personnel (la secrétaire organise les relances) ---
