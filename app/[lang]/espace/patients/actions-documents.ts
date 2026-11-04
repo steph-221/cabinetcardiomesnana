@@ -91,7 +91,7 @@ export async function nouvelleOrdonnance(
     console.error(erreur);
     return echec("L'ordonnance n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
   }
-  redirect(`/${langue}/espace/patients/${patientId}#ordonnances`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=documents`);
 }
 
 export async function retirerOrdonnance(langue: string, patientId: number, id: number) {
@@ -173,7 +173,7 @@ export async function nouveauCompteRenduETT(
     console.error(erreur);
     return echec("Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.", formData);
   }
-  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=examens`);
 }
 
 // --- Compte rendu rédigé par Claude à partir d'une dictée, relu et corrigé par le médecin ---
@@ -202,7 +202,7 @@ export async function enregistrerCompteRendu(
     console.error(erreur);
     return "Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.";
   }
-  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=examens`);
 }
 
 // --- Compte rendu d'ECG, de MAPA ou d'épreuve d'effort (champs, calculs et propositions : dossier/comptes-rendus) ---
@@ -265,5 +265,5 @@ export async function nouveauCompteRenduExamen(
     console.error(erreur);
     return echec("Le compte rendu n'a pas pu être enregistré. Réessayez dans un instant.", formData);
   }
-  redirect(`/${langue}/espace/patients/${patientId}#examens`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=examens`);
 }

@@ -4,6 +4,7 @@
 
 import { cabinet } from "../cabinet";
 import { base } from "./base";
+import { consultationDuJour } from "./liens-consultation";
 import {
   statutFacture,
   type LigneFacture,
@@ -121,6 +122,7 @@ export type Facture = {
   annulee: boolean;
   motifAnnulation: string;
   statut: StatutFacture;
+  consultationId: number | null;
   creePar: string;
 };
 
@@ -145,6 +147,7 @@ const versFacture = (l: Record<string, unknown>): Facture => {
     annulee,
     motifAnnulation: l.motif_annulation as string,
     statut: statutFacture({ annulee, totalCts, payeCts }),
+    consultationId: (l.consultation_id as number | null | undefined) ?? null,
     creePar: l.cree_par as string,
   };
 };
@@ -171,11 +174,15 @@ export async function creerFacture(
     remiseCts: number;
     totalCts: number;
     note: string;
+    // Consultation concernée ; à défaut, celle du même jour si elle est unique
+    consultationId?: number | null;
   },
   paiement: { montantCts: number; mode: ModePaiement; reference: string } | null,
   par: string,
 ) {
   const sql = await base();
+  const consultation =
+    f.patientId === null ? null : f.consultationId !== undefined ? f.consultationId : await consultationDuJour(f.patientId, f.date);
   const mois = f.date.slice(0, 7); // AAAA-MM : la numérotation repart à 0001 chaque mois
   const lignes = JSON.stringify(f.lignes.map((l) => ({ libelle: l.libelle, quantite: l.quantite, prix_cts: l.prixCts })));
   const paye = paiement && paiement.montantCts > 0 ? paiement : null;
@@ -186,9 +193,11 @@ export async function creerFacture(
       ON CONFLICT (mois) DO UPDATE SET dernier = compteurs_factures_mois.dernier + 1
       RETURNING dernier
     ), nouvelle AS (
-      INSERT INTO factures (numero, date, patient_id, patient_nom, praticien_id, lignes, remise_cts, total_cts, note, cree_par)
+      INSERT INTO factures (numero, date, patient_id, patient_nom, praticien_id, lignes, remise_cts, total_cts, note,
+                            consultation_id, cree_par)
       SELECT ${mois} || '-' || lpad(compteur.dernier::text, 4, '0'), ${f.date}, ${f.patientId}, ${f.patientNom},
-             ${f.praticienId}, ${lignes}::jsonb, ${f.remiseCts}, ${f.totalCts}, ${f.note}, ${par}
+             ${f.praticienId}, ${lignes}::jsonb, ${f.remiseCts}, ${f.totalCts}, ${f.note},
+             (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${f.patientId}::int), ${par}
       FROM compteur
       RETURNING id, numero
     ), reglement AS (

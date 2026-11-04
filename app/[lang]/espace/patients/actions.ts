@@ -14,6 +14,8 @@ import {
 } from "../../../dossier/consultations";
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
+import { ajouterScorePatient, evaluerSaisie, supprimerScorePatient } from "../../../dossier/scores-patients";
+import { rattacher, typesLien, type TypeLien } from "../../../dossier/liens-consultation";
 import { ajouterSuivi, changerStatut, delais, supprimerSuivi, type Statut } from "../../../dossier/suivis";
 import { journaliser } from "../../../dossier/journal";
 import {
@@ -30,6 +32,7 @@ import {
   type ContenuMedical,
   type Identite,
 } from "../../../dossier/patients";
+import { statutsTabac, type StatutTabac } from "../../../dossier/mode-de-vie";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
 
 // Nombre saisi avec virgule ou point : null si vide, undefined si illisible
@@ -88,6 +91,40 @@ export async function enregistrerPatient(
     }
   }
 
+  // Poids et taille : facultatifs, mais s'ils sont saisis ils doivent être plausibles
+  const poids = decimalSaisi(formData, "poids");
+  const taille = decimalSaisi(formData, "taille");
+  if (accesMedical(utilisateur)) {
+    if (poids === undefined || (poids !== null && (poids < 1 || poids > 300))) {
+      return echecPatient("Poids : indiquez une valeur en kilos, entre 1 et 300.", formData);
+    }
+    if (taille === undefined || (taille !== null && (taille < 30 || taille > 250))) {
+      return echecPatient("Taille : indiquez une valeur en centimètres, entre 30 et 250.", formData);
+    }
+  }
+
+  // Mode de vie et valeurs de référence : facultatifs, mais plausibles s'ils sont saisis
+  const tabacBrut = String(formData.get("tabac") ?? "");
+  const tabac = (statutsTabac.some((s) => s.valeur === tabacBrut) ? tabacBrut : "") as StatutTabac;
+  const paquetsAnnees = decimalSaisi(formData, "paquetsAnnees");
+  const alcoolBrut = decimalSaisi(formData, "alcoolVerres");
+  const fevgBase = decimalSaisi(formData, "fevgBase");
+  const creatinineBase = decimalSaisi(formData, "creatinineBase");
+  if (accesMedical(utilisateur)) {
+    if (paquetsAnnees === undefined || (paquetsAnnees !== null && (paquetsAnnees < 0 || paquetsAnnees > 300))) {
+      return echecPatient("Tabac : indiquez un nombre de paquets-années entre 0 et 300.", formData);
+    }
+    if (alcoolBrut === undefined || (alcoolBrut !== null && (alcoolBrut < 0 || alcoolBrut > 200))) {
+      return echecPatient("Alcool : indiquez un nombre de verres par semaine entre 0 et 200.", formData);
+    }
+    if (fevgBase === undefined || (fevgBase !== null && (fevgBase < 5 || fevgBase > 90))) {
+      return echecPatient("FEVG de base : indiquez un pourcentage entre 5 et 90.", formData);
+    }
+    if (creatinineBase === undefined || (creatinineBase !== null && (creatinineBase < 1 || creatinineBase > 200))) {
+      return echecPatient("Créatinine de base : indiquez une valeur en mg/L, entre 1 et 200.", formData);
+    }
+  }
+
   // La secrétaire ne voit pas le contenu médical : il n'est ni lu ni modifié pour elle
   const medical: ContenuMedical | null = accesMedical(utilisateur)
     ? {
@@ -100,6 +137,13 @@ export async function enregistrerPatient(
         notes: texte(formData, "notes", 5000),
         inrMin: inrMin ?? null,
         inrMax: inrMax ?? null,
+        poids: poids ?? null,
+        taille: taille ?? null,
+        tabac,
+        paquetsAnnees: paquetsAnnees ?? null,
+        alcoolVerres: alcoolBrut === null || alcoolBrut === undefined ? null : Math.round(alcoolBrut),
+        fevgBase: fevgBase ?? null,
+        creatinineBase: creatinineBase ?? null,
       }
     : null;
 
@@ -255,7 +299,7 @@ export async function enregistrerConsultationPatient(
     return echec("La consultation n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
   }
   if (enregistre === null) return echec("Cette consultation n'existe plus.", formData);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 const libellesConstantes: Record<keyof Constantes, string> = {
@@ -271,7 +315,7 @@ export async function retirerConsultation(langue: string, patientId: number, id:
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerConsultation(patientId, id);
   await journaliser(utilisateur.identifiant, "consultation supprimée", patientId);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 // --- Suivis : tout le personnel (la secrétaire organise les relances) ---
@@ -319,5 +363,53 @@ export async function effacerSuivi(langue: string, patientId: number, id: number
   const utilisateur = await exigerUtilisateur(langue);
   await supprimerSuivi(patientId, id);
   await journaliser(utilisateur.identifiant, "suivi supprimé", patientId);
+  refresh();
+}
+
+// --- Calculateurs rattachés au dossier : médecins seulement ---
+
+// Enregistre le résultat d'un calcul à une date. Le score est recalculé sur le serveur à partir des réponses.
+export async function enregistrerScorePatient(
+  langue: string,
+  patientId: number,
+  slug: string,
+  date: string,
+  saisie: Record<string, unknown>,
+  // Calcul fait pendant une consultation ; sinon rattaché à la consultation du même jour si elle est unique
+  consultationId?: number,
+): Promise<string | null> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!estJour(date)) return "Indiquez la date du calcul.";
+  if (!evaluerSaisie(slug, saisie)) return "Calculateur inconnu.";
+  const id = await ajouterScorePatient(patientId, slug, date, saisie, utilisateur.identifiant, consultationId);
+  await journaliser(utilisateur.identifiant, "calcul enregistré", patientId, `${slug} (n° ${id}) du ${date}`);
+  refresh();
+  return null;
+}
+
+export async function retirerScorePatient(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await supprimerScorePatient(patientId, id);
+  await journaliser(utilisateur.identifiant, "calcul supprimé", patientId, `n° ${id}`);
+  refresh();
+}
+
+// Rattache un élément du dossier (calcul, examen, ordonnance, facture) à une consultation, ou le détache (null)
+export async function rattacherElement(
+  langue: string,
+  patientId: number,
+  type: string,
+  id: number,
+  consultationId: number | null,
+) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!(typesLien as readonly string[]).includes(type)) return;
+  if (!(await rattacher(type as TypeLien, patientId, id, consultationId))) return;
+  await journaliser(
+    utilisateur.identifiant,
+    consultationId === null ? "élément détaché d'une consultation" : "élément rattaché à une consultation",
+    patientId,
+    `${type} n° ${id}${consultationId === null ? "" : ` → consultation n° ${consultationId}`}`,
+  );
   refresh();
 }

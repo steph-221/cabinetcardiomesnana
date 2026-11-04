@@ -1,12 +1,17 @@
 // Suivi médical du dossier : alertes, calculs, courbes d'évolution et consultations (médecins seulement)
 
 import Link from "next/link";
-import { Activity, Calculator, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
-import { dfg, imc, surfaceCorporelle, type Alerte } from "../../../../dossier/calculs";
+import { Activity, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
+import type { Alerte } from "../../../../dossier/calculs";
 import { mesures, type Consultation } from "../../../../dossier/consultations";
 import type { Patient } from "../../../../dossier/patients";
+import type { Facture } from "../../../../dossier/compta";
+import { libelleStatut } from "../../../../dossier/compta-calculs";
+import type { Examen } from "../../../../dossier/examens";
+import type { Ordonnance } from "../../../../dossier/ordonnances";
+import type { ScorePatient } from "../../../../dossier/scores-patients";
+import { couleurStatut } from "../../comptabilite/commun";
 import { Courbe, couleurs, type Serie } from "../courbe";
-import { CalculCha2ds2va } from "../scores";
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 const fr = (n: number, chiffres = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
@@ -54,27 +59,66 @@ function serie(
   };
 }
 
-export function SuiviMedical({
+// Ce qui se rapporte aux consultations (calculs, examens, ordonnances, factures)
+export type Liens = { scores: ScorePatient[]; examens: Examen[]; ordonnances: Ordonnance[]; factures: Facture[] };
+
+// Petits repères sous une consultation : ce qui lui est rattaché, avec un lien vers la consultation
+export function ChipsConsultation({
   langue,
+  patientId,
+  consultationId,
+  liens,
+}: {
+  langue: string;
+  patientId: number;
+  consultationId: number;
+  liens: Liens;
+}) {
+  const ici = <T extends { consultationId: number | null }>(liste: T[]) =>
+    liste.filter((e) => e.consultationId === consultationId);
+  const scores = ici(liens.scores);
+  const examens = ici(liens.examens);
+  const ordonnances = ici(liens.ordonnances);
+  const factures = ici(liens.factures);
+  if (!scores.length && !examens.length && !ordonnances.length && !factures.length) return null;
+  const href = `/${langue}/espace/patients/${patientId}/consultation/${consultationId}`;
+  const chip = "rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-200";
+  const nombre = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`;
+  return (
+    <p className="mt-2 flex flex-wrap gap-2">
+      {scores.length > 0 && (
+        <Link href={href} className={chip}>
+          {nombre(scores.length, "calcul", "calculs")}
+        </Link>
+      )}
+      {examens.length > 0 && (
+        <Link href={href} className={chip}>
+          {nombre(examens.length, "examen", "examens")}
+        </Link>
+      )}
+      {ordonnances.length > 0 && (
+        <Link href={href} className={chip}>
+          {nombre(ordonnances.length, "ordonnance", "ordonnances")}
+        </Link>
+      )}
+      {factures.map((f) => (
+        <Link key={f.id} href={href} className={`rounded-full px-2 py-0.5 text-xs ${couleurStatut[f.statut]}`}>
+          Facture {f.numero} · {libelleStatut[f.statut]}
+        </Link>
+      ))}
+    </p>
+  );
+}
+
+export function CourbesEvolution({
   patient,
-  age,
   consultations,
   fevgEchos,
 }: {
-  langue: string;
   patient: Patient;
-  age: number | null;
   consultations: Consultation[];
   fevgEchos: { date: string; valeur: number }[];
 }) {
-  // Dernières valeurs connues (consultations de la plus récente à la plus ancienne)
-  const poids = consultations.find((c) => c.poids !== null)?.poids ?? null;
-  const taille = consultations.find((c) => c.taille !== null)?.taille ?? null;
-  const creatinine = consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null;
-  const sc = surfaceCorporelle(poids, taille);
-  const masse = imc(poids, taille);
-  const debit = dfg(creatinine, age, patient.sexe);
-
   const courbes = [
     {
       titre: "INR",
@@ -103,60 +147,44 @@ export function SuiviMedical({
       }),
   ].filter((c) => c.series.some((s) => s.points.length > 0));
 
-  // Pré-remplissage du score à partir du dossier
-  const preCoches = [
-    patient.facteursRisque.includes("HTA") && "hta",
-    patient.facteursRisque.includes("Diabète") && "diabete",
-    age !== null && age >= 75 && "age75",
-    age !== null && age >= 65 && age < 75 && "age65",
-  ].filter((c): c is string => Boolean(c));
-
+  if (courbes.length === 0)
+    return (
+      <section className="rounded-2xl border border-slate-200 p-6 text-sm">
+        <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Activity className="h-5 w-5 text-red-600" aria-hidden />
+          Évolution
+        </h2>
+        <p className="text-slate-500">Les courbes apparaîtront dès que des valeurs auront été saisies en consultation.</p>
+      </section>
+    );
   return (
-    <>
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <section className="rounded-2xl border border-slate-200 p-6 text-sm">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Calculator className="h-5 w-5 text-red-600" aria-hidden />
-            Calculs
-          </h2>
-          <dl className="space-y-2">
-            <Valeur titre="Surface corporelle" valeur={sc && `${fr(sc, 2)} m²`} />
-            <Valeur titre="IMC" valeur={masse && `${fr(masse)} kg/m²`} />
-            <Valeur
-              titre="DFG estimé (CKD-EPI 2021)"
-              valeur={debit && `${Math.round(debit)} mL/min/1,73 m²`}
-              manque={
-                !creatinine
-                  ? "créatinine non renseignée"
-                  : !patient.sexe || age === null
-                    ? "sexe ou âge manquant"
-                    : undefined
-              }
-            />
-          </dl>
-          <p className="mt-3 text-xs text-slate-400">D&apos;après les dernières valeurs saisies en consultation.</p>
-        </section>
-        <section className="rounded-2xl border border-slate-200 p-6 text-sm lg:col-span-2">
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Score CHA₂DS₂-VA</h2>
-          <CalculCha2ds2va preCoches={preCoches} />
-        </section>
+    <section className="rounded-2xl border border-slate-200 p-6 text-sm">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
+        <Activity className="h-5 w-5 text-red-600" aria-hidden />
+        Évolution
+      </h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {courbes.map((c) => (
+          <Courbe key={c.titre} titre={c.titre} unite={c.unite} series={c.series} bande={c.bande} />
+        ))}
       </div>
+    </section>
+  );
+}
 
-      {courbes.length > 0 && (
-        <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Activity className="h-5 w-5 text-red-600" aria-hidden />
-            Évolution
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {courbes.map((c) => (
-              <Courbe key={c.titre} titre={c.titre} unite={c.unite} series={c.series} bande={c.bande} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section id="consultations" className="mt-6 scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
+export function ListeConsultations({
+  langue,
+  patient,
+  consultations,
+  liens,
+}: {
+  langue: string;
+  patient: Patient;
+  consultations: Consultation[];
+  liens: Liens;
+}) {
+  return (
+      <section className="rounded-2xl border border-slate-200 p-6 text-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
             <Stethoscope className="h-5 w-5 text-red-600" aria-hidden />
@@ -219,23 +247,12 @@ export function SuiviMedical({
                 {c.autres && <Rubrique titre="Autres" texte={c.autres} />}
                 {c.conclusion && <Rubrique titre="Conclusion" texte={c.conclusion} />}
                 {c.conduite && <Rubrique titre="Conduite" texte={c.conduite} />}
+                <ChipsConsultation langue={langue} patientId={patient.id} consultationId={c.id} liens={liens} />
               </li>
             ))}
           </ol>
         )}
       </section>
-    </>
-  );
-}
-
-function Valeur({ titre, valeur, manque }: { titre: string; valeur: string | null | 0; manque?: string }) {
-  return (
-    <div>
-      <dt className="text-slate-500">{titre}</dt>
-      <dd className="font-medium text-slate-900">
-        {valeur || <span className="font-normal text-slate-400">{manque ?? "—"}</span>}
-      </dd>
-    </div>
   );
 }
 

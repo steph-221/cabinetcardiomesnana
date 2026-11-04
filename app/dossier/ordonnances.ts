@@ -1,6 +1,7 @@
 // Ordonnances : lignes de prescription (médicament, posologie, durée), remarque, et copie PDF rangée dans Drive
 
 import { base } from "./base";
+import { consultationDuJour } from "./liens-consultation";
 
 export type LigneOrdonnance = { medicament: string; posologie: string; duree: string };
 
@@ -11,6 +12,7 @@ export type Ordonnance = {
   lignes: LigneOrdonnance[];
   remarque: string;
   fichierDrive: string | null;
+  consultationId: number | null;
   creePar: string;
 };
 
@@ -21,6 +23,7 @@ const versOrdonnance = (l: Record<string, unknown>): Ordonnance => ({
   lignes: l.lignes as LigneOrdonnance[],
   remarque: l.remarque as string,
   fichierDrive: (l.fichier_drive as string | null) ?? null,
+  consultationId: (l.consultation_id as number | null | undefined) ?? null,
   creePar: l.cree_par as string,
 });
 
@@ -38,13 +41,17 @@ export async function lireOrdonnance(id: number) {
 
 export async function creerOrdonnance(
   patientId: number,
-  o: { date: string; lignes: LigneOrdonnance[]; remarque: string },
+  // Consultation concernée ; à défaut, celle du même jour si elle est unique
+  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; consultationId?: number | null },
   par: string,
 ) {
   const sql = await base();
+  const consultation = o.consultationId !== undefined ? o.consultationId : await consultationDuJour(patientId, o.date);
   const [[{ id }]] = await sql.transaction([
-    sql`INSERT INTO ordonnances (patient_id, date, lignes, remarque, cree_par)
-        VALUES (${patientId}, ${o.date}, ${JSON.stringify(o.lignes)}::jsonb, ${o.remarque}, ${par}) RETURNING id`,
+    sql`INSERT INTO ordonnances (patient_id, date, lignes, remarque, consultation_id, cree_par)
+        VALUES (${patientId}, ${o.date}, ${JSON.stringify(o.lignes)}::jsonb, ${o.remarque},
+                (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${patientId}), ${par})
+        RETURNING id`,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,
   ]);
   return id as number;

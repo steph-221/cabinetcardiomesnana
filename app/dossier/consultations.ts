@@ -2,6 +2,7 @@
 // conclusion), plus les valeurs chiffrées qui alimentent les courbes et les alertes.
 
 import { base } from "./base";
+import { rattacherElementsDuJour } from "./liens-consultation";
 import type { CleMesure, Constantes } from "./mesures";
 
 export { bornesConstantes, mesures, type CleMesure, type Constantes } from "./mesures";
@@ -90,7 +91,10 @@ export async function enregistrerConsultation(
     ecriture,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,
   ]);
-  return (lignes[0]?.id as number | undefined) ?? null;
+  const idEnregistre = (lignes[0]?.id as number | undefined) ?? null;
+  // Création : ce qui a déjà été fait ce jour-là (ordonnance, examen, facture, calcul) se rattache à la consultation
+  if (id === null && idEnregistre !== null) await rattacherElementsDuJour(patientId, c.date, idEnregistre);
+  return idEnregistre;
 }
 
 export async function supprimerConsultation(patientId: number, id: number) {

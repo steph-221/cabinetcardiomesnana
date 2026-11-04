@@ -2,6 +2,7 @@
 // Les droits (secrétaire / médecin) sont vérifiés par les actions et les pages qui appellent ces fonctions.
 
 import { base } from "./base";
+import type { StatutTabac } from "./mode-de-vie";
 
 export const facteursRisque = [
   "HTA",
@@ -37,7 +38,18 @@ export type ContenuMedical = {
   // Zone cible de l'INR sous AVK (valve mécanique, FA…), fixée par le médecin
   inrMin: number | null;
   inrMax: number | null;
+  // Données de base, saisies dans la fiche et reprises par les calculs (à défaut, la dernière consultation)
+  poids: number | null; // kg
+  taille: number | null; // cm
+  tabac: StatutTabac;
+  paquetsAnnees: number | null;
+  alcoolVerres: number | null; // verres par semaine
+  // Valeurs de référence : repris par les calculs à défaut d'une mesure plus récente (consultation, ETT)
+  fevgBase: number | null; // %
+  creatinineBase: number | null; // mg/L
 };
+
+
 
 export type Patient = Identite &
   ContenuMedical & {
@@ -79,6 +91,13 @@ const versPatient = (l: Ligne): Patient => ({
   notes: l.notes as string,
   inrMin: l.inr_min === null || l.inr_min === undefined ? null : Number(l.inr_min),
   inrMax: l.inr_max === null || l.inr_max === undefined ? null : Number(l.inr_max),
+  poids: l.poids === null || l.poids === undefined ? null : Number(l.poids),
+  taille: l.taille === null || l.taille === undefined ? null : Number(l.taille),
+  tabac: ((l.tabac_statut as string | undefined) ?? "") as StatutTabac,
+  paquetsAnnees: l.tabac_paquets_annees === null || l.tabac_paquets_annees === undefined ? null : Number(l.tabac_paquets_annees),
+  alcoolVerres: l.alcool_verres === null || l.alcool_verres === undefined ? null : Number(l.alcool_verres),
+  fevgBase: l.fevg_base === null || l.fevg_base === undefined ? null : Number(l.fevg_base),
+  creatinineBase: l.creatinine_base === null || l.creatinine_base === undefined ? null : Number(l.creatinine_base),
   driveDossier: (l.drive_dossier as string | null | undefined) ?? null,
   creeLe: l.cree_le as Date,
   creePar: l.cree_par as string,
@@ -174,13 +193,16 @@ export async function doublonsPossibles(identite: Identite, saufId?: number): Pr
 
 export async function creerPatient(identite: Identite, medical: ContenuMedical | null, par: string) {
   const sql = await base();
-  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null };
+  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null, poids: null, taille: null, tabac: "" as StatutTabac, paquetsAnnees: null, alcoolVerres: null, fevgBase: null, creatinineBase: null };
   const [{ id }] = await sql`
     INSERT INTO patients (nom, prenom, sexe, naissance, telephone, email, cin, adresse, couverture, medecin_traitant,
-                          facteurs_risque, antecedents, allergies, notes, inr_min, inr_max, cree_par, modifie_par)
+                          facteurs_risque, antecedents, allergies, notes, inr_min, inr_max, poids, taille, tabac_statut,
+                          tabac_paquets_annees, alcool_verres, fevg_base, creatinine_base, cree_par, modifie_par)
     VALUES (${identite.nom}, ${identite.prenom}, ${identite.sexe}, ${identite.naissance}, ${identite.telephone},
             ${identite.email}, ${identite.cin}, ${identite.adresse}, ${identite.couverture}, ${identite.medecinTraitant},
-            ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${m.inrMin}, ${m.inrMax}, ${par}, ${par})
+            ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${m.inrMin}, ${m.inrMax}, ${m.poids},
+            ${m.taille}, ${m.tabac}, ${m.paquetsAnnees}, ${m.alcoolVerres}, ${m.fevgBase}, ${m.creatinineBase},
+            ${par}, ${par})
     RETURNING id`;
   return id as number;
 }
@@ -198,7 +220,10 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
     await sql`
       UPDATE patients SET facteurs_risque = ${medical.facteursRisque}, antecedents = ${medical.antecedents},
         allergies = ${medical.allergies}, notes = ${medical.notes}, inr_min = ${medical.inrMin},
-        inr_max = ${medical.inrMax}
+        inr_max = ${medical.inrMax}, poids = ${medical.poids}, taille = ${medical.taille},
+        tabac_statut = ${medical.tabac}, tabac_paquets_annees = ${medical.paquetsAnnees},
+        alcool_verres = ${medical.alcoolVerres}, fevg_base = ${medical.fevgBase},
+        creatinine_base = ${medical.creatinineBase}
       WHERE id = ${id}`;
   }
 }
