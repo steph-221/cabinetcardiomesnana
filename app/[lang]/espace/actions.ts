@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { dateLocale, estJour } from "../../agenda/creneaux";
-import { creerFermeture, creerRendezvous, supprimerRendezvous } from "../../agenda/google";
+import { affecterMedecin, creerFermeture, creerRendezvous, supprimerRendezvous } from "../../agenda/google";
 import {
   changerRole,
   enregistrerCompte,
@@ -11,6 +11,7 @@ import {
   exigerUtilisateur,
   fermerSession,
   identifiantValide,
+  listerMedecins,
   ouvrirSession,
   supprimerCompte,
   verifierIdentifiants,
@@ -45,6 +46,15 @@ export async function annuler(langue: string, id: string) {
   refresh();
 }
 
+// Rattache (ou détache) après coup un rendez-vous à un médecin, par exemple une réservation faite en ligne
+export async function affecter(langue: string, id: string, formData: FormData) {
+  await exigerConnexion(langue);
+  const medecin = String(formData.get("medecin") ?? "");
+  if (medecin && !(await listerMedecins().catch((): string[] => [])).includes(medecin)) return;
+  await affecterMedecin(id, medecin);
+  refresh();
+}
+
 export async function ajouter(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const utilisateur = await exigerConnexion(langue);
   const jour = String(formData.get("jour") ?? "");
@@ -54,6 +64,7 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   const motif = String(formData.get("motif") ?? "").trim().slice(0, 300);
   const dateNaissance = String(formData.get("dateNaissance") ?? "");
   const email = String(formData.get("email") ?? "").trim().slice(0, 100);
+  const medecin = String(formData.get("medecin") ?? "");
   const controle = formData.get("type") === "controle";
   const duree = Number(formData.get("duree")) || (controle ? cabinet.dureeControle : cabinet.dureeRdv);
   if (!estJour(jour) || !/^\d{2}:\d{2}$/.test(heure) || !nom || duree < 5 || duree > 240) {
@@ -61,6 +72,9 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   }
   if ((dateNaissance && !estJour(dateNaissance)) || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
     return echec("Vérifiez la date de naissance et l'e-mail.", formData);
+  }
+  if (medecin && !(await listerMedecins().catch((): string[] => [])).includes(medecin)) {
+    return echec("Ce médecin n'existe pas (ou plus). Choisissez-en un autre.", formData);
   }
   const debut = dateLocale(jour, heure);
   try {
@@ -72,6 +86,7 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
       motif,
       dateNaissance,
       email,
+      medecin,
       controle,
       source: "secretariat",
       par: utilisateur.identifiant,

@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Ban, LockOpen, Plus, Trash2 } from "lucide-react";
 import { cabinet } from "../../cabinet";
-import { ajouter, annuler, fermer, rouvrir } from "./actions";
+import { affecter, ajouter, annuler, fermer, rouvrir } from "./actions";
 
 export function BoutonAnnuler({ langue, id, nom }: { langue: string; id: string; nom: string }) {
   return (
@@ -15,6 +15,40 @@ export function BoutonAnnuler({ langue, id, nom }: { langue: string; id: string;
       >
         <Trash2 className="h-4 w-4" aria-hidden />
         Annuler
+      </Envoyer>
+    </form>
+  );
+}
+
+// Choix du médecin d'un rendez-vous déjà pris (réservation en ligne comprise)
+export function SelecteurMedecin({
+  langue,
+  id,
+  medecin,
+  medecins,
+}: {
+  langue: string;
+  id: string;
+  medecin?: string;
+  medecins: string[];
+}) {
+  return (
+    <form action={affecter.bind(null, langue, id)} className="mt-2 flex items-center gap-2">
+      <select
+        name="medecin"
+        defaultValue={medecin ?? ""}
+        aria-label="Médecin"
+        className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700"
+      >
+        <option value="">Non attribué</option>
+        {[...new Set([...medecins, ...(medecin ? [medecin] : [])])].map((m) => (
+          <option key={m} value={m}>
+            Dr {m}
+          </option>
+        ))}
+      </select>
+      <Envoyer className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">
+        Affecter
       </Envoyer>
     </form>
   );
@@ -48,7 +82,15 @@ const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 
 // Pour les rendez-vous pris par téléphone, WhatsApp ou au cabinet
-export function FormulaireAjout({ langue, aujourdhui }: { langue: string; aujourdhui: string }) {
+export function FormulaireAjout({
+  langue,
+  aujourdhui,
+  medecins,
+}: {
+  langue: string;
+  aujourdhui: string;
+  medecins: string[];
+}) {
   const [etat, envoyer] = useActionState(ajouter.bind(null, langue), null);
   const v = etat?.valeurs ?? {};
 
@@ -67,6 +109,17 @@ export function FormulaireAjout({ langue, aujourdhui }: { langue: string; aujour
         <select name="type" defaultValue={v.type ?? "consultation"} className={champ}>
           <option value="consultation">Consultation ({cabinet.dureeRdv} min)</option>
           <option value="controle">Contrôle ({cabinet.dureeControle} min)</option>
+        </select>
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Médecin
+        <select name="medecin" defaultValue={v.medecin ?? ""} className={champ}>
+          <option value="">Non attribué</option>
+          {medecins.map((m) => (
+            <option key={m} value={m}>
+              Dr {m}
+            </option>
+          ))}
         </select>
       </label>
       <label className="text-sm font-medium text-slate-700">

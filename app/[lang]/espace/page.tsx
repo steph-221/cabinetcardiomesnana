@@ -7,11 +7,11 @@ import { Ban, CalendarDays, FolderOpen, Globe, Phone } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
-import { utilisateurConnecte } from "../../agenda/session";
+import { listerMedecins, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
 import { finTelephone } from "../../dossier/patients";
 import { patientsParTelephone } from "../../dossier/suivis";
-import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture } from "./boutons";
+import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture, SelecteurMedecin } from "./boutons";
 
 export const metadata: Metadata = {
   title: "Espace cabinet",
@@ -20,26 +20,33 @@ export const metadata: Metadata = {
 
 const JOURS_AFFICHES = 14;
 
-export default async function Espace({ params }: PageProps<"/[lang]/espace">) {
+export default async function Espace({ params, searchParams }: PageProps<"/[lang]/espace">) {
   const { lang } = await params;
+  const { medecin } = await searchParams;
   if (!estLangue(lang)) return null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement de l&apos;agenda…</p>}>
-        <Tableau langue={lang} />
+        <Tableau langue={lang} filtre={typeof medecin === "string" ? medecin : ""} />
       </Suspense>
     </div>
   );
 }
 
-async function Tableau({ langue }: { langue: string }) {
+async function Tableau({ langue, filtre }: { langue: string; filtre: string }) {
   // Agenda en direct : jamais préchargé ni mis en cache
   await connection();
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) redirect(`/${langue}/espace/connexion`);
 
   const aujourdhui = jourLocal(new Date());
+  let medecins: string[] = [];
+  try {
+    medecins = await listerMedecins();
+  } catch (erreur) {
+    console.error(erreur);
+  }
   let rendezvous: Rendezvous[] | null = null;
   if (agendaConfigure()) {
     try {
@@ -51,6 +58,12 @@ async function Tableau({ langue }: { langue: string }) {
       console.error(erreur);
     }
   }
+
+  // Onglets par médecin : « Tous », chaque médecin, et les rendez-vous sans médecin
+  const medecinsAgenda = [...new Set([...medecins, ...(rendezvous ?? []).flatMap((r) => (r.medecin ? [r.medecin] : []))])];
+  const visibles = (rendezvous ?? []).filter((r) =>
+    filtre === "" ? true : filtre === "aucun" ? !r.medecin : r.medecin === filtre,
+  );
 
   // Rendez-vous reliés aux dossiers par le téléphone
   let dossiers = new Map<string, number>();
@@ -66,7 +79,7 @@ async function Tableau({ langue }: { langue: string }) {
 
   // Regroupe par jour (les événements « journée entière » n'ont qu'une date)
   const parJour = new Map<string, Rendezvous[]>();
-  for (const r of rendezvous ?? []) {
+  for (const r of visibles) {
     const jour = r.debut.length === 10 ? r.debut : jourLocal(new Date(r.debut));
     parJour.set(jour, [...(parJour.get(jour) ?? []), r]);
   }
@@ -88,7 +101,7 @@ async function Tableau({ langue }: { langue: string }) {
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Ajouter un rendez-vous</h2>
-        <FormulaireAjout langue={langue} aujourdhui={aujourdhui} />
+        <FormulaireAjout langue={langue} aujourdhui={aujourdhui} medecins={medecins} />
       </section>
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
@@ -111,6 +124,29 @@ async function Tableau({ langue }: { langue: string }) {
         <p className="mt-1 text-sm text-slate-500">
           Tout événement ajouté directement dans Google Agenda bloque aussi les créneaux correspondants.
         </p>
+
+        {medecinsAgenda.length > 0 && (
+          <nav aria-label="Filtrer par médecin" className="mt-4 flex flex-wrap gap-1.5">
+            {[
+              { valeur: "", libelle: "Tous" },
+              ...medecinsAgenda.map((m) => ({ valeur: m, libelle: `Dr ${m}` })),
+              { valeur: "aucun", libelle: "Non attribué" },
+            ].map(({ valeur, libelle }) => (
+              <Link
+                key={valeur}
+                href={valeur ? `/${langue}/espace?medecin=${encodeURIComponent(valeur)}` : `/${langue}/espace`}
+                aria-current={filtre === valeur ? "page" : undefined}
+                className={`rounded-full border px-3 py-1 text-sm ${
+                  filtre === valeur
+                    ? "border-red-600 bg-red-600 font-medium text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {libelle}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {rendezvous === null ? (
           <p role="alert" className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-800">
@@ -143,6 +179,11 @@ async function Tableau({ langue }: { langue: string }) {
                               <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs font-normal text-red-700">
                                 <Ban className="h-3 w-3" aria-hidden />
                                 fermé
+                              </span>
+                            )}
+                            {r.medecin && (
+                              <span className="ms-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-normal text-slate-700">
+                                Dr {r.medecin}
                               </span>
                             )}
                             {r.controle && (
@@ -189,6 +230,9 @@ async function Tableau({ langue }: { langue: string }) {
                                 </a>
                               )}
                             </p>
+                          )}
+                          {r.annulable && (
+                            <SelecteurMedecin langue={langue} id={r.id} medecin={r.medecin} medecins={medecins} />
                           )}
                           {r.motif && !r.fermeture && <p className="mt-1 text-slate-500">{r.motif}</p>}
                         </div>
