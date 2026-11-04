@@ -12,6 +12,7 @@ import { lignesExamen, type DonneesExamen } from "./comptes-rendus/types";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
 import type { LigneOrdonnance } from "./ordonnances";
+import type { ElementsRapport } from "./rapport-consultation";
 import { age, libellePatient, type Patient } from "./patients";
 
 // Les polices intégrées des PDF ne connaissent que l'alphabet latin courant : le reste est remplacé
@@ -190,7 +191,13 @@ export function pdfOrdonnance(o: { date: string; lignes: LigneOrdonnance[]; rema
 
 // --- Rapport de consultation ---
 
-export function pdfConsultation(c: Consultation, patient: Patient, traitements: string[]) {
+export function pdfConsultation(
+  c: Consultation,
+  patient: Patient,
+  traitements: string[],
+  // Examens, calculs et ordonnances rattachés à la consultation
+  rattaches: ElementsRapport = { calculs: [], examens: [], ordonnances: [] },
+) {
   const ans = age(patient.naissance, c.date);
   const sc = surfaceCorporelle(c.poids, c.taille);
   const constantes = [
@@ -260,6 +267,16 @@ export function pdfConsultation(c: Consultation, patient: Patient, traitements: 
             {c.autres && <Paragraphes texte={c.autres} />}
           </Ligne>
         )}
+        {rattaches.examens.length > 0 && (
+          <Ligne libelle="Examens complémentaires">
+            <Paragraphes texte={rattaches.examens.join("\n")} />
+          </Ligne>
+        )}
+        {rattaches.calculs.length > 0 && (
+          <Ligne libelle="Calculs et scores">
+            <Paragraphes texte={rattaches.calculs.join("\n")} />
+          </Ligne>
+        )}
         {c.conclusion && (
           <Ligne libelle="Conclusion">
             <Paragraphes texte={c.conclusion} />
@@ -268,6 +285,11 @@ export function pdfConsultation(c: Consultation, patient: Patient, traitements: 
         {c.conduite && (
           <Ligne libelle="Conduite à tenir">
             <Paragraphes texte={c.conduite} />
+          </Ligne>
+        )}
+        {rattaches.ordonnances.length > 0 && (
+          <Ligne libelle="Ordonnance">
+            <Paragraphes texte={rattaches.ordonnances.join("\n")} />
           </Ligne>
         )}
         <Text style={s.signature}>Signature et cachet</Text>

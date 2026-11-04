@@ -3,6 +3,7 @@
 
 import { estJour } from "../../agenda/creneaux";
 import { accesMedical, utilisateurConnecte } from "../../agenda/session";
+import { lireChoixConsultation } from "../../dossier/choix-consultation";
 import { compteDrive, envoyerExamen, expliquerErreurDrive, mettreALaCorbeille } from "../../dossier/drive";
 import { ajouterExamen, TAILLE_MAX, typesExamen, typesFichier } from "../../dossier/examens";
 import { journaliser } from "../../dossier/journal";
@@ -42,7 +43,13 @@ export async function POST(request: Request) {
   try {
     const id = await ajouterExamen(
       patient.id,
-      { type, date, conclusion, fichier: { drive, nom: fichier.name, type: fichier.type, taille: fichier.size } },
+      {
+        type,
+        date,
+        conclusion,
+        fichier: { drive, nom: fichier.name, type: fichier.type, taille: fichier.size },
+        consultationId: lireChoixConsultation(formulaire.get("consultationId")),
+      },
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, "examen ajouté", patient.id, `${type} du ${date}`);

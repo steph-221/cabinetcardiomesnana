@@ -5,7 +5,9 @@ import { connection } from "next/server";
 import { Search, UserRound } from "lucide-react";
 import { estLangue } from "../../../../../cabinet";
 import { jourLocal } from "../../../../../agenda/creneaux";
-import { exigerUtilisateur } from "../../../../../agenda/session";
+import { accesMedical, exigerUtilisateur } from "../../../../../agenda/session";
+import { consultationDemandee } from "../../../../../dossier/choix-consultation";
+import { consultationsPourChoix } from "../../../../../dossier/consultations";
 import { baseConfiguree } from "../../../../../dossier/base";
 import { listerActes, listerPraticiens } from "../../../../../dossier/compta";
 import { libellePatient, lirePatient, rechercherPatients } from "../../../../../dossier/patients";
@@ -100,6 +102,11 @@ async function Contenu({
   if (actifs.length === 0) return <p className="text-sm text-slate-500">Aucun médecin actif : voir Réglages.</p>;
   // Le médecin connecté est présélectionné s'il est relié à un médecin des réglages
   const moi = actifs.find((p) => p.compte === utilisateur.identifiant.toLowerCase());
+  // Consultations du patient à relier à la facture ; la secrétaire voit les dates, pas les motifs
+  const consultations = patient
+    ? (await consultationsPourChoix(patient.id)).map((c) => ({ ...c, motif: accesMedical(utilisateur) ? c.motif : "" }))
+    : [];
+  const consultationDefaut = consultationDemandee(params.consultation, consultations);
 
   return (
     <>
@@ -118,6 +125,8 @@ async function Contenu({
         praticienParDefaut={(moi ?? actifs[0]).id}
         actes={actesActifs}
         aujourdhui={jourLocal(new Date())}
+        consultations={consultations}
+        consultationDefaut={consultationDefaut}
       />
     </>
   );

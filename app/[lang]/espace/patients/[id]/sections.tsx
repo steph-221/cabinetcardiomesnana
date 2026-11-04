@@ -246,6 +246,7 @@ export function Examens({
   medical,
   drive,
   consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patientId: number;
@@ -253,7 +254,11 @@ export function Examens({
   medical: boolean;
   drive: boolean;
   consultations: Consultation[];
+  // Consultation proposée d'emblée (on arrive de la page de la consultation)
+  consultationDefaut?: number;
 }) {
+  // Les formulaires de compte rendu proposent la même consultation
+  const suite = consultationDefaut ? `?consultation=${consultationDefaut}` : "";
   const taille = (octets: number) =>
     octets > 1024 * 1024 ? `${(octets / 1024 / 1024).toFixed(1)} Mo` : `${Math.max(1, Math.round(octets / 1024))} Ko`;
 
@@ -267,7 +272,7 @@ export function Examens({
         <div className="flex flex-wrap gap-2">
           {medical && (
             <Link
-              href={`/${langue}/espace/patients/${patientId}/ett`}
+              href={`/${langue}/espace/patients/${patientId}/ett${suite}`}
               className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
             >
               <FilePlus2 className="h-4 w-4" aria-hidden />
@@ -278,7 +283,7 @@ export function Examens({
             modelesExamen.map((m) => (
               <Link
                 key={m.cle}
-                href={`/${langue}/espace/patients/${patientId}/examen/${m.cle}`}
+                href={`/${langue}/espace/patients/${patientId}/examen/${m.cle}${suite}`}
                 className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 <FilePlus2 className="h-4 w-4" aria-hidden />
@@ -287,7 +292,7 @@ export function Examens({
             ))}
           {medical && (
             <Link
-              href={`/${langue}/espace/patients/${patientId}/redaction`}
+              href={`/${langue}/espace/patients/${patientId}/redaction${suite}`}
               className="inline-flex items-center gap-2 rounded-full border border-violet-300 px-4 py-2 text-sm text-violet-800 hover:bg-violet-50"
             >
               <Sparkles className="h-4 w-4" aria-hidden />
@@ -303,6 +308,8 @@ export function Examens({
           medical={medical}
           tailleMax={TAILLE_MAX}
           aujourdhui={jourLocal(new Date())}
+          consultations={consultations.map((c) => ({ id: c.id, date: c.date, motif: c.motif }))}
+          consultationDefaut={consultationDefaut}
         />
       ) : (
         <p className="rounded-lg bg-amber-50 p-4 text-amber-900">

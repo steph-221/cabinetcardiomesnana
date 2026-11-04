@@ -26,6 +26,7 @@ import { journaliser } from "../../../../dossier/journal";
 import { listerFactures } from "../../../../dossier/compta";
 import { listerOrdonnances } from "../../../../dossier/ordonnances";
 import { ongletValide } from "../../../../dossier/onglets-patient";
+import { consultationDemandee } from "../../../../dossier/choix-consultation";
 import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
 import { donneesPourCalculs, fevgDesExamens } from "../../../../dossier/donnees-calculs";
 import { listerSuivisPatient } from "../../../../dossier/suivis";
@@ -77,7 +78,8 @@ async function Dossier({
   if (!patient) notFound();
   const medical = accesMedical(utilisateur);
   // Section demandée dans l'adresse (?onglet=…) ; l'aperçu par défaut
-  const onglet = ongletValide((await searchParams).onglet, medical);
+  const demande = await searchParams;
+  const onglet = ongletValide(demande.onglet, medical);
   const [traitements, consultations, examens, drive, suivis, ordonnances, factures] = await Promise.all([
     medical ? listerTraitements(id) : [],
     medical ? listerConsultations(id) : [],
@@ -264,6 +266,7 @@ async function Dossier({
             medical={medical}
             drive={Boolean(drive)}
             consultations={consultations}
+            consultationDefaut={consultationDemandee(demande.consultation, consultations)}
           />
         </div>
       )}

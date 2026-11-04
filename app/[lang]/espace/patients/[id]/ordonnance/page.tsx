@@ -5,6 +5,8 @@ import { connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
 import { estLangue } from "../../../../../cabinet";
 import { exigerUtilisateur } from "../../../../../agenda/session";
+import { consultationDemandee } from "../../../../../dossier/choix-consultation";
+import { consultationsPourChoix } from "../../../../../dossier/consultations";
 import { libellePatient, listerTraitements, lirePatient } from "../../../../../dossier/patients";
 import { Retour } from "../../commun";
 import { FormulaireOrdonnance } from "../../documents";
@@ -14,13 +16,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function NouvelleOrdonnance({ params }: PageProps<"/[lang]/espace/patients/[id]/ordonnance">) {
+export default async function NouvelleOrdonnance({ params, searchParams }: PageProps<"/[lang]/espace/patients/[id]/ordonnance">) {
   const lang = await langueRacine();
   if (!estLangue(lang)) return null;
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement…</p>}>
-        <Formulaire langue={lang} params={params} />
+        <Formulaire langue={lang} params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -29,9 +31,11 @@ export default async function NouvelleOrdonnance({ params }: PageProps<"/[lang]/
 async function Formulaire({
   langue,
   params,
+  searchParams,
 }: {
   langue: string;
   params: PageProps<"/[lang]/espace/patients/[id]/ordonnance">["params"];
+  searchParams: PageProps<"/[lang]/espace/patients/[id]/ordonnance">["searchParams"];
 }) {
   await connection();
   await exigerUtilisateur(langue, "medical");
@@ -39,6 +43,8 @@ async function Formulaire({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const enCours = (await listerTraitements(id)).filter((t) => !t.fin);
+  const consultations = await consultationsPourChoix(id);
+  const consultationDefaut = consultationDemandee((await searchParams).consultation, consultations);
 
   return (
     <>
@@ -57,6 +63,8 @@ async function Formulaire({
         langue={langue}
         patientId={id}
         traitements={enCours.map((t) => ({ medicament: t.medicament, posologie: t.posologie }))}
+        consultations={consultations}
+        consultationDefaut={consultationDefaut}
       />
     </>
   );

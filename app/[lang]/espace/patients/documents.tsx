@@ -17,6 +17,8 @@ import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { medicaments } from "../../../dossier/vocabulaire";
 import { nouveauCompteRenduETT, nouvelleOrdonnance, retirerOrdonnance } from "./actions-documents";
 import { LigneReference } from "./reference-seuil";
+import { ChoixConsultation } from "./choix-consultation";
+import type { OptionConsultation } from "../../../dossier/choix-consultation";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -54,10 +56,14 @@ export function FormulaireOrdonnance({
   langue,
   patientId,
   traitements,
+  consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patientId: number;
   traitements: { medicament: string; posologie: string }[];
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
   const [etat, envoyer] = useActionState(nouvelleOrdonnance.bind(null, langue, patientId), null);
   const compteur = useRef(traitements.length + 1);
@@ -141,6 +147,7 @@ export function FormulaireOrdonnance({
         Remarque <span className="font-normal text-slate-400">(facultatif : régime, contrôle biologique…)</span>
         <textarea name="remarque" rows={3} maxLength={2000} defaultValue={etat?.valeurs.remarque} className={champ} />
       </label>
+      <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
       <Erreur etat={etat} />
       <Envoyer>Enregistrer l&apos;ordonnance</Envoyer>
     </form>
@@ -199,6 +206,8 @@ export function FormulaireETT({
   operateur,
   aujourdhui,
   references,
+  consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patientId: number;
@@ -208,6 +217,8 @@ export function FormulaireETT({
   operateur: string;
   aujourdhui: string;
   references: Record<string, ReferenceSeuil>;
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
   const [etat, envoyer] = useActionState(nouveauCompteRenduETT.bind(null, langue, patientId), null);
   const v = (nom: string, initial = "") => (etat ? etat.valeurs[nom] : initial) ?? "";
@@ -385,6 +396,7 @@ export function FormulaireETT({
         </p>
       </fieldset>
 
+      <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
       <Erreur etat={etat} />
       <Envoyer>Enregistrer le compte rendu</Envoyer>
     </form>

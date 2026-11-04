@@ -6,6 +6,8 @@ import { lang as langueRacine } from "next/root-params";
 import { cabinet, estLangue } from "../../../../../../cabinet";
 import { jourLocal } from "../../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../../agenda/session";
+import { consultationDemandee } from "../../../../../../dossier/choix-consultation";
+import { consultationsPourChoix } from "../../../../../../dossier/consultations";
 import { trouverModele } from "../../../../../../dossier/comptes-rendus";
 import { age, libellePatient, lirePatient } from "../../../../../../dossier/patients";
 import { lireReferences } from "../../../../../../dossier/verification-seuils";
@@ -19,13 +21,14 @@ export const metadata: Metadata = {
 
 export default async function CompteRenduExamen({
   params,
+  searchParams,
 }: PageProps<"/[lang]/espace/patients/[id]/examen/[modele]">) {
   const lang = await langueRacine();
   if (!estLangue(lang)) return null;
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement…</p>}>
-        <Formulaire langue={lang} params={params} />
+        <Formulaire langue={lang} params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -34,9 +37,11 @@ export default async function CompteRenduExamen({
 async function Formulaire({
   langue,
   params,
+  searchParams,
 }: {
   langue: string;
   params: PageProps<"/[lang]/espace/patients/[id]/examen/[modele]">["params"];
+  searchParams: PageProps<"/[lang]/espace/patients/[id]/examen/[modele]">["searchParams"];
 }) {
   await connection();
   const utilisateur = await exigerUtilisateur(langue, "medical");
@@ -47,6 +52,8 @@ async function Formulaire({
   if (!patient || !modele) notFound();
   const aujourdhui = jourLocal(new Date());
   const references = await lireReferences().catch(() => ({}));
+  const consultations = await consultationsPourChoix(id);
+  const consultationDefaut = consultationDemandee((await searchParams).consultation, consultations);
 
   return (
     <>
@@ -66,6 +73,8 @@ async function Formulaire({
         operateur={utilisateur.admin ? cabinet.medecin : utilisateur.identifiant}
         aujourdhui={aujourdhui}
         references={references}
+        consultations={consultations}
+        consultationDefaut={consultationDefaut}
       />
     </>
   );
