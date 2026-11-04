@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Search, UserPlus } from "lucide-react";
+import { FilePen, Search, UserPlus } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
@@ -23,13 +23,23 @@ export default async function Patients({ params, searchParams }: PageProps<"/[la
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-slate-900">Patients</h1>
-        <Link
-          href={`/${lang}/espace/patients/nouveau`}
-          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
-        >
-          <UserPlus className="h-4 w-4" aria-hidden />
-          Nouveau patient
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/${lang}/espace/patients/fiche`}
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <FilePen className="h-4 w-4" aria-hidden />
+            Fiche papier vierge
+          </Link>
+          <Link
+            href={`/${lang}/espace/patients/nouveau`}
+            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <UserPlus className="h-4 w-4" aria-hidden />
+            Nouveau patient
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Liste langue={lang} searchParams={searchParams} />

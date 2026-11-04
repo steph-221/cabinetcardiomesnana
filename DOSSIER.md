@@ -12,6 +12,23 @@ l'agenda.
   est signalé ; on peut l'ouvrir ou créer quand même un nouveau dossier.
 - **Journal** (administrateur seulement) : qui a ouvert, créé ou modifié chaque dossier, et quand.
 
+## Rendez-vous et dossiers
+
+- **Prénom et nom sont séparés** partout : formulaire de rendez-vous en ligne (4 langues), ajout d'un rendez-vous
+  par la secrétaire et fiche patient.
+- Dans l'**agenda**, chaque rendez-vous indique son dossier :
+  - *rattaché* : lien « Dossier de NOM Prénom » ;
+  - *dossier probable* (même téléphone, ou mêmes nom, prénom et date de naissance) : la secrétaire clique
+    **C'est le même patient** pour rattacher. La date de naissance, l'e-mail ou le téléphone donnés par le patient
+    complètent alors le dossier **seulement là où il est vide** (rien n'est écrasé) ;
+  - *aucun dossier* : **Créer le dossier** ouvre la fiche déjà remplie avec ce que le patient a indiqué (tout reste
+    modifiable) ; à l'enregistrement, le rendez-vous est rattaché au nouveau dossier.
+- En ajoutant un rendez-vous à la main, on peut **rechercher un dossier existant** : ses coordonnées remplissent le
+  formulaire et le rendez-vous lui est rattaché.
+- **Fiche papier** (agenda, liste des patients, dossier) : page A4 à imprimer, à faire remplir par le patient. Vierge,
+  préremplie avec ce que le patient a déjà indiqué, ou avec l'identité de son dossier. Le contenu médical n'est
+  jamais prérempli.
+
 ## 1. Activer la base de données (une seule fois)
 
 Les dossiers sont enregistrés dans une base Postgres gratuite, Neon :

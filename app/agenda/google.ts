@@ -4,12 +4,17 @@
 import { createSign } from "node:crypto";
 import { cabinet } from "../cabinet";
 import { ajouterJours } from "./creneaux";
+import { nomDepuisTitre, titreRendezvous } from "./identite";
 
 const API = "https://www.googleapis.com/calendar/v3";
 
 export type Rendezvous = {
   id: string;
   titre: string;
+  // Identité donnée par le patient (anciens rendez-vous : le nom complet est dans `nom`, sans prénom)
+  nom: string;
+  prenom: string;
+  patientId?: number; // dossier auquel le rendez-vous est rattaché
   debut: string; // ISO
   fin: string; // ISO
   telephone?: string;
@@ -117,9 +122,13 @@ export async function listerRendezvous(debut: Date, fin: Date): Promise<Rendezvo
   const { items } = await appel<{ items: EvenementGoogle[] }>(`/calendars/${idAgenda()}/events?${params}`);
   return items.map((e) => {
     const prive = e.extendedProperties?.private ?? {};
+    const titre = e.summary ?? "(sans titre)";
     return {
       id: e.id,
-      titre: e.summary ?? "(sans titre)",
+      titre,
+      nom: prive.nom || nomDepuisTitre(titre),
+      prenom: prive.prenom ?? "",
+      patientId: Number(prive.patientId) > 0 ? Number(prive.patientId) : undefined,
       // Les événements « journée entière » n'ont qu'une date
       debut: e.start.dateTime ?? e.start.date!,
       fin: e.end.dateTime ?? e.end.date!,
@@ -139,10 +148,12 @@ export async function creerRendezvous(rdv: {
   debut: Date;
   fin: Date;
   nom: string;
+  prenom?: string;
   telephone: string;
   motif: string;
   dateNaissance?: string;
   email?: string;
+  patientId?: number;
   controle?: boolean;
   source: "site" | "secretariat";
   par?: string;
@@ -160,7 +171,7 @@ export async function creerRendezvous(rdv: {
   return appel<EvenementGoogle>(`/calendars/${idAgenda()}/events`, {
     method: "POST",
     body: JSON.stringify({
-      summary: `${rdv.controle ? "Contrôle" : "RDV"} — ${rdv.nom}`,
+      summary: titreRendezvous(rdv.prenom, rdv.nom, Boolean(rdv.controle)),
       description,
       // Un contrôle se glisse entre deux consultations : il ne retire pas de créneau aux patients
       transparency: rdv.controle ? "transparent" : "opaque",
@@ -170,6 +181,9 @@ export async function creerRendezvous(rdv: {
         private: {
           source: rdv.source,
           type: rdv.controle ? "controle" : "consultation",
+          nom: rdv.nom,
+          prenom: rdv.prenom ?? "",
+          patientId: rdv.patientId ? String(rdv.patientId) : "",
           telephone: rdv.telephone,
           motif: rdv.motif,
           dateNaissance: rdv.dateNaissance ?? "",
@@ -204,6 +218,14 @@ export async function creerFermeture(
       ...dates,
       extendedProperties: { private: { source: "fermeture", motif } },
     }),
+  });
+}
+
+// Relie un rendez-vous (pris en ligne ou au téléphone) à un dossier patient
+export async function rattacherRendezvous(id: string, patientId: number) {
+  await appel(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ extendedProperties: { private: { patientId: String(patientId) } } }),
   });
 }
 

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function NouveauPatient({ params }: PageProps<"/[lang]/espace/patients/nouveau">) {
+export default async function NouveauPatient({ params, searchParams }: PageProps<"/[lang]/espace/patients/nouveau">) {
   const { lang } = await params;
   if (!estLangue(lang)) return null;
 
@@ -23,18 +23,36 @@ export default async function NouveauPatient({ params }: PageProps<"/[lang]/espa
       <Retour href={`/${lang}/espace/patients`}>Patients</Retour>
       <h1 className="mt-4 mb-6 text-2xl font-bold text-slate-900">Nouveau patient</h1>
       <Suspense fallback={<p className="text-slate-500">Chargement…</p>}>
-        <Formulaire langue={lang} />
+        <Formulaire langue={lang} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Formulaire({ langue }: { langue: string }) {
+async function Formulaire({
+  langue,
+  searchParams,
+}: {
+  langue: string;
+  searchParams: PageProps<"/[lang]/espace/patients/nouveau">["searchParams"];
+}) {
   await connection();
+  // Ce que le patient a déjà indiqué en prenant rendez-vous (modifiable avant d'enregistrer)
+  const q = await searchParams;
+  const lire = (cle: string) => (typeof q[cle] === "string" ? (q[cle] as string).slice(0, 300) : "");
+  const prefill = {
+    nom: lire("nom"),
+    prenom: lire("prenom"),
+    telephone: lire("telephone"),
+    naissance: lire("naissance"),
+    email: lire("email"),
+    rdv: lire("rdv"),
+  };
   const utilisateur = await exigerUtilisateur(langue);
   if (!baseConfiguree()) return <BaseNonConfiguree />;
   return (
     <FormulairePatient
+      prefill={prefill}
       langue={langue}
       patient={null}
       medical={accesMedical(utilisateur)}
