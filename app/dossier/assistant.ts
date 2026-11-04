@@ -56,7 +56,7 @@ Règles :
 2. N'utilise pas tes connaissances générales pour compléter. Si les documents ne permettent pas de répondre, écris exactement « ${SANS_REPONSE} » puis, en une phrase, le type de source qu'il faudrait ajouter à la bibliothèque.
 3. Si les documents ne répondent qu'à une partie de la question, réponds à cette partie et dis clairement ce qui n'est pas couvert.
 4. Donne la classe (I, IIa, IIb, III) et le niveau (A, B, C) de la recommandation ESC quand le passage les indique, et l'année de la recommandation.
-5. Si un résumé clinique anonyme du patient est fourni, applique les sources à ce patient (par exemple l'adaptation au DFG ou au poids) et signale les données qui manquent pour conclure.
+5. Si le dossier clinique anonyme du patient est fourni (profil, traitements, consultations, examens avec leurs conclusions et dates, scores, ordonnances), appuie-toi sur lui pour appliquer les sources à ce patient (adaptation au DFG, au poids, à l'âge, aux traitements en cours, aux conclusions d'examens…), en datant les valeurs que tu utilises. Ces données du dossier ne sont pas des sources : ne les cite pas comme références médicales. Signale les données qui manquent ou qui datent pour conclure.
 6. Réponse courte et structurée : phrases brèves, listes quand c'est utile, sans formule de politesse ni avertissement général. Le médecin garde la décision.`;
 
 // Mots-clés de recherche, en anglais et en français
@@ -104,7 +104,8 @@ function blocs(contenu: BetaContentBlock[], nbPassages: number): Bloc[] {
 }
 
 export async function repondre(question: string, contexte: string | null): Promise<Reponse> {
-  const termes = await termesRecherche(question, contexte);
+  // Pour la recherche, le début du résumé (profil, traitements, dernières valeurs) suffit
+  const termes = await termesRecherche(question, contexte ? contexte.slice(0, 3000) : null);
   const trouves: Passage[] = await rechercherPassages(termes);
   const passages = trouves.map((p) => ({
     id: p.id,
@@ -143,7 +144,7 @@ export async function repondre(question: string, contexte: string | null): Promi
           })),
           {
             type: "text" as const,
-            text: `${contexte ? `Résumé clinique anonyme du patient :\n${contexte}\n\n` : ""}Question :\n${question}`,
+            text: `${contexte ? `Dossier clinique anonyme du patient (date du jour : ${new Date().toLocaleDateString("fr-FR", { timeZone: "Africa/Casablanca" })}) :\n${contexte}\n\n` : ""}Question :\n${question}`,
           },
         ],
       },

@@ -7,9 +7,14 @@ import { base } from "./base";
 import { ajouterPages, creerSource, terminerSource } from "./bibliotheque";
 import { dfg } from "./calculs";
 import { listerConsultations } from "./consultations";
-import type { DonneesETT } from "./ett";
+import { lignesETT, type DonneesETT } from "./ett";
 import { listerExamens } from "./examens";
+import { mesures as definitionsMesures } from "./mesures";
+import { libelleTabac } from "./mode-de-vie";
+import { listerOrdonnances } from "./ordonnances";
 import { age, listerTraitements, lirePatient } from "./patients";
+import { listerScoresPatient } from "./scores-patients";
+import { listerSuivisPatient } from "./suivis";
 
 export type Question = {
   id: number;
@@ -96,8 +101,9 @@ export async function creerFiche(q: Question, medecin: string, par: string) {
 }
 
 // Résumé clinique sans nom ni coordonnées, joint à une question posée depuis un dossier. Il est montré au médecin
-// avant l'envoi et conservé avec la réponse.
-export async function resumeClinique(patientId: number) {
+// avant l'envoi et conservé avec la réponse. Avec `complet`, il est suivi de tout le dossier : consultations,
+// examens et leurs conclusions, traitements, ordonnances, scores et suivis, avec leurs dates.
+export async function resumeClinique(patientId: number, complet = false) {
   const patient = await lirePatient(patientId);
   if (!patient) return null;
   const [traitements, consultations, examens] = await Promise.all([
@@ -188,5 +194,111 @@ export async function resumeClinique(patientId: number) {
   const bnp = derniere((r) => r.mesures.ntprobnp);
   if (bnp) valeurs.push(`NT-proBNP ${nombre(bnp.v)} pg/mL (${jour(bnp.date)})`);
   if (valeurs.length) lignes.push(`Dernières valeurs : ${valeurs.join(" ; ")}`);
+  if (!complet) return lignes.join("\n");
+
+  const [ordonnances, scores, suivis] = await Promise.all([
+    listerOrdonnances(patientId),
+    listerScoresPatient(patientId),
+    listerSuivisPatient(patientId),
+  ]);
+  const court = (t: string, max = 800) => {
+    const propre = t.replace(/\s+/g, " ").trim();
+    return propre.length > max ? `${propre.slice(0, max)}…` : propre;
+  };
+  const section = (titre: string, elements: string[]) => {
+    if (elements.length) lignes.push("", `${titre} :`, ...elements);
+  };
+
+  // Mode de vie et valeurs de référence saisies dans la fiche
+  const vie = [
+    libelleTabac(patient.tabac, patient.paquetsAnnees),
+    patient.alcoolVerres !== null ? `alcool ${nombre(patient.alcoolVerres)} verre(s)/semaine` : "",
+    patient.fevgBase !== null ? `FEVG de référence ${nombre(patient.fevgBase)} %` : "",
+    patient.creatinineBase !== null ? `créatinine de référence ${nombre(patient.creatinineBase)} mg/L` : "",
+  ].filter(Boolean);
+  if (vie.length) lignes.push(`Mode de vie et références : ${vie.join(" ; ")}`);
+  if (patient.notes.trim()) lignes.push(`Notes du dossier : ${court(patient.notes, 600)}`);
+
+  section(
+    "Traitements arrêtés",
+    traitements
+      .filter((t) => t.fin)
+      .map(
+        (t) =>
+          `- ${[t.medicament, t.posologie].filter(Boolean).join(" ")} (${t.debut ? `du ${jour(t.debut)} ` : ""}au ${jour(t.fin!)})`,
+      ),
+  );
+  section(
+    "Début des traitements en cours",
+    enCours.filter((t) => t.debut).map((t) => `- ${t.medicament} depuis le ${jour(t.debut!)}`),
+  );
+
+  section(
+    "Consultations (de la plus récente à la plus ancienne)",
+    consultations.slice(0, 20).map((c) => {
+      const constantes = [
+        c.taSys !== null && c.taDia !== null ? `TA ${c.taSys}/${c.taDia} mmHg` : "",
+        c.fc !== null ? `FC ${c.fc} bpm` : "",
+        c.spo2 !== null ? `SpO2 ${c.spo2} %` : "",
+        c.poids !== null ? `poids ${nombre(c.poids)} kg` : "",
+        c.taille !== null ? `taille ${c.taille} cm` : "",
+        ...definitionsMesures.flatMap((m) =>
+          c.mesures[m.cle] !== undefined ? [`${m.libelle} ${nombre(c.mesures[m.cle]!)}${m.unite ? ` ${m.unite}` : ""}`] : [],
+        ),
+      ].filter(Boolean);
+      const rubriques = [
+        ["Motif", c.motif],
+        ["Valeurs", constantes.join(", ")],
+        ["Examen", c.examen],
+        ["ECG", c.ecg],
+        ["Autres", c.autres],
+        ["Conclusion", c.conclusion],
+        ["Conduite à tenir", c.conduite],
+      ]
+        .filter(([, t]) => t.trim())
+        .map(([titre, t]) => `${titre} : ${court(t)}`);
+      return `- ${jour(c.date)} — ${rubriques.join(" | ")}`;
+    }),
+  );
+
+  section(
+    "Examens complémentaires et conclusions (du plus récent au plus ancien)",
+    examens.slice(0, 30).map((e) => {
+      const ett = e.valeurs.ett as DonneesETT | undefined;
+      const detail: string[] = [];
+      if (ett) {
+        const l = lignesETT(ett);
+        if (ett.indication) detail.push(`Indication : ${court(ett.indication, 300)}`);
+        if (l.mesures2D.length) detail.push(`2D/TM : ${l.mesures2D.join(" ; ")}`);
+        if (l.doppler.length) detail.push(`Doppler : ${l.doppler.join(" ; ")}`);
+        if (ett.total.trim()) detail.push(`AU TOTAL : ${court(ett.total, 1200)}`);
+      }
+      if (e.conclusion.trim() && e.conclusion.trim() !== ett?.total.trim()) {
+        detail.push(`Conclusion : ${court(e.conclusion, 1200)}`);
+      }
+      if (!detail.length) detail.push("conclusion non renseignée (fichier au dossier)");
+      return `- ${jour(e.date)} — ${e.type} : ${detail.join(" | ")}`;
+    }),
+  );
+
+  section(
+    "Scores et calculs enregistrés",
+    scores
+      .slice(0, 15)
+      .map((s) => `- ${jour(s.date)} — ${s.titre} : ${s.score !== null ? `${nombre(s.score)} — ` : ""}${s.libelle}`),
+  );
+
+  section(
+    "Ordonnances",
+    ordonnances.slice(0, 10).map((o) => {
+      const prescrit = o.lignes.map((l) => [l.medicament, l.posologie, l.duree].filter(Boolean).join(" ")).join(" ; ");
+      return `- ${jour(o.date)} — ${prescrit}${o.remarque.trim() ? ` (${court(o.remarque, 200)})` : ""}`;
+    }),
+  );
+
+  section(
+    "Suivis prévus",
+    suivis.filter((s) => s.statut !== "fait").map((s) => `- ${s.quoi} avant le ${jour(s.echeance)}`),
+  );
   return lignes.join("\n");
 }
