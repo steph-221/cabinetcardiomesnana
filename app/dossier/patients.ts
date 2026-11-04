@@ -1,6 +1,7 @@
 // Dossiers patients : identité, contenu médical de base, traitements.
 // Les droits (secrétaire / médecin) sont vérifiés par les actions et les pages qui appellent ces fonctions.
 
+import { numeroInternational } from "../agenda/identite";
 import { base } from "./base";
 import type { StatutTabac } from "./mode-de-vie";
 
@@ -110,10 +111,8 @@ export const finTelephone = (telephone: string) => telephone.replace(/\D/g, "").
 
 // Lien WhatsApp vers le patient (numéro marocain 06… / 07… converti au format international)
 export function lienWhatsApp(telephone: string) {
-  let chiffres = telephone.replace(/\D/g, "");
-  if (chiffres.startsWith("00")) chiffres = chiffres.slice(2);
-  else if (chiffres.length === 10 && chiffres.startsWith("0")) chiffres = `212${chiffres.slice(1)}`;
-  return chiffres.length >= 11 ? `https://wa.me/${chiffres}` : null;
+  const numero = numeroInternational(telephone);
+  return numero ? `https://wa.me/${numero}` : null;
 }
 
 export const libellePatient = (p: Pick<Patient, "nom" | "prenom">) =>

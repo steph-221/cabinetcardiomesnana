@@ -31,3 +31,11 @@ export function paramsPrefill(r: {
   }
   return params;
 }
+
+// Numéro marocain saisi 06… / 07…, +212 6… ou 00212 6… → chiffres au format international (212…), ou null
+export function numeroInternational(telephone: string) {
+  let chiffres = telephone.replace(/\D/g, "");
+  if (chiffres.startsWith("00")) chiffres = chiffres.slice(2);
+  else if (chiffres.length === 10 && chiffres.startsWith("0")) chiffres = `212${chiffres.slice(1)}`;
+  return chiffres.length >= 11 ? chiffres : null;
+}

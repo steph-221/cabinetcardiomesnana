@@ -2,10 +2,11 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { Ban, Link2, LockOpen, Plus, Search, Trash2, X } from "lucide-react";
+import { Ban, Link2, LockOpen, Mail, MessageCircle, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { cabinet } from "../../cabinet";
 import type { DossierPropose } from "../../dossier/rendez-vous";
-import { affecter, ajouter, annuler, chercherDossiers, fermer, rattacher, rouvrir } from "./actions";
+import type { EtatModification } from "./formulaire";
+import { affecter, ajouter, annuler, chercherDossiers, fermer, modifier, rattacher, rouvrir } from "./actions";
 
 export function BoutonAnnuler({ langue, id, nom }: { langue: string; id: string; nom: string }) {
   return (
@@ -353,5 +354,187 @@ export function FormulaireFermeture({ langue, aujourdhui }: { langue: string; au
         </Envoyer>
       </div>
     </form>
+  );
+}
+
+export type RdvModifiable = {
+  id: string;
+  annulable: boolean; // créé par le site ou l'espace cabinet : le titre est reconstruit à partir du nom
+  titre: string;
+  prenom: string;
+  nom: string;
+  jour: string;
+  heure: string;
+  duree: number;
+  telephone: string;
+  email: string;
+  motif: string;
+  medecin: string;
+};
+
+// Bouton « Modifier » qui déplie le formulaire sous le rendez-vous. Quand l'horaire change, le patient peut être
+// prévenu par e-mail et WhatsApp : « rendez-vous annulé et remplacé ».
+export function ModifierRendezvous({
+  langue,
+  rdv,
+  medecins,
+  aujourdhui,
+}: {
+  langue: string;
+  rdv: RdvModifiable;
+  medecins: string[];
+  aujourdhui: string;
+}) {
+  const [ouvert, setOuvert] = useState(false);
+  const [etat, envoyer] = useActionState(modifier.bind(null, langue, rdv.id), null);
+  const erreur = etat && "erreur" in etat ? etat : null;
+  const v = erreur?.valeurs ?? {};
+  const valeur = (cle: keyof RdvModifiable) => v[cle] ?? String(rdv[cle]);
+  const notification = etat && "ok" in etat ? etat.notification : null;
+
+  if (!ouvert) {
+    return (
+      <div className="w-full">
+        {etat && "ok" in etat && (
+          <div role="status" className="mb-2 rounded-lg bg-green-50 p-3 text-sm text-green-900">
+            <p className="font-medium">Rendez-vous modifié dans l&apos;agenda.</p>
+            {notification ? <Notification notification={notification} /> : <p>Date et heure inchangées : le patient n&apos;a pas été prévenu.</p>}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setOuvert(true)}
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+        >
+          <Pencil className="h-4 w-4" aria-hidden />
+          Modifier
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      action={async (formData) => {
+        await envoyer(formData);
+        setOuvert(false);
+      }}
+      className="grid w-full gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <label className="text-sm font-medium text-slate-700">
+        Date
+        <input name="jour" type="date" required min={aujourdhui} defaultValue={valeur("jour")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Heure
+        <input name="heure" type="time" required step={300} defaultValue={valeur("heure")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Durée <span className="font-normal text-slate-400">(minutes)</span>
+        <input name="duree" type="number" required min={5} max={240} step={5} defaultValue={valeur("duree")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Prénom
+        <input name="prenom" maxLength={100} defaultValue={valeur("prenom")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Nom
+        <input name="nom" required maxLength={100} defaultValue={valeur("nom")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Médecin
+        <select name="medecin" defaultValue={valeur("medecin")} className={champ}>
+          <option value="">Non attribué</option>
+          {[...new Set([...medecins, ...(rdv.medecin ? [rdv.medecin] : [])])].map((m) => (
+            <option key={m} value={m}>
+              Dr {m}
+            </option>
+          ))}
+        </select>
+      </label>
+      {!rdv.annulable && (
+        <label className="text-sm font-medium text-slate-700 sm:col-span-2 lg:col-span-3">
+          Titre dans Google Agenda
+          <input name="titre" required maxLength={200} defaultValue={valeur("titre")} className={champ} />
+        </label>
+      )}
+      <label className="text-sm font-medium text-slate-700">
+        Téléphone
+        <input name="telephone" type="tel" maxLength={30} defaultValue={valeur("telephone")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        E-mail
+        <input name="email" type="email" maxLength={100} defaultValue={valeur("email")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Motif
+        <input name="motif" maxLength={300} defaultValue={valeur("motif")} className={champ} />
+      </label>
+      <fieldset className="rounded-lg bg-white p-3 text-sm text-slate-700 sm:col-span-2 lg:col-span-3">
+        <legend className="px-1 text-xs font-medium text-slate-500">
+          Si la date ou l&apos;heure change, prévenir le patient : « rendez-vous annulé et remplacé »
+        </legend>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="prevenirEmail" defaultChecked />
+            <Mail className="h-4 w-4" aria-hidden />
+            Par e-mail
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="prevenirWhatsapp" defaultChecked />
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            Par WhatsApp
+          </label>
+        </div>
+      </fieldset>
+      {erreur && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 sm:col-span-2 lg:col-span-3">
+          {erreur.erreur}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+        <Envoyer className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700">
+          Enregistrer la modification
+        </Envoyer>
+        <button
+          type="button"
+          onClick={() => setOuvert(false)}
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-white"
+        >
+          Fermer
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Ce qui est parti vers le patient ; à défaut d'envoi automatique, le message prêt à envoyer d'un clic
+function Notification({ notification }: { notification: NonNullable<Extract<EtatModification, { ok: true }>["notification"]> }) {
+  const lien = "font-medium underline";
+  const { email, whatsapp } = notification;
+  if (email.statut === "absent" && whatsapp.statut === "absent") {
+    return <p>Aucun message envoyé (canal non coché, ou e-mail et téléphone manquants).</p>;
+  }
+  return (
+    <ul className="mt-1 list-disc ps-5">
+      {email.statut === "envoye" && <li>E-mail envoyé à {email.adresse}.</li>}
+      {email.lien && (
+        <li>
+          {email.statut === "echec" ? "L'e-mail n'a pas pu partir. " : "Envoi automatique non activé. "}
+          <a href={email.lien} className={lien}>
+            Ouvrir l&apos;e-mail prêt à envoyer à {email.adresse}
+          </a>
+        </li>
+      )}
+      {whatsapp.statut === "envoye" && <li>Message WhatsApp envoyé.</li>}
+      {whatsapp.lien && (
+        <li>
+          {whatsapp.statut === "echec" ? "Le message WhatsApp n'a pas pu partir. " : "Envoi automatique non activé. "}
+          <a href={whatsapp.lien} target="_blank" rel="noreferrer" className={lien}>
+            Ouvrir WhatsApp avec le message prêt à envoyer
+          </a>
+        </li>
+      )}
+    </ul>
   );
 }
