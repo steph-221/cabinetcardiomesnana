@@ -1,6 +1,7 @@
 "use server";
 
 import { chevauche, creneauxDuJour, estJour, jourLocal, joursReservables } from "../../agenda/creneaux";
+import { adresseIp, jetonValide, tropDeDemandes } from "../../agenda/antirobot";
 import { agendaConfigure, creerRendezvous, periodesOccupees } from "../../agenda/google";
 
 // Créneaux encore libres pour un jour donné ("HH:MM")
@@ -23,7 +24,7 @@ export type EtatReservation =
   | { statut: "attente" }
   | {
       statut: "erreur";
-      code: "champs" | "creneauPris" | "technique";
+      code: "champs" | "creneauPris" | "technique" | "robot" | "limite";
       // Valeurs saisies, pour que le formulaire ne se vide pas
       valeurs: { prenom: string; nom: string; telephone: string; motif: string; dateNaissance: string; email: string };
     }
@@ -44,7 +45,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   // Facultatifs
   const dateNaissance = texte(formData, "dateNaissance", 10);
   const email = texte(formData, "email", 100);
-  const erreur = (code: "champs" | "creneauPris" | "technique"): EtatReservation => ({
+  const erreur = (code: "champs" | "creneauPris" | "technique" | "robot" | "limite"): EtatReservation => ({
     statut: "erreur",
     code,
     valeurs: { prenom, nom, telephone, motif, dateNaissance, email },
@@ -52,6 +53,8 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   const telephoneValide = /^\+?[\d\s.-]{8,20}$/.test(telephone);
   // Champ invisible : seuls les robots le remplissent
   if (texte(formData, "site", 100)) return erreur("champs");
+  // Jeton signé émis à l'affichage de la page, et délai minimum de remplissage
+  if (!jetonValide(texte(formData, "jeton", 100))) return erreur("robot");
   const naissanceValide =
     !dateNaissance || (estJour(dateNaissance) && dateNaissance >= "1900-01-01" && dateNaissance <= jourLocal(new Date()));
   const emailValide = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -67,6 +70,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
     return erreur("champs");
   }
   if (!agendaConfigure()) return erreur("technique");
+  if (await tropDeDemandes(await adresseIp(), telephone)) return erreur("limite");
 
   // Revérifie juste avant d'enregistrer : le créneau a pu être pris entre-temps
   const creneau = joursReservables().includes(jour) ? creneauxDuJour(jour).find((c) => c.heure === heure) : undefined;

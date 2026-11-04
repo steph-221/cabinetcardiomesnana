@@ -127,3 +127,10 @@ Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
 mentions légales ont été mises à jour en conséquence (loi 09-08). Selon l'usage, une déclaration auprès de la
 CNDP (<https://www.cndp.ma>) peut être nécessaire : à vérifier par le cabinet.
+
+## Protection contre les robots
+
+Le formulaire public est protégé par : un champ piège invisible, un jeton signé (avec `SESSION_SECRET`) qui impose
+quelques secondes de remplissage, et des limites de fréquence enregistrées dans Upstash : 5 demandes/heure par
+adresse IP, 3/jour par numéro de téléphone, 60/heure au total (`app/agenda/antirobot.ts`). Sans Upstash, seules les
+deux premières protections s'appliquent.
