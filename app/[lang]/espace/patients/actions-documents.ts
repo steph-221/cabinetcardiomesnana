@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import { estJour, jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
+import { lireChoixConsultation } from "../../../dossier/choix-consultation";
 import { compteDrive, envoyerExamen, mettreALaCorbeille } from "../../../dossier/drive";
 import { champsETT, type DonneesETT } from "../../../dossier/ett";
 import { ajouterExamen, rangerFichierExamen, typesExamen } from "../../../dossier/examens";
@@ -76,7 +77,12 @@ export async function nouvelleOrdonnance(
     .filter((l) => l.medicament);
   if (!lignes.length) return echec("Ajoutez au moins un médicament.", formData);
   if (lignes.length > 20) return echec("20 lignes au plus par ordonnance.", formData);
-  const ordonnance = { date: jourLocal(new Date()), lignes, remarque: texte(formData, "remarque", 2000) };
+  const ordonnance = {
+    date: jourLocal(new Date()),
+    lignes,
+    remarque: texte(formData, "remarque", 2000),
+    consultationId: lireChoixConsultation(formData.get("consultationId")),
+  };
 
   try {
     const id = await creerOrdonnance(patientId, ordonnance, utilisateur.identifiant);
@@ -163,7 +169,14 @@ export async function nouveauCompteRenduETT(
   try {
     const id = await ajouterExamen(
       patientId,
-      { type: "Échocardiographie (ETT)", date, conclusion: donnees.total, valeurs: { ett: donnees }, fichier: null },
+      {
+        type: "Échocardiographie (ETT)",
+        date,
+        conclusion: donnees.total,
+        valeurs: { ett: donnees },
+        fichier: null,
+        consultationId: lireChoixConsultation(formData.get("consultationId")),
+      },
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, "compte rendu d'ETT rédigé", patientId, date);
@@ -184,6 +197,8 @@ export async function enregistrerCompteRendu(
   type: string,
   date: string,
   compteRendu: string,
+  // Choix de la consultation : vide = automatique, « aucune », ou son numéro
+  consultation = "",
 ): Promise<string | null> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   if (!typesExamen.includes(type)) return "Type d'examen inconnu.";
@@ -194,7 +209,14 @@ export async function enregistrerCompteRendu(
   try {
     await ajouterExamen(
       patientId,
-      { type, date, conclusion: corps, valeurs: { redaction: true }, fichier: null },
+      {
+        type,
+        date,
+        conclusion: corps,
+        valeurs: { redaction: true },
+        fichier: null,
+        consultationId: lireChoixConsultation(consultation),
+      },
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, "compte rendu enregistré", patientId, `${type} ${date}`);
@@ -255,7 +277,14 @@ export async function nouveauCompteRenduExamen(
   try {
     const id = await ajouterExamen(
       patientId,
-      { type: modele.type, date, conclusion: donnees.total, valeurs: { cr: donnees }, fichier: null },
+      {
+        type: modele.type,
+        date,
+        conclusion: donnees.total,
+        valeurs: { cr: donnees },
+        fichier: null,
+        consultationId: lireChoixConsultation(formData.get("consultationId")),
+      },
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, `compte rendu ${modele.bouton} rédigé`, patientId, date);

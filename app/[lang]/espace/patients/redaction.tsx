@@ -6,6 +6,8 @@ import type { ReferenceJointe } from "../../../dossier/redaction";
 import { lienPage } from "../../../dossier/sources";
 import { Moteur, type Reconnaissance } from "./dictee";
 import { enregistrerCompteRendu } from "./actions-documents";
+import { ChoixConsultation } from "./choix-consultation";
+import type { OptionConsultation } from "../../../dossier/choix-consultation";
 
 type Resultat = { compteRendu: string; verifications: string[]; references: ReferenceJointe[] };
 
@@ -19,13 +21,18 @@ export function RedactionCompteRendu({
   types,
   claude,
   aujourdhui,
+  consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patientId: number;
   types: string[];
   claude: boolean;
   aujourdhui: string;
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
+  const [consultation, setConsultation] = useState(String(consultationDefaut ?? ""));
   const [type, setType] = useState(types[0] ?? "");
   const [date, setDate] = useState(aujourdhui);
   const [dictee, setDictee] = useState("");
@@ -107,7 +114,7 @@ export function RedactionCompteRendu({
   function enregistrer() {
     sauvegarder(async () => {
       const final = citees.length ? `${texte.trim()}\n\nRÉFÉRENCES\n${citees.map(ligne).join("\n")}` : texte;
-      const message = await enregistrerCompteRendu(langue, patientId, type, date, final);
+      const message = await enregistrerCompteRendu(langue, patientId, type, date, final, consultation);
       if (message) setErreur(message);
     });
   }
@@ -136,6 +143,7 @@ export function RedactionCompteRendu({
           <input type="date" value={date} max={aujourdhui} onChange={(e) => setDate(e.target.value)} className={champ} />
         </label>
       </div>
+      <ChoixConsultation consultations={consultations} valeur={consultation} surChangement={setConsultation} className="block" />
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -95,15 +95,15 @@ export function ElementsConsultation({
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Link href={`${base}/patients/${patientId}/ordonnance`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+        <Link href={`${base}/patients/${patientId}/ordonnance?consultation=${consultation.id}`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
           <FilePlus2 className="h-4 w-4" aria-hidden />
           Ordonnance
         </Link>
-        <Link href={`${base}/comptabilite/factures/nouvelle?patient=${patientId}`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+        <Link href={`${base}/comptabilite/factures/nouvelle?patient=${patientId}&consultation=${consultation.id}`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
           <Receipt className="h-4 w-4" aria-hidden />
           Facturer
         </Link>
-        <Link href={`${base}/patients/${patientId}?onglet=examens`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+        <Link href={`${base}/patients/${patientId}?onglet=examens&consultation=${consultation.id}`} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
           <FileText className="h-4 w-4" aria-hidden />
           Examens
         </Link>

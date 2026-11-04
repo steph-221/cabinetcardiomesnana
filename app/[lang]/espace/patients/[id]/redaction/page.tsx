@@ -6,6 +6,8 @@ import { lang as langueRacine } from "next/root-params";
 import { estLangue } from "../../../../../cabinet";
 import { jourLocal } from "../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../agenda/session";
+import { consultationDemandee } from "../../../../../dossier/choix-consultation";
+import { consultationsPourChoix } from "../../../../../dossier/consultations";
 import { claudeConfigure } from "../../../../../dossier/dictee";
 import { libellePatient, lirePatient } from "../../../../../dossier/patients";
 import { typesRedaction } from "../../../../../dossier/redaction";
@@ -17,13 +19,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function Redaction({ params }: PageProps<"/[lang]/espace/patients/[id]/redaction">) {
+export default async function Redaction({ params, searchParams }: PageProps<"/[lang]/espace/patients/[id]/redaction">) {
   const lang = await langueRacine();
   if (!estLangue(lang)) return null;
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement…</p>}>
-        <Contenu langue={lang} params={params} />
+        <Contenu langue={lang} params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -32,15 +34,19 @@ export default async function Redaction({ params }: PageProps<"/[lang]/espace/pa
 async function Contenu({
   langue,
   params,
+  searchParams,
 }: {
   langue: string;
   params: PageProps<"/[lang]/espace/patients/[id]/redaction">["params"];
+  searchParams: PageProps<"/[lang]/espace/patients/[id]/redaction">["searchParams"];
 }) {
   await connection();
   await exigerUtilisateur(langue, "medical");
   const id = Number((await params).id);
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
+  const consultations = await consultationsPourChoix(id);
+  const consultationDefaut = consultationDemandee((await searchParams).consultation, consultations);
 
   return (
     <>
@@ -55,6 +61,8 @@ async function Contenu({
         types={typesRedaction}
         claude={claudeConfigure()}
         aujourdhui={jourLocal(new Date())}
+        consultations={consultations}
+        consultationDefaut={consultationDefaut}
       />
     </>
   );
