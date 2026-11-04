@@ -53,11 +53,10 @@ Variables de sécurité facultatives (recommandées) :
 | Variable | Valeur |
 | --- | --- |
 | `TOTP_ADMIN` | secret (base32) d'une application d'authentification (Google Authenticator, Authy, 1Password…). Une fois renseignée, la connexion de l'administrateur demande aussi le code à 6 chiffres. À créer d'abord dans l'application (« saisir une clé de configuration »), puis à recopier ici. |
-| `TURNSTILE_SECRET_KEY` et `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | clés d'un widget Cloudflare Turnstile (gratuit) : vérification anti-robot sur la réservation en ligne |
+| `TURNSTILE_SECRET_KEY` et `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | clés d'un widget Cloudflare Turnstile (gratuit) : vérification anti-robot supplémentaire sur la réservation en ligne, en plus de la protection décrite plus bas |
 
 La connexion est limitée à 10 essais ratés par adresse et 20 par identifiant toutes les 15 minutes (compteurs dans
-Upstash), et chaque connexion, réussie ou ratée, apparaît dans le journal. La réservation en ligne est limitée à
-5 demandes par heure et par adresse. Le mot de passe de `COMPTE_ADMIN` devrait avoir au moins 12 caractères.
+Upstash), et chaque connexion, réussie ou ratée, apparaît dans le journal. Le mot de passe de `COMPTE_ADMIN` devrait avoir au moins 12 caractères.
 
 Puis **redéployer** le site pour que les variables soient prises en compte. Tant que les variables Google ne sont
 pas renseignées, la page de rendez-vous affiche simplement le numéro du secrétariat.
@@ -138,3 +137,10 @@ Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
 mentions légales ont été mises à jour en conséquence (loi 09-08). Selon l'usage, une déclaration auprès de la
 CNDP (<https://www.cndp.ma>) peut être nécessaire : à vérifier par le cabinet.
+
+## Protection contre les robots
+
+Le formulaire public est protégé par : un champ piège invisible, un jeton signé (avec `SESSION_SECRET`) qui impose
+quelques secondes de remplissage, et des limites de fréquence enregistrées dans Upstash : 5 demandes/heure par
+adresse IP, 3/jour par numéro de téléphone, 60/heure au total (`app/agenda/antirobot.ts`). Sans Upstash, seules les
+deux premières protections s'appliquent.

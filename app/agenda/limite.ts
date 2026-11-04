@@ -2,15 +2,7 @@
 // Si le stockage est absent ou en panne, on laisse passer (et on le signale dans les journaux) plutôt que
 // de bloquer le cabinet.
 
-import { headers } from "next/headers";
 import { commande, stockageConfigure } from "./stockage";
-
-// Adresse du visiteur. Sur Vercel, x-forwarded-for est renseigné par la plateforme, pas par le visiteur.
-export async function adresseVisiteur() {
-  const h = await headers();
-  const brut = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0] ?? "";
-  return brut.trim().slice(0, 64) || "inconnue";
-}
 
 // Ajoute un essai à la clé et renvoie le total dans la fenêtre (en secondes). null si le stockage est indisponible.
 export async function compter(cle: string, fenetre: number): Promise<number | null> {

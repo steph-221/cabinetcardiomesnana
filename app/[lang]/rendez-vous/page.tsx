@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Phone, TriangleAlert } from "lucide-react";
 import { cabinet, estLangue, type Langue } from "../../cabinet";
+import { creerJeton } from "../../agenda/antirobot";
 import { agendaConfigure } from "../../agenda/google";
 import { disponibilites } from "../../agenda/disponibilites";
 import { alternatesPour } from "../../referencement";
@@ -57,5 +58,5 @@ async function Formulaire({ langue, t }: { langue: Langue; t: Dictionnaire }) {
       </div>
     );
   }
-  return <Reservation langue={langue} t={t.reservation} dispos={await disponibilites()} />;
+  return <Reservation langue={langue} t={t.reservation} dispos={await disponibilites()} jeton={creerJeton()} />;
 }

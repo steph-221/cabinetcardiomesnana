@@ -137,7 +137,8 @@ const en: Dictionnaire = {
       champs: "Please check your name and phone number (and, if filled in, your date of birth and email), and tick the consent box.",
       creneauPris: "This time slot has just been booked. Please choose another one.",
       technique: "A technical problem prevents booking. Please call the front desk.",
-      refus: "Too many requests, or the check could not be completed. Please try again later or call the front desk.",
+      robot: "Security check failed. Please reload the page and try again.",
+      limite: "Too many booking requests from this connection. Please try again later or call the front desk.",
     },
   },
   pied: {

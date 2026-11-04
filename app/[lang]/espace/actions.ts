@@ -29,7 +29,8 @@ import {
   verifierIdentifiants,
 } from "../../agenda/session";
 import { estRole } from "../../agenda/roles";
-import { adresseVisiteur, compter, effacer, lire, reserverUneFois } from "../../agenda/limite";
+import { adresseIp } from "../../agenda/antirobot";
+import { compter, effacer, lire, reserverUneFois } from "../../agenda/limite";
 import { totpAdminActive, verifierTotp } from "../../agenda/totp";
 import { cabinet } from "../../cabinet";
 import { prevenirPatient } from "../../agenda/notification";
@@ -51,7 +52,7 @@ async function tracerConnexion(action: string, identifiant: string, adresse: str
 export async function connexion(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const saisi = String(formData.get("identifiant") ?? "");
   const identifiant = saisi.trim().toLowerCase();
-  const adresse = await adresseVisiteur();
+  const adresse = await adresseIp();
   const refus = (erreur: string): EtatFormulaire => ({ erreur, valeurs: { identifiant: saisi } });
 
   if (
