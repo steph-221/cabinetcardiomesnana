@@ -2,6 +2,7 @@
 
 import { chevauche, creneauxDuJour, estJour, jourLocal, joursReservables } from "../../agenda/creneaux";
 import { adresseIp, jetonValide, tropDeDemandes } from "../../agenda/antirobot";
+import { verifierTurnstile } from "../../agenda/turnstile";
 import { agendaConfigure, creerRendezvous, periodesOccupees } from "../../agenda/google";
 
 // Créneaux encore libres pour un jour donné ("HH:MM")
@@ -70,7 +71,10 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
     return erreur("champs");
   }
   if (!agendaConfigure()) return erreur("technique");
-  if (await tropDeDemandes(await adresseIp(), telephone)) return erreur("limite");
+  const ip = await adresseIp();
+  if (await tropDeDemandes(ip, telephone)) return erreur("limite");
+  // Vérification Cloudflare Turnstile, si elle est activée (TURNSTILE_SECRET_KEY)
+  if (!(await verifierTurnstile(texte(formData, "cf-turnstile-response", 4096), ip))) return erreur("robot");
 
   // Revérifie juste avant d'enregistrer : le créneau a pu être pris entre-temps
   const creneau = joursReservables().includes(jour) ? creneauxDuJour(jour).find((c) => c.heure === heure) : undefined;

@@ -29,19 +29,63 @@ import {
   verifierIdentifiants,
 } from "../../agenda/session";
 import { estRole } from "../../agenda/roles";
+import { adresseIp } from "../../agenda/antirobot";
+import { compter, effacer, lire, reserverUneFois } from "../../agenda/limite";
+import { totpAdminActive, verifierTotp } from "../../agenda/totp";
 import { cabinet } from "../../cabinet";
 import { prevenirPatient } from "../../agenda/notification";
 import { echec, texte, type EtatFormulaire, type EtatModification } from "./formulaire";
 
+// Essais de connexion ratés tolérés par fenêtre de 15 minutes : par adresse, puis par identifiant (plus large,
+// pour qu'on ne puisse pas bloquer facilement le compte d'une autre personne)
+const FENETRE_CONNEXION = 15 * 60;
+const ESSAIS_PAR_ADRESSE = 10;
+const ESSAIS_PAR_IDENTIFIANT = 20;
+
+async function tracerConnexion(action: string, identifiant: string, adresse: string) {
+  if (!baseConfiguree()) return;
+  // L'identifiant n'est conservé que s'il a la forme d'un identifiant : on y tape parfois son mot de passe par erreur
+  const nom = identifiantValide(identifiant) ? identifiant : "(identifiant invalide)";
+  await journaliser(nom, action, null, `adresse ${adresse}`).catch(console.error);
+}
+
 export async function connexion(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const saisi = String(formData.get("identifiant") ?? "");
+  const identifiant = saisi.trim().toLowerCase();
+  const adresse = await adresseIp();
+  const refus = (erreur: string): EtatFormulaire => ({ erreur, valeurs: { identifiant: saisi } });
+
+  if (
+    (await lire(`connexion:ip:${adresse}`)) >= ESSAIS_PAR_ADRESSE ||
+    (await lire(`connexion:id:${identifiant}`)) >= ESSAIS_PAR_IDENTIFIANT
+  ) {
+    await tracerConnexion("connexion verrouillée", identifiant, adresse);
+    return refus("Trop d'essais. Réessayez dans 15 minutes.");
+  }
+
   const compte = await verifierIdentifiants(saisi, String(formData.get("motDePasse") ?? ""));
-  if (!compte) {
+  // Double authentification de l'administrateur, si elle est activée (TOTP_ADMIN)
+  let valide = Boolean(compte);
+  if (compte && estAdmin(compte.identifiant) && totpAdminActive()) {
+    const pas = verifierTotp(process.env.TOTP_ADMIN!, String(formData.get("code") ?? ""));
+    // Un code déjà utilisé est refusé : le voler à l'écran ne permet pas de le rejouer
+    valide = pas !== null && (await reserverUneFois(`totp:${pas}`, 120));
+  }
+
+  if (!compte || !valide) {
+    await Promise.all([
+      compter(`connexion:ip:${adresse}`, FENETRE_CONNEXION),
+      compter(`connexion:id:${identifiant}`, FENETRE_CONNEXION),
+    ]);
+    await tracerConnexion("connexion échouée", identifiant, adresse);
     // Ralentit les essais de mots de passe à la chaîne
     await new Promise((r) => setTimeout(r, 1000));
-    return { erreur: "Identifiant ou mot de passe incorrect.", valeurs: { identifiant: saisi } };
+    // Même message dans tous les cas : on ne dit pas si c'est le mot de passe ou le code qui est bon
+    return refus("Identifiant, mot de passe ou code de vérification incorrect.");
   }
+  await effacer(`connexion:id:${identifiant}`);
   await ouvrirSession(compte);
+  await tracerConnexion("connexion réussie", identifiant, adresse);
   redirect(`/${langue}/espace`);
 }
 
