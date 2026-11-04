@@ -150,3 +150,13 @@ export async function lireContenuResultat(id: number) {
   const [r] = await sql`SELECT nom_fichier, type_fichier, contenu FROM resultats_recus WHERE id = ${id} AND contenu IS NOT NULL`;
   return r ? { nom: r.nom_fichier as string, type: r.type_fichier as string, contenu: Buffer.from(r.contenu as string, "base64") } : null;
 }
+
+// Résultats reçus par e-mail qui ont donné lieu à ces examens : laboratoire et état (à relire, validé…)
+export async function resultatsDesExamens(examenIds: number[]) {
+  const resultats = new Map<number, { labo: string; statut: Resultat["statut"] }>();
+  if (!examenIds.length) return resultats;
+  const sql = await base();
+  const lignes = await sql`SELECT examen_id, labo, statut FROM resultats_recus WHERE examen_id = ANY(${examenIds})`;
+  for (const l of lignes) resultats.set(l.examen_id as number, { labo: l.labo as string, statut: l.statut as Resultat["statut"] });
+  return resultats;
+}

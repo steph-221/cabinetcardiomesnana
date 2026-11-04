@@ -15,6 +15,7 @@ import {
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
 import { ajouterScorePatient, evaluerSaisie, supprimerScorePatient } from "../../../dossier/scores-patients";
+import { rattacher, typesLien, type TypeLien } from "../../../dossier/liens-consultation";
 import { ajouterSuivi, changerStatut, delais, supprimerSuivi, type Statut } from "../../../dossier/suivis";
 import { journaliser } from "../../../dossier/journal";
 import {
@@ -374,11 +375,13 @@ export async function enregistrerScorePatient(
   slug: string,
   date: string,
   saisie: Record<string, unknown>,
+  // Calcul fait pendant une consultation ; sinon rattaché à la consultation du même jour si elle est unique
+  consultationId?: number,
 ): Promise<string | null> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   if (!estJour(date)) return "Indiquez la date du calcul.";
   if (!evaluerSaisie(slug, saisie)) return "Calculateur inconnu.";
-  const id = await ajouterScorePatient(patientId, slug, date, saisie, utilisateur.identifiant);
+  const id = await ajouterScorePatient(patientId, slug, date, saisie, utilisateur.identifiant, consultationId);
   await journaliser(utilisateur.identifiant, "calcul enregistré", patientId, `${slug} (n° ${id}) du ${date}`);
   refresh();
   return null;
@@ -388,5 +391,25 @@ export async function retirerScorePatient(langue: string, patientId: number, id:
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerScorePatient(patientId, id);
   await journaliser(utilisateur.identifiant, "calcul supprimé", patientId, `n° ${id}`);
+  refresh();
+}
+
+// Rattache un élément du dossier (calcul, examen, ordonnance, facture) à une consultation, ou le détache (null)
+export async function rattacherElement(
+  langue: string,
+  patientId: number,
+  type: string,
+  id: number,
+  consultationId: number | null,
+) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!(typesLien as readonly string[]).includes(type)) return;
+  if (!(await rattacher(type as TypeLien, patientId, id, consultationId))) return;
+  await journaliser(
+    utilisateur.identifiant,
+    consultationId === null ? "élément détaché d'une consultation" : "élément rattaché à une consultation",
+    patientId,
+    `${type} n° ${id}${consultationId === null ? "" : ` → consultation n° ${consultationId}`}`,
+  );
   refresh();
 }

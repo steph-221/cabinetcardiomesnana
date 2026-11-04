@@ -403,4 +403,16 @@ export const migrations: string[][] = [
     `ALTER TABLE patients ADD COLUMN IF NOT EXISTS fevg_base numeric(4, 1)`,
     `ALTER TABLE patients ADD COLUMN IF NOT EXISTS creatinine_base numeric(5, 1)`,
   ],
+  // 17 — Lien optionnel d'un examen, d'une ordonnance, d'une facture ou d'un calcul avec la consultation concernée.
+  // Si la consultation est supprimée, l'élément reste dans le dossier, simplement détaché.
+  [
+    `ALTER TABLE examens ADD COLUMN IF NOT EXISTS consultation_id integer REFERENCES consultations (id) ON DELETE SET NULL`,
+    `ALTER TABLE ordonnances ADD COLUMN IF NOT EXISTS consultation_id integer REFERENCES consultations (id) ON DELETE SET NULL`,
+    `ALTER TABLE factures ADD COLUMN IF NOT EXISTS consultation_id integer REFERENCES consultations (id) ON DELETE SET NULL`,
+    `ALTER TABLE scores_patients ADD COLUMN IF NOT EXISTS consultation_id integer REFERENCES consultations (id) ON DELETE SET NULL`,
+    `CREATE INDEX IF NOT EXISTS examens_consultation ON examens (consultation_id)`,
+    `CREATE INDEX IF NOT EXISTS ordonnances_consultation ON ordonnances (consultation_id)`,
+    `CREATE INDEX IF NOT EXISTS factures_consultation ON factures (consultation_id)`,
+    `CREATE INDEX IF NOT EXISTS scores_patients_consultation ON scores_patients (consultation_id)`,
+  ],
 ];

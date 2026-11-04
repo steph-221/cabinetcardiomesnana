@@ -3,6 +3,7 @@
 // à partir des réponses : le navigateur ne fournit jamais le score lui-même.
 
 import { base } from "./base";
+import { consultationDuJour } from "./liens-consultation";
 import { calculateurs, trouverCalculateur } from "./calculateurs";
 import { valeursNormalisees } from "./calculateurs/normalisation";
 import type { Resultat, Valeurs } from "./calculateurs/types";
@@ -16,6 +17,7 @@ export type ScorePatient = {
   score: number | null;
   libelle: string;
   gravite: Resultat["gravite"];
+  consultationId: number | null;
   creePar: string;
 };
 
@@ -30,7 +32,7 @@ export function evaluerSaisie(slug: string, saisie: Record<string, unknown>) {
 export async function listerScoresPatient(patientId: number): Promise<ScorePatient[]> {
   const sql = await base();
   const lignes = await sql`
-    SELECT id, calculateur, to_char(date, 'YYYY-MM-DD') AS date, valeurs, score, libelle, gravite, cree_par
+    SELECT id, calculateur, to_char(date, 'YYYY-MM-DD') AS date, valeurs, score, libelle, gravite, consultation_id, cree_par
     FROM scores_patients WHERE patient_id = ${patientId}
     ORDER BY date DESC, id DESC`;
   return lignes.map((l) => ({
@@ -42,6 +44,7 @@ export async function listerScoresPatient(patientId: number): Promise<ScorePatie
     score: l.score === null ? null : Number(l.score),
     libelle: l.libelle as string,
     gravite: l.gravite as Resultat["gravite"],
+    consultationId: (l.consultation_id as number | null | undefined) ?? null,
     creePar: l.cree_par as string,
   }));
 }
@@ -52,14 +55,18 @@ export async function ajouterScorePatient(
   date: string,
   saisie: Record<string, unknown>,
   par: string,
+  // Consultation concernée ; à défaut, celle du même jour si elle est unique
+  consultationId?: number | null,
 ) {
   const calcul = evaluerSaisie(slug, saisie);
   if (!calcul) throw new Error(`Calculateur inconnu : ${slug}`);
   const sql = await base();
+  const consultation = consultationId !== undefined ? consultationId : await consultationDuJour(patientId, date);
   const [ligne] = await sql`
-    INSERT INTO scores_patients (patient_id, calculateur, date, valeurs, score, libelle, gravite, cree_par)
+    INSERT INTO scores_patients (patient_id, calculateur, date, valeurs, score, libelle, gravite, consultation_id, cree_par)
     VALUES (${patientId}, ${slug}, ${date}, ${JSON.stringify(calcul.valeurs)}::jsonb, ${calcul.resultat.score},
-            ${calcul.resultat.libelle}, ${calcul.resultat.gravite}, ${par})
+            ${calcul.resultat.libelle}, ${calcul.resultat.gravite},
+            (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${patientId}), ${par})
     RETURNING id`;
   return ligne.id as number;
 }

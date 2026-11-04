@@ -17,17 +17,20 @@ export function FormulaireScore({
   langue,
   patientId,
   catalogue,
-  aujourdhui,
+  dateInitiale,
   donnees,
+  consultationId,
 }: {
   langue: string;
   patientId: number;
   catalogue: { slug: string; titre: string }[];
-  aujourdhui: string;
+  dateInitiale: string;
   donnees: DonneesDossier;
+  // Calcul fait pendant cette consultation ; sans elle, rattaché à la consultation du même jour si elle est unique
+  consultationId?: number;
 }) {
   const [slug, setSlug] = useState("");
-  const [date, setDate] = useState(aujourdhui);
+  const [date, setDate] = useState(dateInitiale);
   // Seules les valeurs changées à la main sont gardées ; le reste vient du dossier
   const [modifies, setModifies] = useState<Valeurs>({});
   const [erreur, setErreur] = useState<string | null>(null);
@@ -51,7 +54,7 @@ export function FormulaireScore({
     if (!calculateur) return;
     setErreur(null);
     transition(async () => {
-      const refus = await enregistrerScorePatient(langue, patientId, calculateur.slug, date, propres);
+      const refus = await enregistrerScorePatient(langue, patientId, calculateur.slug, date, propres, consultationId);
       if (refus) setErreur(refus);
       else {
         setEnregistre(true);

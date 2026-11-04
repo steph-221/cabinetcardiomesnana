@@ -30,13 +30,12 @@ import { listerConsultations } from "../../../../dossier/consultations";
 import { compteDrive } from "../../../../dossier/drive";
 import { modelesExamen } from "../../../../dossier/comptes-rendus";
 import { listerExamens, TAILLE_MAX, typesExamen, type Examen } from "../../../../dossier/examens";
-import type { DonneesETT } from "../../../../dossier/ett";
 import { journaliser } from "../../../../dossier/journal";
 import { listerFactures, type Facture } from "../../../../dossier/compta";
 import { libelleStatut, mad } from "../../../../dossier/compta-calculs";
 import { listerOrdonnances, type Ordonnance } from "../../../../dossier/ordonnances";
 import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
-import type { DonneesDossier } from "../../../../dossier/calculateurs/preremplissage";
+import { donneesPourCalculs, fevgDesExamens } from "../../../../dossier/donnees-calculs";
 import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
   age,
@@ -109,40 +108,14 @@ async function Dossier({
   // Calculs rattachés au dossier (médecins seulement)
   const scores = medical ? await listerScoresPatient(id) : [];
   // FEVG mesurées dans les comptes rendus d'ETT : elles complètent la courbe et les alertes
-  const fevgEchos = examens.flatMap((e) => {
-    const fevg = (e.valeurs.ett as DonneesETT | undefined)?.valeurs.fevg;
-    return typeof fevg === "number" ? [{ date: e.date, valeur: fevg }] : [];
-  });
+  const fevgEchos = fevgDesExamens(examens);
 
   // Chaque ouverture de dossier est tracée, après l'envoi de la page pour ne pas la ralentir
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
 
   const ans = age(patient.naissance, jourLocal(new Date()));
-  // Dernières mesures connues (consultation ou ETT) ; à défaut, les valeurs de base de la fiche
-  const dernierFevg = [
-    ...consultations.flatMap((c) =>
-      c.mesures.fevg !== undefined ? [{ date: c.date, valeur: c.mesures.fevg, origine: "dernière consultation" }] : [],
-    ),
-    ...fevgEchos.map((f) => ({ date: f.date, valeur: f.valeur, origine: "échographie du dossier" })),
-  ].sort((a, b) => b.date.localeCompare(a.date))[0];
-  const creatinineConsultation = consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null;
-  // Données reprises par défaut dans les calculs : poids et taille de la fiche, à défaut la dernière consultation
-  const donneesCalcul: DonneesDossier = {
-    age: ans,
-    sexe: patient.sexe,
-    poids: patient.poids ?? consultations.find((c) => c.poids !== null)?.poids ?? null,
-    taille: patient.taille ?? consultations.find((c) => c.taille !== null)?.taille ?? null,
-    poidsOrigine: patient.poids !== null ? "fiche patient" : "dernière consultation",
-    tailleOrigine: patient.taille !== null ? "fiche patient" : "dernière consultation",
-    fc: consultations.find((c) => c.fc !== null)?.fc ?? null,
-    creatinine: creatinineConsultation ?? patient.creatinineBase,
-    creatinineOrigine: creatinineConsultation !== null ? "dernière consultation" : "créatinine de base de la fiche",
-    fevg: dernierFevg?.valeur ?? patient.fevgBase,
-    fevgOrigine: dernierFevg ? dernierFevg.origine : "FEVG de base de la fiche",
-    tabac: patient.tabac,
-    alcoolVerres: patient.alcoolVerres,
-    facteurs: patient.facteursRisque,
-  };
+  // Données reprises par défaut dans les calculs (le médecin les vérifie et peut les modifier)
+  const donneesCalcul = donneesPourCalculs({ patient, age: ans, consultations, fevgEchos });
   const signaux = medical
     ? alertes({
         releves: [
@@ -282,7 +255,7 @@ async function Dossier({
             langue={langue}
             patientId={id}
             catalogue={catalogueScores}
-            aujourdhui={jourLocal(new Date())}
+            dateInitiale={jourLocal(new Date())}
             donnees={donneesCalcul}
           />
           <div className="mt-6">

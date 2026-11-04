@@ -2,6 +2,7 @@
 // la base garde le type, la date, la conclusion et (plus tard) les valeurs mesurées.
 
 import { base } from "./base";
+import { consultationDuJour } from "./liens-consultation";
 
 export const typesExamen = [
   "ECG",
@@ -35,6 +36,7 @@ export type Examen = {
   fichierNom: string;
   fichierType: string;
   fichierTaille: number;
+  consultationId: number | null;
   creeLe: Date;
   creePar: string;
 };
@@ -49,6 +51,7 @@ const versExamen = (l: Record<string, unknown>): Examen => ({
   fichierNom: l.fichier_nom as string,
   fichierType: l.fichier_type as string,
   fichierTaille: l.fichier_taille as number,
+  consultationId: (l.consultation_id as number | null | undefined) ?? null,
   creeLe: l.cree_le as Date,
   creePar: l.cree_par as string,
 });
@@ -73,16 +76,20 @@ export async function ajouterExamen(
     conclusion: string;
     valeurs?: Record<string, unknown>;
     fichier: { drive: string; nom: string; type: string; taille: number } | null;
+    // Consultation concernée ; à défaut, celle du même jour si elle est unique
+    consultationId?: number | null;
   },
   par: string,
 ) {
   const sql = await base();
+  const consultation = e.consultationId !== undefined ? e.consultationId : await consultationDuJour(patientId, e.date);
   const [[{ id }]] = await sql.transaction([
     sql`INSERT INTO examens (patient_id, type, date, conclusion, valeurs, fichier_drive, fichier_nom, fichier_type,
-                             fichier_taille, cree_par)
+                             fichier_taille, consultation_id, cree_par)
         VALUES (${patientId}, ${e.type}, ${e.date}, ${e.conclusion}, ${JSON.stringify(e.valeurs ?? {})}::jsonb,
                 ${e.fichier?.drive ?? null}, ${e.fichier?.nom ?? ""}, ${e.fichier?.type ?? ""},
-                ${e.fichier?.taille ?? 0}, ${par})
+                ${e.fichier?.taille ?? 0},
+                (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${patientId}), ${par})
         RETURNING id`,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,
   ]);
