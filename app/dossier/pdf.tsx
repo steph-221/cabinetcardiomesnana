@@ -195,8 +195,8 @@ export function pdfConsultation(
   c: Consultation,
   patient: Patient,
   traitements: string[],
-  // Examens, calculs et ordonnances rattachés à la consultation
-  rattaches: ElementsRapport = { calculs: [], examens: [], ordonnances: [] },
+  // Examens, calculs, ordonnances et facture rattachés à la consultation
+  rattaches: ElementsRapport = { calculs: [], examens: [], ordonnances: [], factures: [] },
 ) {
   const ans = age(patient.naissance, c.date);
   const sc = surfaceCorporelle(c.poids, c.taille);
@@ -290,6 +290,11 @@ export function pdfConsultation(
         {rattaches.ordonnances.length > 0 && (
           <Ligne libelle="Ordonnance">
             <Paragraphes texte={rattaches.ordonnances.join("\n")} />
+          </Ligne>
+        )}
+        {rattaches.factures.length > 0 && (
+          <Ligne libelle="Facture">
+            <Paragraphes texte={rattaches.factures.join("\n")} />
           </Ligne>
         )}
         <Text style={s.signature}>Signature et cachet</Text>

@@ -1,11 +1,13 @@
-// Éléments rattachés à une consultation, mis en forme pour son rapport PDF : examens, calculs, ordonnances.
-// La facture n'y figure pas : c'est un document de gestion, pas un document médical. Sans accès base : testé à part.
+// Éléments rattachés à une consultation, mis en forme pour son rapport PDF : examens, calculs, ordonnances, facture.
+// Sans accès base : testé à part.
 
+import type { Facture } from "./compta";
+import { libelleStatut, mad } from "./compta-calculs";
 import type { Examen } from "./examens";
 import type { Ordonnance } from "./ordonnances";
 import type { ScorePatient } from "./scores-patients";
 
-export type ElementsRapport = { calculs: string[]; examens: string[]; ordonnances: string[] };
+export type ElementsRapport = { calculs: string[]; examens: string[]; ordonnances: string[]; factures: string[] };
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 // Un texte long (compte rendu d'ETT) reste lisible dans le rapport : espaces réduits, 600 signes au plus
@@ -16,7 +18,7 @@ const resume = (texte: string) => {
 
 export function elementsRapport(
   consultation: { id: number; date: string },
-  liens: { scores: ScorePatient[]; examens: Examen[]; ordonnances: Ordonnance[] },
+  liens: { scores: ScorePatient[]; examens: Examen[]; ordonnances: Ordonnance[]; factures: Facture[] },
 ): ElementsRapport {
   const ici = <T extends { consultationId: number | null }>(liste: T[]) =>
     liste.filter((e) => e.consultationId === consultation.id);
@@ -37,5 +39,13 @@ export function elementsRapport(
     ),
     ...(o.remarque.trim() ? [`Remarque : ${resume(o.remarque)}`] : []),
   ]);
-  return { calculs, examens, ordonnances };
+  // Une facture annulée n'a plus d'existence comptable : elle n'est pas rappelée
+  const factures = ici(liens.factures)
+    .filter((f) => !f.annulee)
+    .map(
+      (f) =>
+        `Facture n° ${f.numero}${quand(f.date)} : ${mad(f.totalCts)}, ${libelleStatut[f.statut].toLowerCase()}` +
+        (f.statut === "partielle" ? ` (reste ${mad(f.totalCts - f.payeCts)})` : ""),
+    );
+  return { calculs, examens, ordonnances, factures };
 }
