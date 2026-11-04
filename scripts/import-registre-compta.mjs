@@ -15,12 +15,6 @@ import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 
 const MODES = ["especes", "cheque", "carte", "virement", "mutuelle"];
-const MEDECINS = {
-  TAOUAB: { recherche: "%taouab%", creer: null }, // médecin du site, déjà présent dans l'application
-  NAJOUA: { recherche: "%najoua%", creer: null }, // second associé, déjà ajouté dans Réglages
-  ZAROUF: { recherche: "%zarouf%", creer: "Dr Zarouf" },
-  ARCHICH: { recherche: "%archich%", creer: "Dr Archich" },
-};
 const PART_NOUVEAUX_MEDECINS = 0; // à régler dans Réglages (ils ne portent aucune part des charges communes)
 const PAIEMENT_CREE_PAR = "import-registre";
 
@@ -31,6 +25,8 @@ if (!fichier) {
 }
 const ecrire = options.includes("--ecrire");
 const donnees = JSON.parse(readFileSync(fichier, "utf8"));
+// Médecins du registre : { code, recherche (morceau du nom déjà présent dans l'application), creer (nom à créer sinon) }
+const MEDECINS = Object.fromEntries(donnees.praticiens.map((p) => [p.code, p]));
 
 // ---------- Contrôle des données ----------
 const erreurs = [];
@@ -114,7 +110,7 @@ requetes.push(sql.query(`ALTER TABLE actes ADD COLUMN IF NOT EXISTS archive bool
 const praticiens = await sql`SELECT id, nom, actif FROM praticiens`;
 const idMedecin = {};
 for (const [code, { recherche, creer }] of Object.entries(MEDECINS)) {
-  const trouves = praticiens.filter((p) => p.nom.toLowerCase().includes(recherche.slice(1, -1)));
+  const trouves = praticiens.filter((p) => p.nom.toLowerCase().includes(recherche.toLowerCase()));
   if (trouves.length === 1) idMedecin[code] = trouves[0].id;
   else if (trouves.length > 1) throw new Error(`Plusieurs médecins correspondent à ${code} : ${trouves.map((p) => p.nom).join(", ")}`);
   else if (creer) {

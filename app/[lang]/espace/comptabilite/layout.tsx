@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { Landmark, LayoutDashboard, Receipt, Settings, ShoppingCart } from "lucide-react";
+import { ChartColumn, Landmark, LayoutDashboard, Receipt, Settings, ShoppingCart } from "lucide-react";
 import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
 import { Onglet } from "../onglet";
 
 // Sous-menu de la comptabilité. La secrétaire n'a que les factures (facturer, encaisser) ;
-// le tableau de bord, les charges et les réglages sont réservés aux médecins.
+// le tableau de bord, les statistiques, les charges et les réglages sont réservés aux médecins.
 export default async function LayoutComptabilite({ children, params }: LayoutProps<"/[lang]/espace/comptabilite">) {
   const { lang } = await params;
   return (
@@ -37,6 +37,12 @@ async function SousMenu({ langue }: { langue: string }) {
           <Receipt className="h-4 w-4" aria-hidden />
           Factures
         </Onglet>
+        {accesMedical(utilisateur) && (
+          <Onglet href={`${base}/statistiques`}>
+            <ChartColumn className="h-4 w-4" aria-hidden />
+            Statistiques
+          </Onglet>
+        )}
         {accesMedical(utilisateur) && (
           <Onglet href={`${base}/charges`}>
             <ShoppingCart className="h-4 w-4" aria-hidden />
