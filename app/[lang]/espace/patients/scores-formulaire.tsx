@@ -5,6 +5,7 @@ import { LoaderCircle, Save, Trash2 } from "lucide-react";
 import { ChampsCalcul, couleurs } from "../calculateurs/calculateur";
 import { trouverCalculateur } from "../../../dossier/calculateurs";
 import { valeursNormalisees } from "../../../dossier/calculateurs/normalisation";
+import { preremplir, type DonneesDossier } from "../../../dossier/calculateurs/preremplissage";
 import type { Valeurs } from "../../../dossier/calculateurs/types";
 import { enregistrerScorePatient, retirerScorePatient } from "./actions";
 
@@ -17,26 +18,33 @@ export function FormulaireScore({
   patientId,
   catalogue,
   aujourdhui,
+  donnees,
 }: {
   langue: string;
   patientId: number;
   catalogue: { slug: string; titre: string }[];
   aujourdhui: string;
+  donnees: DonneesDossier;
 }) {
   const [slug, setSlug] = useState("");
   const [date, setDate] = useState(aujourdhui);
-  const [valeurs, setValeurs] = useState<Valeurs>({});
+  // Seules les valeurs changées à la main sont gardées ; le reste vient du dossier
+  const [modifies, setModifies] = useState<Valeurs>({});
   const [erreur, setErreur] = useState<string | null>(null);
   const [enregistre, setEnregistre] = useState(false);
   const [enCours, transition] = useTransition();
 
   const calculateur = slug ? trouverCalculateur(slug) : undefined;
+  const repris = calculateur ? preremplir(calculateur, donnees) : { valeurs: {}, origines: {} };
+  const valeurs: Valeurs = { ...repris.valeurs, ...modifies };
+  // Origines affichées seulement pour les valeurs que le médecin n'a pas touchées
+  const origines = Object.fromEntries(Object.entries(repris.origines).filter(([cle]) => !(cle in modifies)));
   // Les réponses affichées sont celles qui seront enregistrées (les choix non touchés prennent leur première option)
   const propres = calculateur ? valeursNormalisees(calculateur, valeurs) : {};
   const resultat = calculateur?.evaluer(propres);
   const regler = (cle: string, valeur: boolean | string | number | undefined) => {
     setEnregistre(false);
-    setValeurs((v) => ({ ...v, [cle]: valeur }));
+    setModifies((v) => ({ ...v, [cle]: valeur }));
   };
 
   function enregistrer() {
@@ -47,7 +55,7 @@ export function FormulaireScore({
       if (refus) setErreur(refus);
       else {
         setEnregistre(true);
-        setValeurs({});
+        setModifies({});
       }
     });
   }
@@ -61,7 +69,7 @@ export function FormulaireScore({
             value={slug}
             onChange={(e) => {
               setSlug(e.target.value);
-              setValeurs({});
+              setModifies({});
               setEnregistre(false);
               setErreur(null);
             }}
@@ -84,7 +92,7 @@ export function FormulaireScore({
       {calculateur && resultat && (
         <>
           <div className="mt-5">
-            <ChampsCalcul calculateur={calculateur} valeurs={valeurs} regler={regler} />
+            <ChampsCalcul calculateur={calculateur} valeurs={valeurs} regler={regler} origines={origines} />
           </div>
 
           <div className={`mt-5 rounded-xl p-4 ${couleurs[resultat.gravite]}`} aria-live="polite">

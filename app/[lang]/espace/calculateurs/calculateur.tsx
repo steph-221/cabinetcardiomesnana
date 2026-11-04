@@ -17,11 +17,16 @@ export function ChampsCalcul({
   calculateur,
   valeurs,
   regler,
+  origines = {},
 }: {
   calculateur: Calculateur;
   valeurs: Valeurs;
   regler: (cle: string, valeur: boolean | string | number | undefined) => void;
+  // Valeurs reprises du dossier : leur origine s'affiche à côté du champ
+  origines?: Record<string, string>;
 }) {
+  const origine = (cle: string) =>
+    origines[cle] && <span className="ms-2 text-xs text-sky-700">repris du dossier ({origines[cle]})</span>;
   const groupes = new Map<string, Champ[]>();
   for (const c of calculateur.champs) groupes.set(c.groupe ?? "", [...(groupes.get(c.groupe ?? "") ?? []), c]);
 
@@ -46,6 +51,7 @@ export function ChampsCalcul({
                       className="w-28 rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm"
                     />
                     {c.unite && <span className="text-slate-500">{c.unite}</span>}
+                    {origine(c.cle)}
                   </label>
                 ) : c.type === "case" ? (
                   <label className="flex cursor-pointer items-start gap-2 text-slate-700">
@@ -58,11 +64,13 @@ export function ChampsCalcul({
                     <span>
                       {c.libelle}
                       {c.aide && <span className="ms-2 text-xs text-slate-400">{c.aide}</span>}
+                      {origine(c.cle)}
                     </span>
                   </label>
                 ) : (
                   <label className="flex flex-wrap items-center gap-2 text-slate-700">
                     {c.libelle}
+                    {origine(c.cle)}
                     <select
                       value={(valeurs[c.cle] as string | undefined) ?? c.options[0].valeur}
                       onChange={(e) => regler(c.cle, e.target.value)}

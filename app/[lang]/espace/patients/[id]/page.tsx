@@ -36,6 +36,7 @@ import { listerFactures, type Facture } from "../../../../dossier/compta";
 import { libelleStatut, mad } from "../../../../dossier/compta-calculs";
 import { listerOrdonnances, type Ordonnance } from "../../../../dossier/ordonnances";
 import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
+import type { DonneesDossier } from "../../../../dossier/calculateurs/preremplissage";
 import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
   age,
@@ -117,6 +118,16 @@ async function Dossier({
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
 
   const ans = age(patient.naissance, jourLocal(new Date()));
+  // Données reprises par défaut dans les calculs : dernières valeurs saisies en consultation
+  const donneesCalcul: DonneesDossier = {
+    age: ans,
+    sexe: patient.sexe,
+    poids: consultations.find((c) => c.poids !== null)?.poids ?? null,
+    taille: consultations.find((c) => c.taille !== null)?.taille ?? null,
+    fc: consultations.find((c) => c.fc !== null)?.fc ?? null,
+    creatinine: consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null,
+    facteurs: patient.facteursRisque,
+  };
   const signaux = medical
     ? alertes({
         releves: [
@@ -251,7 +262,13 @@ async function Dossier({
           <p className="mb-4 text-xs text-slate-500">
             Choisissez le calcul, enregistrez-le à la date voulue. Refaites-le au fil du suivi pour voir l&apos;évolution.
           </p>
-          <FormulaireScore langue={langue} patientId={id} catalogue={catalogueScores} aujourdhui={jourLocal(new Date())} />
+          <FormulaireScore
+            langue={langue}
+            patientId={id}
+            catalogue={catalogueScores}
+            aujourdhui={jourLocal(new Date())}
+            donnees={donneesCalcul}
+          />
           <div className="mt-6">
             <ScoresDossier langue={langue} patientId={id} scores={scores} />
           </div>
