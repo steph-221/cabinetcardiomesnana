@@ -201,6 +201,9 @@ export async function validerImport(
     notes: "",
     inrMin: nombre(formData, "inrMin") ?? null,
     inrMax: nombre(formData, "inrMax") ?? null,
+    // Poids et taille arrivent par les visites importées, pas par ce formulaire
+    poids: null,
+    taille: null,
   };
   if ((medical.inrMin === null) !== (medical.inrMax === null) || (medical.inrMin ?? 0) > (medical.inrMax ?? 0)) {
     return echec("Zone cible d'INR : indiquez le minimum et le maximum.", formData);
@@ -251,6 +254,8 @@ export async function validerImport(
           notes: existant.notes,
           inrMin: existant.inrMin ?? medical.inrMin,
           inrMax: existant.inrMax ?? medical.inrMax,
+          poids: existant.poids,
+          taille: existant.taille,
         },
         utilisateur.identifiant,
       );
