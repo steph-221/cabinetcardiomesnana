@@ -118,6 +118,7 @@ const en: Dictionnaire = {
     choisirJour: "Choose a day",
     choisirHeure: "Choose a time",
     complet: "No free time slots left that day. Please choose another day.",
+    aucunJour: "No free time slots in the coming days. Please call the secretariat.",
     vosCoordonnees: "Your details",
     nom: "Full name",
     telephone: "Phone",

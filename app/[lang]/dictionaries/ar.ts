@@ -115,6 +115,7 @@ const ar: Dictionnaire = {
     choisirJour: "اختر يوماً",
     choisirHeure: "اختر توقيتاً",
     complet: "لم يعد هناك أي توقيت متاح في هذا اليوم. اختر يوماً آخر.",
+    aucunJour: "لا توجد أوقات متاحة في الأيام القادمة. يرجى الاتصال بالسكرتارية.",
     vosCoordonnees: "معلوماتك",
     nom: "الاسم الكامل",
     telephone: "الهاتف",

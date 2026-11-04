@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { Phone, TriangleAlert } from "lucide-react";
 import { cabinet, estLangue, type Langue } from "../../cabinet";
-import { joursReservables } from "../../agenda/creneaux";
 import { agendaConfigure } from "../../agenda/google";
+import { disponibilites } from "../../agenda/disponibilites";
 import { alternatesPour } from "../../referencement";
 import { getDictionnaire, type Dictionnaire } from "../dictionaries";
 import { Reservation } from "./reservation";
@@ -57,5 +57,5 @@ async function Formulaire({ langue, t }: { langue: Langue; t: Dictionnaire }) {
       </div>
     );
   }
-  return <Reservation langue={langue} t={t.reservation} jours={joursReservables()} />;
+  return <Reservation langue={langue} t={t.reservation} dispos={await disponibilites()} />;
 }

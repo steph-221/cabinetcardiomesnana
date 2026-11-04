@@ -120,6 +120,7 @@ const es: Dictionnaire = {
     choisirJour: "Elija un día",
     choisirHeure: "Elija un horario",
     complet: "No quedan horarios libres ese día. Elija otro día.",
+    aucunJour: "No hay horarios libres en los próximos días. Llame al secretariado, por favor.",
     vosCoordonnees: "Sus datos",
     nom: "Nombre y apellidos",
     telephone: "Teléfono",
