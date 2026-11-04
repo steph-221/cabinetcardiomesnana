@@ -22,10 +22,12 @@ export function Reservation({
   langue,
   t,
   dispos,
+  jeton,
 }: {
   langue: Langue;
   t: Dictionnaire["reservation"];
   dispos: JourLibre[] | null;
+  jeton: string;
 }) {
   // Premier jour avec un horaire libre : aujourd'hui s'il reste de la place, sinon le suivant
   const premier = dispos?.find((d) => d.creneaux.length > 0);
@@ -130,6 +132,7 @@ export function Reservation({
           <legend className="text-lg font-semibold text-slate-900">3. {t.vosCoordonnees}</legend>
           <input type="hidden" name="jour" value={jour} />
           <input type="hidden" name="heure" value={heure} />
+          <input type="hidden" name="jeton" value={jeton} />
           {/* Piège à robots, invisible pour les visiteurs */}
           <input type="text" name="site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
           <div className="grid gap-4 sm:grid-cols-2">
