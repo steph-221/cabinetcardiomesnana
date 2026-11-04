@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Plus, Save, Square, Trash2 } from "lucide-react";
+import { statutsTabac } from "../../../dossier/mode-de-vie";
 import type { Patient } from "../../../dossier/patients";
 import {
   arreter,
@@ -202,6 +203,70 @@ export function FormulairePatient({
                 className={`${champ} w-28`}
               />
             </label>
+          </div>
+          <div className="sm:col-span-2 rounded-xl bg-slate-50 p-4">
+            <p className={etiquette}>
+              Mode de vie et valeurs de base{" "}
+              <span className="font-normal text-slate-400">(reprises dans les calculs, à vérifier à chaque fois)</span>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-4">
+              <label className={etiquette}>
+                Tabagisme
+                <select name="tabac" defaultValue={v("tabac", patient?.tabac)} className={`${champ} w-44`}>
+                  {statutsTabac.map((s) => (
+                    <option key={s.valeur} value={s.valeur}>
+                      {s.libelle}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={etiquette}>
+                Paquets-années
+                <input
+                  name="paquetsAnnees"
+                  inputMode="decimal"
+                  placeholder="20"
+                  defaultValue={v("paquetsAnnees", decimalFr(patient?.paquetsAnnees))}
+                  className={`${champ} w-28`}
+                />
+              </label>
+              <label className={etiquette}>
+                Alcool
+                <span className="ms-2 font-normal text-slate-400">verres/sem.</span>
+                <input
+                  name="alcoolVerres"
+                  inputMode="numeric"
+                  placeholder="0"
+                  defaultValue={v("alcoolVerres", decimalFr(patient?.alcoolVerres))}
+                  className={`${champ} w-28`}
+                />
+              </label>
+              <label className={etiquette}>
+                FEVG de base
+                <span className="ms-2 font-normal text-slate-400">%</span>
+                <input
+                  name="fevgBase"
+                  inputMode="decimal"
+                  placeholder="60"
+                  defaultValue={v("fevgBase", decimalFr(patient?.fevgBase))}
+                  className={`${champ} w-28`}
+                />
+              </label>
+              <label className={etiquette}>
+                Créatinine de base
+                <span className="ms-2 font-normal text-slate-400">mg/L</span>
+                <input
+                  name="creatinineBase"
+                  inputMode="decimal"
+                  placeholder="9"
+                  defaultValue={v("creatinineBase", decimalFr(patient?.creatinineBase))}
+                  className={`${champ} w-28`}
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              FEVG et créatinine de base ne servent qu&apos;à défaut d&apos;une mesure plus récente en consultation ou en échographie.
+            </p>
           </div>
           <label className={etiquette}>
             Antécédents

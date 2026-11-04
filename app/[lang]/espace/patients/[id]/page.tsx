@@ -118,6 +118,14 @@ async function Dossier({
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
 
   const ans = age(patient.naissance, jourLocal(new Date()));
+  // Dernières mesures connues (consultation ou ETT) ; à défaut, les valeurs de base de la fiche
+  const dernierFevg = [
+    ...consultations.flatMap((c) =>
+      c.mesures.fevg !== undefined ? [{ date: c.date, valeur: c.mesures.fevg, origine: "dernière consultation" }] : [],
+    ),
+    ...fevgEchos.map((f) => ({ date: f.date, valeur: f.valeur, origine: "échographie du dossier" })),
+  ].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const creatinineConsultation = consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null;
   // Données reprises par défaut dans les calculs : poids et taille de la fiche, à défaut la dernière consultation
   const donneesCalcul: DonneesDossier = {
     age: ans,
@@ -127,7 +135,12 @@ async function Dossier({
     poidsOrigine: patient.poids !== null ? "fiche patient" : "dernière consultation",
     tailleOrigine: patient.taille !== null ? "fiche patient" : "dernière consultation",
     fc: consultations.find((c) => c.fc !== null)?.fc ?? null,
-    creatinine: consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null,
+    creatinine: creatinineConsultation ?? patient.creatinineBase,
+    creatinineOrigine: creatinineConsultation !== null ? "dernière consultation" : "créatinine de base de la fiche",
+    fevg: dernierFevg?.valeur ?? patient.fevgBase,
+    fevgOrigine: dernierFevg ? dernierFevg.origine : "FEVG de base de la fiche",
+    tabac: patient.tabac,
+    alcoolVerres: patient.alcoolVerres,
     facteurs: patient.facteursRisque,
   };
   const signaux = medical

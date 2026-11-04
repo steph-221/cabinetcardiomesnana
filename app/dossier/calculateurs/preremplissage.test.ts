@@ -10,6 +10,9 @@ const dossier: DonneesDossier = {
   fc: 72,
   creatinine: 11,
   facteurs: ["HTA", "Tabac"],
+  tabac: "actuel",
+  alcoolVerres: 10,
+  fevg: 52,
 };
 
 describe("preremplir", () => {
@@ -59,5 +62,28 @@ describe("preremplir", () => {
 
   it("tous les calculateurs acceptent le pré-remplissage sans erreur", () => {
     for (const c of calculateurs) expect(() => preremplir(c, dossier)).not.toThrow();
+  });
+
+  it("reprend le tabagisme actuel, l'alcool à partir de 8 verres par semaine et la FEVG", () => {
+    const hfa = preremplir(trouverCalculateur("hfa-icos-her2")!, { ...dossier, fevgOrigine: "FEVG de base de la fiche" });
+    expect(hfa.valeurs.tabac).toBe(true);
+    expect(hfa.origines.tabac).toBe("tabagisme de la fiche");
+    expect(hfa.valeurs.fevg).toBe("limite");
+    expect(hfa.origines.fevg).toBe("FEVG de base de la fiche");
+    const hasBled = preremplir(trouverCalculateur("has-bled")!, dossier);
+    expect(hasBled.valeurs.alcool).toBe(true);
+    expect(preremplir(trouverCalculateur("has-bled")!, { ...dossier, alcoolVerres: 7 }).valeurs.alcool).toBeUndefined();
+  });
+
+  it("un ancien fumeur n'est pas repris comme fumeur actuel", () => {
+    const v = preremplir(trouverCalculateur("hfa-icos-her2")!, { ...dossier, tabac: "ancien", facteurs: [] }).valeurs;
+    expect(v.tabac).toBeUndefined();
+  });
+
+  it("tranches de FEVG : 55 et plus normale, 50 à 54 limite, moins de 50 basse", () => {
+    const hfa = trouverCalculateur("hfa-icos-her2")!;
+    expect(preremplir(hfa, { ...dossier, fevg: 60 }).valeurs.fevg).toBe("normale");
+    expect(preremplir(hfa, { ...dossier, fevg: 50 }).valeurs.fevg).toBe("limite");
+    expect(preremplir(hfa, { ...dossier, fevg: 49 }).valeurs.fevg).toBe("basse");
   });
 });

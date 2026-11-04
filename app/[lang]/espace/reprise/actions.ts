@@ -204,6 +204,11 @@ export async function validerImport(
     // Poids et taille arrivent par les visites importées, pas par ce formulaire
     poids: null,
     taille: null,
+    tabac: "" as const,
+    paquetsAnnees: null,
+    alcoolVerres: null,
+    fevgBase: null,
+    creatinineBase: null,
   };
   if ((medical.inrMin === null) !== (medical.inrMax === null) || (medical.inrMin ?? 0) > (medical.inrMax ?? 0)) {
     return echec("Zone cible d'INR : indiquez le minimum et le maximum.", formData);
@@ -256,6 +261,11 @@ export async function validerImport(
           inrMax: existant.inrMax ?? medical.inrMax,
           poids: existant.poids,
           taille: existant.taille,
+          tabac: existant.tabac,
+          paquetsAnnees: existant.paquetsAnnees,
+          alcoolVerres: existant.alcoolVerres,
+          fevgBase: existant.fevgBase,
+          creatinineBase: existant.creatinineBase,
         },
         utilisateur.identifiant,
       );

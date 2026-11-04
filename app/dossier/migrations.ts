@@ -395,4 +395,12 @@ export const migrations: string[][] = [
     `ALTER TABLE patients ADD COLUMN IF NOT EXISTS poids numeric(5, 1)`,
     `ALTER TABLE patients ADD COLUMN IF NOT EXISTS taille numeric(5, 1)`,
   ],
+  // 16 — Données de base utiles aux calculs : tabagisme, alcool, FEVG et créatinine de référence
+  [
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS tabac_statut text NOT NULL DEFAULT '' CHECK (tabac_statut IN ('', 'non', 'actuel', 'ancien'))`,
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS tabac_paquets_annees numeric(5, 1)`,
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS alcool_verres integer`,
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS fevg_base numeric(4, 1)`,
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS creatinine_base numeric(5, 1)`,
+  ],
 ];
