@@ -67,7 +67,7 @@ async function Contenu({
     [questions, patient, contexte] = await Promise.all([
       listerQuestions(),
       patientId ? lirePatient(patientId) : null,
-      patientId ? resumeClinique(patientId) : null,
+      patientId ? resumeClinique(patientId, true) : null,
     ]);
   } catch (erreur) {
     console.error(erreur);
@@ -93,9 +93,9 @@ async function Contenu({
               </Link>
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Ce résumé anonyme (sans nom ni coordonnées) est joint à la question :
+              Tout le dossier, sans nom ni coordonnées (consultations, examens et conclusions, traitements, scores, dates), est joint à la question :
             </p>
-            <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-slate-700">{contexte}</pre>
+            <pre className="mt-1 max-h-72 overflow-y-auto whitespace-pre-wrap font-sans text-xs text-slate-700">{contexte}</pre>
           </div>
         )}
         <FormulaireQuestion langue={langue} patientId={patient ? patient.id : null} />
