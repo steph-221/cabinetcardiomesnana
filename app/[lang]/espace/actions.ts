@@ -2,8 +2,18 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { dateLocale, estJour } from "../../agenda/creneaux";
-import { affecterMedecin, creerFermeture, creerRendezvous, supprimerRendezvous } from "../../agenda/google";
+import { dateLocale, estJour, jourLocal } from "../../agenda/creneaux";
+import {
+  affecterMedecin,
+  creerFermeture,
+  creerRendezvous,
+  rattacherRendezvous,
+  supprimerRendezvous,
+} from "../../agenda/google";
+import { baseConfiguree } from "../../dossier/base";
+import { journaliser } from "../../dossier/journal";
+import { libellePatient, lirePatient } from "../../dossier/patients";
+import { chercherPourRendezvous, completerIdentite, type DossierPropose } from "../../dossier/rendez-vous";
 import {
   changerRole,
   enregistrerCompte,
@@ -60,6 +70,8 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   const jour = String(formData.get("jour") ?? "");
   const heure = String(formData.get("heure") ?? "");
   const nom = String(formData.get("nom") ?? "").trim().slice(0, 100);
+  const prenom = String(formData.get("prenom") ?? "").trim().slice(0, 100);
+  const patientId = Number(formData.get("patientId")) || undefined;
   const telephone = String(formData.get("telephone") ?? "").trim().slice(0, 30);
   const motif = String(formData.get("motif") ?? "").trim().slice(0, 300);
   const dateNaissance = String(formData.get("dateNaissance") ?? "");
@@ -82,6 +94,8 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
       debut,
       fin: new Date(debut.getTime() + duree * 60_000),
       nom,
+      prenom,
+      patientId,
       telephone,
       motif,
       dateNaissance,
@@ -97,6 +111,42 @@ export async function ajouter(langue: string, _: EtatFormulaire, formData: FormD
   }
   refresh();
   return null;
+}
+
+// Recherche d'un dossier existant pour y rattacher un rendez-vous pris à la main
+export async function chercherDossiers(langue: string, recherche: string): Promise<DossierPropose[]> {
+  await exigerConnexion(langue);
+  const q = recherche.trim().slice(0, 100);
+  if (q.length < 2 || !baseConfiguree()) return [];
+  try {
+    return await chercherPourRendezvous(q);
+  } catch (erreur) {
+    console.error(erreur);
+    return [];
+  }
+}
+
+// Rattache un rendez-vous (souvent pris en ligne) à un dossier existant. Ce que le patient a déjà indiqué
+// (date de naissance, e-mail, téléphone) complète le dossier uniquement là où il est vide.
+export async function rattacher(langue: string, rdvId: string, patientId: number, formData: FormData) {
+  const utilisateur = await exigerConnexion(langue);
+  const patient = await lirePatient(patientId);
+  if (!patient) return;
+  const naissance = String(formData.get("naissance") ?? "");
+  const email = String(formData.get("email") ?? "").trim().slice(0, 100);
+  const telephone = String(formData.get("telephone") ?? "").trim().slice(0, 30);
+  await completerIdentite(
+    patientId,
+    {
+      naissance: estJour(naissance) && naissance >= "1900-01-01" && naissance <= jourLocal(new Date()) ? naissance : undefined,
+      email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined,
+      telephone: /^\+?[\d\s.-]{8,20}$/.test(telephone) ? telephone : undefined,
+    },
+    utilisateur.identifiant,
+  );
+  await rattacherRendezvous(rdvId, patientId);
+  await journaliser(utilisateur.identifiant, "rendez-vous rattaché", patientId, libellePatient(patient));
+  refresh();
 }
 
 // --- Comptes du personnel : réservé à l'administrateur ---

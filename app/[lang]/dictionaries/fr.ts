@@ -120,7 +120,8 @@ const fr = {
     complet: "Plus aucun horaire libre ce jour-là. Choisissez un autre jour.",
     aucunJour: "Aucun horaire libre pour les prochains jours. Merci d'appeler le secrétariat.",
     vosCoordonnees: "Vos coordonnées",
-    nom: "Nom et prénom",
+    nom: "Nom",
+    prenom: "Prénom",
     telephone: "Téléphone",
     motif: "Motif de la consultation",
     dateNaissance: "Date de naissance",
@@ -134,7 +135,7 @@ const fr = {
     confirmeTexte:
       "Merci ! Le secrétariat pourra vous appeler pour confirmer. En cas d'empêchement, prévenez le cabinet par téléphone ou WhatsApp.",
     erreurs: {
-      champs: "Merci de vérifier votre nom, votre numéro de téléphone (et, s'ils sont remplis, la date de naissance et l'e-mail), puis de cocher la case d'accord.",
+      champs: "Merci de vérifier votre prénom, votre nom, votre numéro de téléphone (et, s'ils sont remplis, la date de naissance et l'e-mail), puis de cocher la case d'accord.",
       creneauPris: "Cet horaire vient d'être réservé. Merci d'en choisir un autre.",
       technique: "Un problème technique empêche la réservation. Merci d'appeler le secrétariat.",
     },

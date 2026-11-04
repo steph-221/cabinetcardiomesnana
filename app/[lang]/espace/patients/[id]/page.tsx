@@ -7,6 +7,7 @@ import { lang as langueRacine } from "next/root-params";
 import {
   Calculator,
   ClipboardPlus,
+  FilePen,
   History,
   MessagesSquare,
   Pencil,
@@ -178,6 +179,10 @@ async function Dossier({
               Assistant
             </Link>
           )}
+          <Link href={`/${langue}/espace/patients/fiche?patient=${id}`} target="_blank" className={bouton}>
+            <FilePen className="h-4 w-4" aria-hidden />
+            Fiche papier
+          </Link>
           <Link href={`${base}/modifier`} className={bouton}>
             <Pencil className="h-4 w-4" aria-hidden />
             Modifier

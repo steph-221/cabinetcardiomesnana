@@ -52,7 +52,10 @@ export function FormulairePatient({
   facteurs,
   couvertures,
   aujourdhui,
+  prefill = {},
 }: {
+  // Informations déjà données par le patient avec son rendez-vous (création seulement) ; `rdv` : événement à rattacher
+  prefill?: Partial<Record<"nom" | "prenom" | "telephone" | "naissance" | "email" | "rdv", string>>;
   langue: string;
   patient: Patient | null;
   medical: boolean;
@@ -65,11 +68,19 @@ export function FormulairePatient({
     null,
   );
   // Après une erreur, on réaffiche ce qui a été saisi ; sinon le dossier existant
-  const v = (nom: string, initial: string | null | undefined) => (etat ? etat.valeurs[nom] : initial) ?? "";
+  const v = (nom: string, initial: string | null | undefined) =>
+    (etat ? etat.valeurs[nom] : (initial ?? (patient ? undefined : (prefill as Record<string, string>)[nom]))) ?? "";
   const facteursCoches = etat ? (etat.valeurs.facteursRisque ?? "").split("|") : (patient?.facteursRisque ?? []);
 
   return (
     <form action={envoyer} className="space-y-8">
+      {prefill.rdv && <input type="hidden" name="rdv" value={prefill.rdv} />}
+      {!patient && prefill.rdv && (
+        <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+          Informations reprises du rendez-vous : vérifiez-les, corrigez ou complétez, puis enregistrez. Le rendez-vous
+          sera rattaché à ce dossier.
+        </p>
+      )}
       <fieldset className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <legend className="mb-3 text-lg font-semibold text-slate-900">Identité</legend>
         <label className={etiquette}>

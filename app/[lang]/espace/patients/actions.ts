@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
+import { rattacherRendezvous } from "../../../agenda/google";
 import { ajouterJours, estJour, jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../agenda/session";
 import {
@@ -162,6 +163,9 @@ export async function enregistrerPatient(
       }
       patientId = await creerPatient(identite, medical, utilisateur.identifiant);
       await journaliser(utilisateur.identifiant, "création", patientId, libellePatient(identite));
+      // Dossier créé depuis un rendez-vous de l'agenda : on les relie (sans bloquer la création en cas d'échec)
+      const rdv = texte(formData, "rdv", 1024);
+      if (/^[a-z0-9_-]{5,}$/i.test(rdv)) await rattacherRendezvous(rdv, patientId).catch(console.error);
     } else {
       await modifierPatient(patientId, identite, medical, utilisateur.identifiant);
       await journaliser(utilisateur.identifiant, "modification", patientId, medical ? "" : "identité seulement");

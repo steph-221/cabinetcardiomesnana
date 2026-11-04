@@ -3,15 +3,22 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, CalendarDays, FolderOpen, Globe, Phone } from "lucide-react";
+import { Ban, CalendarDays, FilePen, FolderOpen, FolderPlus, Globe, Phone } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
+import { paramsPrefill } from "../../agenda/identite";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
 import { listerMedecins, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
-import { finTelephone } from "../../dossier/patients";
-import { patientsParTelephone } from "../../dossier/suivis";
-import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture, SelecteurMedecin } from "./boutons";
+import { correspondances, type Correspondance } from "../../dossier/rendez-vous";
+import {
+  BoutonAnnuler,
+  BoutonRattacher,
+  BoutonRouvrir,
+  FormulaireAjout,
+  FormulaireFermeture,
+  SelecteurMedecin,
+} from "./boutons";
 
 export const metadata: Metadata = {
   title: "Espace cabinet",
@@ -72,13 +79,12 @@ async function Tableau({
     filtre === "" ? true : filtre === "aucun" ? !r.medecin : r.medecin === filtre,
   );
 
-  // Rendez-vous reliés aux dossiers par le téléphone
-  let dossiers = new Map<string, number>();
+  // Rendez-vous reliés aux dossiers : par le numéro de dossier noté dans l'événement, sinon dossier probable
+  // (même téléphone, ou même nom, prénom et date de naissance) à confirmer par la secrétaire
+  let dossiers = new Map<string, Correspondance>();
   if (baseConfiguree()) {
     try {
-      dossiers = await patientsParTelephone([
-        ...new Set((rendezvous ?? []).flatMap((r) => (r.telephone ? [finTelephone(r.telephone)] : []))),
-      ]);
+      dossiers = await correspondances((rendezvous ?? []).filter((r) => !r.fermeture));
     } catch (erreur) {
       console.error(erreur);
     }
@@ -214,18 +220,13 @@ async function Tableau({
                               {r.telephone}
                             </a>
                           )}
-                          {r.telephone && !r.fermeture && (
-                            <Link
-                              href={
-                                dossiers.has(finTelephone(r.telephone))
-                                  ? `/${langue}/espace/patients/${dossiers.get(finTelephone(r.telephone))}`
-                                  : `/${langue}/espace/patients?q=${encodeURIComponent(r.telephone)}`
-                              }
-                              className="ms-3 inline-flex items-center gap-1 text-slate-600 hover:text-red-700"
-                            >
-                              <FolderOpen className="h-3 w-3" aria-hidden />
-                              Dossier
-                            </Link>
+                          {!r.fermeture && (
+                            <Dossier
+                              langue={langue}
+                              r={r}
+                              correspondance={dossiers.get(r.id)}
+                              baseActive={baseConfiguree()}
+                            />
                           )}
                           {(r.dateNaissance || r.email) && (
                             <p className="mt-1 text-slate-500">
@@ -256,5 +257,85 @@ async function Tableau({
         )}
       </section>
     </>
+  );
+}
+
+// Lien vers le dossier du patient, ou proposition pour la secrétaire quand le rendez-vous n'est pas encore rattaché
+function Dossier({
+  langue,
+  r,
+  correspondance,
+  baseActive,
+}: {
+  langue: string;
+  r: Rendezvous;
+  correspondance: Correspondance | undefined;
+  baseActive: boolean;
+}) {
+  if (!baseActive) return null;
+  const lien = "inline-flex items-center gap-1 text-slate-600 hover:text-red-700";
+  const prefill = paramsPrefill(r);
+  const nom = (d: { nom: string; prenom: string }) => `${d.nom.toUpperCase()} ${d.prenom}`.trim();
+
+  if (correspondance?.lien === "lie") {
+    const d = correspondance.patient;
+    return (
+      <Link href={`/${langue}/espace/patients/${d.id}`} className={`mt-1 ms-3 ${lien}`}>
+        <FolderOpen className="h-3 w-3" aria-hidden />
+        Dossier de {nom(d)} · n° {d.id}
+      </Link>
+    );
+  }
+
+  if (correspondance) {
+    const d = correspondance.patient;
+    return (
+      <div className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+        <p>
+          {correspondance.lien === "telephone" ? "Même téléphone que le dossier de " : "Même nom, prénom et date de naissance que le dossier de "}
+          <Link href={`/${langue}/espace/patients/${d.id}`} className="font-medium underline">
+            {nom(d)}
+          </Link>{" "}
+          (n° {d.id}).
+        </p>
+        <p className="mt-1 flex flex-wrap items-center gap-2">
+          <BoutonRattacher
+            langue={langue}
+            rdvId={r.id}
+            patientId={d.id}
+            apport={{ naissance: r.dateNaissance, email: r.email, telephone: r.telephone }}
+            libelle="C'est le même patient"
+          />
+          <Link
+            href={`/${langue}/espace/patients/nouveau?${new URLSearchParams([...paramsPrefill(r), ["rdv", r.id]])}`}
+            className="text-amber-900 underline"
+          >
+            Non, créer un nouveau dossier
+          </Link>
+        </p>
+        {((!d.naissance && r.dateNaissance) || (!d.email && r.email)) && (
+          <p className="mt-1">
+            Le patient a indiqué {[!d.naissance && r.dateNaissance && "sa date de naissance", !d.email && r.email && "son e-mail"].filter(Boolean).join(" et ")} : ajouté au dossier si vous rattachez.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <span className="mt-1 ms-3 inline-flex flex-wrap items-center gap-3">
+      <Link
+        href={`/${langue}/espace/patients/nouveau?${new URLSearchParams([...prefill, ["rdv", r.id]])}`}
+        className={lien}
+        title="Aucun dossier ne correspond : créer le dossier avec ce que le patient a déjà indiqué"
+      >
+        <FolderPlus className="h-3 w-3" aria-hidden />
+        Créer le dossier
+      </Link>
+      <Link href={`/${langue}/espace/patients/fiche?${prefill}`} className={lien} target="_blank">
+        <FilePen className="h-3 w-3" aria-hidden />
+        Fiche papier
+      </Link>
+    </span>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { Ban, LockOpen, Plus, Trash2 } from "lucide-react";
+import { Ban, Link2, LockOpen, Plus, Search, Trash2, X } from "lucide-react";
 import { cabinet } from "../../cabinet";
-import { affecter, ajouter, annuler, fermer, rouvrir } from "./actions";
+import type { DossierPropose } from "../../dossier/rendez-vous";
+import { affecter, ajouter, annuler, chercherDossiers, fermer, rattacher, rouvrir } from "./actions";
 
 export function BoutonAnnuler({ langue, id, nom }: { langue: string; id: string; nom: string }) {
   return (
@@ -81,6 +82,34 @@ function Envoyer({
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 
+// Rattache le rendez-vous au dossier proposé. Ce que le patient a déjà indiqué (date de naissance, e-mail,
+// téléphone) complète le dossier là où il est vide ; rien n'est écrasé.
+export function BoutonRattacher({
+  langue,
+  rdvId,
+  patientId,
+  apport,
+  libelle = "Rattacher",
+}: {
+  langue: string;
+  rdvId: string;
+  patientId: number;
+  apport: { naissance?: string; email?: string; telephone?: string };
+  libelle?: string;
+}) {
+  return (
+    <form action={rattacher.bind(null, langue, rdvId, patientId)} className="inline">
+      <input type="hidden" name="naissance" value={apport.naissance ?? ""} />
+      <input type="hidden" name="email" value={apport.email ?? ""} />
+      <input type="hidden" name="telephone" value={apport.telephone ?? ""} />
+      <Envoyer className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700">
+        <Link2 className="h-3 w-3" aria-hidden />
+        {libelle}
+      </Envoyer>
+    </form>
+  );
+}
+
 // Pour les rendez-vous pris par téléphone, WhatsApp ou au cabinet
 export function FormulaireAjout({
   langue,
@@ -93,9 +122,102 @@ export function FormulaireAjout({
 }) {
   const [etat, envoyer] = useActionState(ajouter.bind(null, langue), null);
   const v = etat?.valeurs ?? {};
+  // Dossier existant choisi : ses coordonnées remplissent le formulaire, modifiables
+  // undefined = pas de choix de l'utilisateur : après une erreur on reprend ce qui avait été envoyé
+  const [choix, setChoix] = useState<number | null | undefined>(undefined);
+  const patientId = choix === undefined ? (v.patientId ? Number(v.patientId) : null) : choix;
+  const setPatientId = setChoix;
+  const [saisie, setSaisie] = useState<Record<string, string>>({});
+  const valeur = (cle: string) => saisie[cle] ?? v[cle] ?? "";
+  const modifier = (cle: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setSaisie((s) => ({ ...s, [cle]: e.target.value }));
+
+  const [recherche, setRecherche] = useState("");
+  const [trouves, setTrouves] = useState<DossierPropose[] | null>(null);
+  const [chargement, demarrer] = useTransition();
+  const chercher = () => demarrer(async () => setTrouves(await chercherDossiers(langue, recherche)));
+  const choisir = (d: DossierPropose) => {
+    setPatientId(d.id);
+    setSaisie({ nom: d.nom, prenom: d.prenom, telephone: d.telephone, dateNaissance: d.naissance ?? "", email: d.email });
+    setTrouves(null);
+    setRecherche("");
+  };
 
   return (
-    <form action={envoyer} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <form
+      action={envoyer}
+      // React remet le formulaire à zéro après chaque envoi : les champs contrôlés repartent de ce que renvoie l'action
+      onReset={() => {
+        setSaisie({});
+        setChoix(undefined);
+      }}
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <div className="sm:col-span-2 lg:col-span-3">
+        {patientId ? (
+          <p className="flex flex-wrap items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-900">
+            <Link2 className="h-4 w-4" aria-hidden />
+            Rendez-vous rattaché au dossier n° {patientId} : {[valeur("prenom"), valeur("nom")].filter(Boolean).join(" ")}
+            <button
+              type="button"
+              onClick={() => setPatientId(null)}
+              className="ms-auto inline-flex items-center gap-1 text-xs text-green-800 underline"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Détacher
+            </button>
+          </p>
+        ) : (
+          <div>
+            <label className="text-sm font-medium text-slate-700" htmlFor="rechercheDossier">
+              Patient déjà suivi ? <span className="font-normal text-slate-400">(nom, prénom ou téléphone)</span>
+            </label>
+            <div className="mt-1 flex gap-2">
+              <input
+                id="rechercheDossier"
+                type="search"
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    chercher();
+                  }
+                }}
+                className={champ.replace("mt-1 ", "")}
+                placeholder="Rechercher un dossier existant"
+              />
+              <button
+                type="button"
+                onClick={chercher}
+                disabled={chargement || recherche.trim().length < 2}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Search className="h-4 w-4" aria-hidden />
+                Chercher
+              </button>
+            </div>
+            {trouves && (
+              <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
+                {trouves.length === 0 && <li className="p-3 text-slate-500">Aucun dossier trouvé : saisissez le patient ci-dessous.</li>}
+                {trouves.map((d) => (
+                  <li key={d.id}>
+                    <button type="button" onClick={() => choisir(d)} className="flex w-full flex-wrap justify-between gap-2 p-3 text-start hover:bg-slate-50">
+                      <span className="font-medium text-slate-900">
+                        {d.nom.toUpperCase()} {d.prenom} <span className="font-normal text-slate-400">n° {d.id}</span>
+                      </span>
+                      <span className="text-slate-500">
+                        {[d.naissance && d.naissance.split("-").reverse().join("/"), d.telephone].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <input type="hidden" name="patientId" value={patientId ?? ""} />
+      </div>
       <label className="text-sm font-medium text-slate-700">
         Date
         <input name="jour" type="date" required min={aujourdhui} defaultValue={v.jour ?? aujourdhui} className={champ} />
@@ -127,20 +249,24 @@ export function FormulaireAjout({
         <input name="duree" type="number" min={5} max={240} step={5} defaultValue={v.duree} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
-        Nom du patient
-        <input name="nom" required maxLength={100} defaultValue={v.nom} className={champ} />
+        Prénom
+        <input name="prenom" maxLength={100} value={valeur("prenom")} onChange={modifier("prenom")} className={champ} />
+      </label>
+      <label className="text-sm font-medium text-slate-700">
+        Nom
+        <input name="nom" required maxLength={100} value={valeur("nom")} onChange={modifier("nom")} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Téléphone
-        <input name="telephone" type="tel" maxLength={30} defaultValue={v.telephone} className={champ} />
+        <input name="telephone" type="tel" maxLength={30} value={valeur("telephone")} onChange={modifier("telephone")} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
         Date de naissance
-        <input name="dateNaissance" type="date" min="1900-01-01" defaultValue={v.dateNaissance} className={champ} />
+        <input name="dateNaissance" type="date" min="1900-01-01" value={valeur("dateNaissance")} onChange={modifier("dateNaissance")} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700">
         E-mail
-        <input name="email" type="email" maxLength={100} defaultValue={v.email} className={champ} />
+        <input name="email" type="email" maxLength={100} value={valeur("email")} onChange={modifier("email")} className={champ} />
       </label>
       <label className="text-sm font-medium text-slate-700 sm:col-span-2 lg:col-span-3">
         Motif

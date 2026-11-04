@@ -135,18 +135,32 @@ export function Reservation({
           <input type="hidden" name="heure" value={heure} />
           {/* Piège à robots, invisible pour les visiteurs */}
           <input type="text" name="site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
-          <label className="block text-sm font-medium text-slate-700">
-            {t.nom}
-            <input
-              name="nom"
-              required
-              minLength={2}
-              maxLength={100}
-              autoComplete="name"
-              defaultValue={saisi?.nom}
-              className={champ}
-            />
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">
+              {t.prenom}
+              <input
+                name="prenom"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="given-name"
+                defaultValue={saisi?.prenom}
+                className={champ}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              {t.nom}
+              <input
+                name="nom"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="family-name"
+                defaultValue={saisi?.nom}
+                className={champ}
+              />
+            </label>
+          </div>
           <label className="block text-sm font-medium text-slate-700">
             {t.telephone}
             <input

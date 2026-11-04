@@ -25,7 +25,7 @@ export type EtatReservation =
       statut: "erreur";
       code: "champs" | "creneauPris" | "technique";
       // Valeurs saisies, pour que le formulaire ne se vide pas
-      valeurs: { nom: string; telephone: string; motif: string; dateNaissance: string; email: string };
+      valeurs: { prenom: string; nom: string; telephone: string; motif: string; dateNaissance: string; email: string };
     }
   | { statut: "confirme"; jour: string; heure: string };
 
@@ -37,6 +37,7 @@ const texte = (formData: FormData, champ: string, max: number) =>
 export async function reserver(_: EtatReservation, formData: FormData): Promise<EtatReservation> {
   const jour = texte(formData, "jour", 10);
   const heure = texte(formData, "heure", 5);
+  const prenom = texte(formData, "prenom", 100);
   const nom = texte(formData, "nom", 100);
   const telephone = texte(formData, "telephone", 30);
   const motif = texte(formData, "motif", 300);
@@ -46,7 +47,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   const erreur = (code: "champs" | "creneauPris" | "technique"): EtatReservation => ({
     statut: "erreur",
     code,
-    valeurs: { nom, telephone, motif, dateNaissance, email },
+    valeurs: { prenom, nom, telephone, motif, dateNaissance, email },
   });
   const telephoneValide = /^\+?[\d\s.-]{8,20}$/.test(telephone);
   // Champ invisible : seuls les robots le remplissent
@@ -57,6 +58,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
   if (
     !estJour(jour) ||
     nom.length < 2 ||
+    prenom.length < 2 ||
     !telephoneValide ||
     !naissanceValide ||
     !emailValide ||
@@ -79,6 +81,7 @@ export async function reserver(_: EtatReservation, formData: FormData): Promise<
       debut: creneau.debut,
       fin: creneau.fin,
       nom,
+      prenom,
       telephone,
       motif,
       dateNaissance,
