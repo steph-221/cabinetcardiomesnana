@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { CalendarCheck, CircleCheck } from "lucide-react";
 import type { Langue } from "../../cabinet";
 import type { Dictionnaire } from "../dictionaries";
+import type { JourLibre } from "../../agenda/disponibilites";
 import { creneauxLibres, reserver, type EtatReservation } from "./actions";
 
 // "2026-10-27" → "mardi 27 octobre" dans la langue du visiteur
@@ -20,15 +21,17 @@ const champ =
 export function Reservation({
   langue,
   t,
-  jours,
+  dispos,
 }: {
   langue: Langue;
   t: Dictionnaire["reservation"];
-  jours: string[];
+  dispos: JourLibre[] | null;
 }) {
-  const [jour, setJour] = useState<string | null>(null);
+  // Premier jour avec un horaire libre : aujourd'hui s'il reste de la place, sinon le suivant
+  const premier = dispos?.find((d) => d.creneaux.length > 0);
+  const [jour, setJour] = useState<string | null>(premier?.jour ?? null);
   const [heure, setHeure] = useState<string | null>(null);
-  const [creneaux, setCreneaux] = useState<string[] | null>([]);
+  const [creneaux, setCreneaux] = useState<string[] | null>(premier?.creneaux ?? []);
   const [chargement, demarrer] = useTransition();
   const [etat, envoyer, envoi] = useActionState<EtatReservation, FormData>(reserver, { statut: "attente" });
 
@@ -67,23 +70,31 @@ export function Reservation({
       <fieldset>
         <legend className="text-lg font-semibold text-slate-900">1. {t.choisirJour}</legend>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {jours.map((j) => (
-            <button
-              key={j}
-              type="button"
-              onClick={() => choisirJour(j)}
-              aria-pressed={j === jour}
-              className={`rounded-lg border px-2 py-2 text-sm ${
-                j === jour
-                  ? "border-red-600 bg-red-600 text-white"
-                  : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
-              }`}
-            >
-              <span className="block capitalize">{formaterJour(j, langue, { weekday: "short" })}</span>
-              <span className="block font-semibold">{formaterJour(j, langue, { day: "numeric", month: "short" })}</span>
-            </button>
-          ))}
+          {(dispos ?? []).map(({ jour: j, creneaux: libres }) => {
+            const complet = libres.length === 0;
+            return (
+              <button
+                key={j}
+                type="button"
+                disabled={complet}
+                onClick={() => choisirJour(j)}
+                aria-pressed={j === jour}
+                className={`rounded-lg border px-2 py-2 text-sm ${
+                  j === jour
+                    ? "border-red-600 bg-red-600 text-white"
+                    : complet
+                      ? "border-slate-100 bg-slate-50 text-slate-300"
+                      : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
+                }`}
+              >
+                <span className="block capitalize">{formaterJour(j, langue, { weekday: "short" })}</span>
+                <span className="block font-semibold">{formaterJour(j, langue, { day: "numeric", month: "short" })}</span>
+              </button>
+            );
+          })}
         </div>
+        {dispos === null && <p className="mt-3 text-sm text-red-700">{t.erreurs.technique}</p>}
+        {dispos && !premier && <p className="mt-3 text-sm text-slate-500">{t.aucunJour}</p>}
       </fieldset>
 
       {jour && (

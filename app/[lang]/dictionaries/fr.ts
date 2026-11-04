@@ -118,6 +118,7 @@ const fr = {
     choisirJour: "Choisissez un jour",
     choisirHeure: "Choisissez un horaire",
     complet: "Plus aucun horaire libre ce jour-là. Choisissez un autre jour.",
+    aucunJour: "Aucun horaire libre pour les prochains jours. Merci d'appeler le secrétariat.",
     vosCoordonnees: "Vos coordonnées",
     nom: "Nom et prénom",
     telephone: "Téléphone",
