@@ -374,4 +374,9 @@ export const migrations: string[][] = [
       commentaire text NOT NULL DEFAULT ''
     )`,
   ],
+  // 14 — Factures numérotées par année ET par mois (2026-11-0001) ; actes archivables (retirés des raccourcis).
+  [
+    `ALTER TABLE actes ADD COLUMN IF NOT EXISTS archive boolean NOT NULL DEFAULT false`,
+    `CREATE TABLE IF NOT EXISTS compteurs_factures_mois (mois text PRIMARY KEY, dernier integer NOT NULL)`,
+  ],
 ];
