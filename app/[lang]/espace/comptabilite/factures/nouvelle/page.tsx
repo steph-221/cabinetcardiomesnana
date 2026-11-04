@@ -95,6 +95,7 @@ async function Contenu({
   }
 
   const [praticiens, actes] = await Promise.all([listerPraticiens(), listerActes()]);
+  const actesActifs = actes.filter((a) => !a.archive);
   const actifs = praticiens.filter((p) => p.actif);
   if (actifs.length === 0) return <p className="text-sm text-slate-500">Aucun médecin actif : voir Réglages.</p>;
   // Le médecin connecté est présélectionné s'il est relié à un médecin des réglages
@@ -115,7 +116,7 @@ async function Contenu({
         patient={patient ? { id: patient.id, nom: libellePatient(patient) } : null}
         praticiens={actifs.map((p) => ({ id: p.id, nom: p.nom }))}
         praticienParDefaut={(moi ?? actifs[0]).id}
-        actes={actes}
+        actes={actesActifs}
         aujourdhui={jourLocal(new Date())}
       />
     </>

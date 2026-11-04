@@ -20,6 +20,7 @@ import {
   reglerPartage,
   reglerPraticien,
   reglerRecurrente,
+  reglerArchiveActe,
   retirerActe,
   retirerCharge,
   retirerPaiement,
@@ -525,14 +526,15 @@ export function FormulaireActe({
   acte,
 }: {
   langue: string;
-  acte: { id: number; libelle: string; tarifCts: number } | null;
+  acte: { id: number; libelle: string; tarifCts: number; archive?: boolean } | null;
 }) {
   const [etat, envoyer] = useActionState(reglerActe.bind(null, langue, acte?.id ?? null), null);
   return (
-    <form action={envoyer} className="grid gap-3 sm:grid-cols-[1fr_8rem_auto_auto] sm:items-end">
+    <form action={envoyer} className="grid gap-3 sm:grid-cols-[1fr_8rem_auto_auto_auto] sm:items-end">
       <label className={libelleChamp}>
         {acte ? <span className="sr-only">Acte</span> : "Nouvel acte"}
         <input name="libelle" required maxLength={150} defaultValue={acte?.libelle} aria-label="Acte" className={champ} />
+        {acte?.archive && <span className="mt-1 block text-xs text-slate-400">Archivé : non proposé aux factures</span>}
       </label>
       <label className={libelleChamp}>
         {acte ? <span className="sr-only">Tarif en MAD</span> : "Tarif (MAD)"}
@@ -546,9 +548,21 @@ export function FormulaireActe({
         />
       </label>
       <Envoyer className={boutonSombre}>{acte ? "Enregistrer" : "Ajouter"}</Envoyer>
+      {acte ? (
+        <button
+          type="submit"
+          formAction={reglerArchiveActe.bind(null, langue, acte.id, !acte.archive)}
+          formNoValidate
+          className="inline-flex items-center gap-1 rounded-md px-2 py-2 text-xs text-slate-600 hover:bg-slate-50"
+        >
+          {acte.archive ? "Réactiver" : "Archiver"}
+        </button>
+      ) : (
+        <span />
+      )}
       {acte ? <BoutonRetirerActe langue={langue} id={acte.id} /> : <span />}
       {etat && (
-        <div className="sm:col-span-4">
+        <div className="sm:col-span-5">
           <Erreur etat={etat} />
         </div>
       )}

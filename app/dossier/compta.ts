@@ -59,12 +59,24 @@ export async function reglerMiseEnCommun(actif: boolean) {
 
 // --- Tarifs ---
 
-export type Acte = { id: number; libelle: string; tarifCts: number };
+export type Acte = { id: number; libelle: string; tarifCts: number; archive: boolean };
 
+// Tous les actes, archivés compris (Réglages). Les factures ne proposent que les actes non archivés.
 export async function listerActes(): Promise<Acte[]> {
   const sql = await base();
-  const lignes = await sql`SELECT id, libelle, tarif_cts FROM actes ORDER BY ordre, id`;
-  return lignes.map((l) => ({ id: l.id as number, libelle: l.libelle as string, tarifCts: l.tarif_cts as number }));
+  const lignes = await sql`SELECT id, libelle, tarif_cts, archive FROM actes ORDER BY archive, ordre, id`;
+  return lignes.map((l) => ({
+    id: l.id as number,
+    libelle: l.libelle as string,
+    tarifCts: l.tarif_cts as number,
+    archive: l.archive as boolean,
+  }));
+}
+
+// Archiver : l'acte disparaît des raccourcis de facture, les factures déjà faites ne changent pas.
+export async function archiverActe(id: number, archive: boolean) {
+  const sql = await base();
+  await sql`UPDATE actes SET archive = ${archive} WHERE id = ${id}`;
 }
 
 export async function enregistrerActe(a: { id: number | null; libelle: string; tarifCts: number }) {
@@ -150,7 +162,7 @@ const versPaiement = (l: Record<string, unknown>): Paiement => ({
   creePar: l.cree_par as string,
 });
 
-// Crée la facture avec le prochain numéro de l'année (2026-0001…) et, si demandé, son premier paiement.
+// Crée la facture avec le prochain numéro du mois (2026-11-0001…) et, si demandé, son premier paiement.
 // Le compteur est incrémenté dans la même requête : deux factures simultanées n'ont jamais le même numéro.
 export async function creerFacture(
   f: {
@@ -171,19 +183,19 @@ export async function creerFacture(
   const sql = await base();
   const consultation =
     f.patientId === null ? null : f.consultationId !== undefined ? f.consultationId : await consultationDuJour(f.patientId, f.date);
-  const annee = Number(f.date.slice(0, 4));
+  const mois = f.date.slice(0, 7); // AAAA-MM : la numérotation repart à 0001 chaque mois
   const lignes = JSON.stringify(f.lignes.map((l) => ({ libelle: l.libelle, quantite: l.quantite, prix_cts: l.prixCts })));
   const paye = paiement && paiement.montantCts > 0 ? paiement : null;
   // Une seule requête : la facture et son premier paiement sont enregistrés ensemble ou pas du tout
   const [facture] = await sql`
     WITH compteur AS (
-      INSERT INTO compteurs_factures (annee, dernier) VALUES (${annee}, 1)
-      ON CONFLICT (annee) DO UPDATE SET dernier = compteurs_factures.dernier + 1
+      INSERT INTO compteurs_factures_mois (mois, dernier) VALUES (${mois}, 1)
+      ON CONFLICT (mois) DO UPDATE SET dernier = compteurs_factures_mois.dernier + 1
       RETURNING dernier
     ), nouvelle AS (
       INSERT INTO factures (numero, date, patient_id, patient_nom, praticien_id, lignes, remise_cts, total_cts, note,
                             consultation_id, cree_par)
-      SELECT ${String(annee)} || '-' || lpad(compteur.dernier::text, 4, '0'), ${f.date}, ${f.patientId}, ${f.patientNom},
+      SELECT ${mois} || '-' || lpad(compteur.dernier::text, 4, '0'), ${f.date}, ${f.patientId}, ${f.patientNom},
              ${f.praticienId}, ${lignes}::jsonb, ${f.remiseCts}, ${f.totalCts}, ${f.note},
              (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${f.patientId}::int), ${par}
       FROM compteur

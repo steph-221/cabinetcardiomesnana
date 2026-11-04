@@ -73,8 +73,8 @@ async function Contenu({ langue }: { langue: string }) {
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
         <h2 className="text-lg font-semibold text-slate-900">Tarifs des actes</h2>
         <p className="mt-1 mb-4 text-sm text-slate-500">
-          Proposés comme raccourcis dans le formulaire de facture. Les montants de départ sont indicatifs : ajustez-les
-          à vos honoraires. Modifier un tarif ne change pas les factures déjà établies.
+          Proposés comme raccourcis dans le formulaire de facture. Archivez un acte pour le retirer des raccourcis sans
+          l&apos;effacer, ou supprimez-le. Modifier un tarif ou archiver un acte ne change pas les factures déjà établies.
         </p>
         <div className="space-y-3">
           {actes.map((a) => (
