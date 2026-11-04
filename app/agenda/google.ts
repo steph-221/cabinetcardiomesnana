@@ -107,6 +107,7 @@ export async function periodesOccupees(debut: Date, fin: Date) {
 type EvenementGoogle = {
   id: string;
   summary?: string;
+  description?: string;
   start: { dateTime?: string; date?: string };
   end: { dateTime?: string; date?: string };
   extendedProperties?: { private?: Record<string, string> };
@@ -121,29 +122,56 @@ export async function listerRendezvous(debut: Date, fin: Date): Promise<Rendezvo
     maxResults: "500",
   });
   const { items } = await appel<{ items: EvenementGoogle[] }>(`/calendars/${idAgenda()}/events?${params}`);
-  return items.map((e) => {
-    const prive = e.extendedProperties?.private ?? {};
-    const titre = e.summary ?? "(sans titre)";
-    return {
-      id: e.id,
-      titre,
-      nom: prive.nom || nomDepuisTitre(titre),
-      prenom: prive.prenom ?? "",
-      patientId: Number(prive.patientId) > 0 ? Number(prive.patientId) : undefined,
-      // Les événements « journée entière » n'ont qu'une date
-      debut: e.start.dateTime ?? e.start.date!,
-      fin: e.end.dateTime ?? e.end.date!,
-      telephone: prive.telephone,
-      motif: prive.motif,
-      dateNaissance: prive.dateNaissance,
-      email: prive.email,
-      medecin: prive.medecin || undefined,
-      controle: prive.type === "controle",
-      enLigne: prive.source === "site",
-      annulable: prive.source === "site" || prive.source === "secretariat",
-      fermeture: prive.source === "fermeture",
-    };
-  });
+  return items.map(versRendezvous);
+}
+
+function versRendezvous(e: EvenementGoogle): Rendezvous {
+  const prive = e.extendedProperties?.private ?? {};
+  const titre = e.summary ?? "(sans titre)";
+  return {
+    id: e.id,
+    titre,
+    nom: prive.nom || nomDepuisTitre(titre),
+    prenom: prive.prenom ?? "",
+    patientId: Number(prive.patientId) > 0 ? Number(prive.patientId) : undefined,
+    // Les événements « journée entière » n'ont qu'une date
+    debut: e.start.dateTime ?? e.start.date!,
+    fin: e.end.dateTime ?? e.end.date!,
+    telephone: prive.telephone,
+    motif: prive.motif,
+    dateNaissance: prive.dateNaissance,
+    email: prive.email,
+    medecin: prive.medecin || undefined,
+    controle: prive.type === "controle",
+    enLigne: prive.source === "site",
+    annulable: prive.source === "site" || prive.source === "secretariat",
+    fermeture: prive.source === "fermeture",
+  };
+}
+
+export async function lireRendezvous(id: string) {
+  return versRendezvous(await appel<EvenementGoogle>(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`));
+}
+
+// Texte affiché dans la description de l'événement Google Agenda
+function descriptionRendezvous(rdv: {
+  telephone?: string;
+  dateNaissance?: string;
+  email?: string;
+  medecin?: string;
+  motif?: string;
+  origine: string;
+}) {
+  return [
+    `Téléphone : ${rdv.telephone ?? ""}`,
+    rdv.dateNaissance && `Date de naissance : ${rdv.dateNaissance.split("-").reverse().join("/")}`,
+    rdv.email && `E-mail : ${rdv.email}`,
+    rdv.medecin && `Médecin : ${rdv.medecin}`,
+    rdv.motif && `Motif : ${rdv.motif}`,
+    rdv.origine,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function creerRendezvous(rdv: {
@@ -161,16 +189,10 @@ export async function creerRendezvous(rdv: {
   source: "site" | "secretariat";
   par?: string;
 }) {
-  const description = [
-    `Téléphone : ${rdv.telephone}`,
-    rdv.dateNaissance && `Date de naissance : ${rdv.dateNaissance.split("-").reverse().join("/")}`,
-    rdv.email && `E-mail : ${rdv.email}`,
-    rdv.medecin && `Médecin : ${rdv.medecin}`,
-    rdv.motif && `Motif : ${rdv.motif}`,
-    rdv.source === "site" ? "Réservé en ligne sur le site" : `Ajouté par ${rdv.par ?? "le secrétariat"}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const description = descriptionRendezvous({
+    ...rdv,
+    origine: rdv.source === "site" ? "Réservé en ligne sur le site" : `Ajouté par ${rdv.par ?? "le secrétariat"}`,
+  });
 
   return appel<EvenementGoogle>(`/calendars/${idAgenda()}/events`, {
     method: "POST",
@@ -240,6 +262,63 @@ export async function affecterMedecin(id: string, medecin: string) {
     method: "PATCH",
     body: JSON.stringify({ extendedProperties: { private: { medecin } } }),
   });
+}
+
+// Modifie un rendez-vous existant (créé par le site, par l'espace cabinet ou directement dans Google Agenda).
+// Seuls les champs fournis changent. Pour un rendez-vous créé par le site ou l'espace cabinet, le titre et la
+// description sont reconstruits ; pour un événement ajouté à la main dans Google Agenda, son titre libre est
+// conservé (ou remplacé par `titre`) et sa description n'est pas touchée.
+export async function modifierRendezvous(
+  id: string,
+  modif: {
+    debut: Date;
+    fin: Date;
+    titre?: string;
+    nom?: string;
+    prenom?: string;
+    telephone: string;
+    email: string;
+    motif: string;
+    medecin: string;
+  },
+  par: string,
+) {
+  const chemin = `/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`;
+  const actuel = await appel<EvenementGoogle>(chemin);
+  const prive = actuel.extendedProperties?.private ?? {};
+  const rdv = versRendezvous(actuel);
+  const nom = modif.nom ?? rdv.nom;
+  const prenom = modif.prenom ?? rdv.prenom;
+
+  const corps: Record<string, unknown> = {
+    start: { dateTime: modif.debut.toISOString(), timeZone: cabinet.fuseau },
+    end: { dateTime: modif.fin.toISOString(), timeZone: cabinet.fuseau },
+    extendedProperties: {
+      private: {
+        telephone: modif.telephone,
+        email: modif.email,
+        motif: modif.motif,
+        medecin: modif.medecin,
+        ...(rdv.annulable ? { nom, prenom } : {}),
+      },
+    },
+  };
+  if (rdv.annulable) {
+    const heure = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "short", timeZone: cabinet.fuseau });
+    corps.summary = titreRendezvous(prenom, nom, rdv.controle);
+    corps.description = descriptionRendezvous({
+      telephone: modif.telephone,
+      dateNaissance: prive.dateNaissance,
+      email: modif.email,
+      medecin: modif.medecin,
+      motif: modif.motif,
+      origine: `${prive.source === "site" ? "Réservé en ligne sur le site" : "Ajouté par le secrétariat"} · modifié par ${par} le ${heure.format(new Date())}`,
+    });
+  } else if (modif.titre) {
+    corps.summary = modif.titre;
+  }
+  await appel(chemin, { method: "PATCH", body: JSON.stringify(corps) });
+  return rdv;
 }
 
 export async function supprimerRendezvous(id: string) {

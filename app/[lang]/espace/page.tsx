@@ -17,6 +17,7 @@ import {
   BoutonRouvrir,
   FormulaireAjout,
   FormulaireFermeture,
+  ModifierRendezvous,
   SelecteurMedecin,
 } from "./boutons";
 
@@ -248,6 +249,28 @@ async function Tableau({
                       {/* Rendez-vous patients et fermetures se gèrent ici ; le reste dans Google Agenda */}
                       {r.annulable && <BoutonAnnuler langue={langue} id={r.id} nom={r.titre} />}
                       {r.fermeture && <BoutonRouvrir langue={langue} id={r.id} />}
+                      {/* Tous les rendez-vous se modifient ici, y compris ceux ajoutés directement dans Google Agenda */}
+                      {!r.fermeture && r.debut.length > 10 && (
+                        <ModifierRendezvous
+                          langue={langue}
+                          aujourdhui={aujourdhui}
+                          medecins={medecins}
+                          rdv={{
+                            id: r.id,
+                            annulable: r.annulable,
+                            titre: r.titre,
+                            prenom: r.prenom,
+                            nom: r.nom,
+                            jour: jourLocal(new Date(r.debut)),
+                            heure: heureLocale(new Date(r.debut)),
+                            duree: Math.round((new Date(r.fin).getTime() - new Date(r.debut).getTime()) / 60_000),
+                            telephone: r.telephone ?? "",
+                            email: r.email ?? "",
+                            motif: r.motif ?? "",
+                            medecin: r.medecin ?? "",
+                          }}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>

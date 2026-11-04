@@ -2,11 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
-import { dateLocale, estJour, jourLocal } from "../../agenda/creneaux";
+import { dateLocale, estJour, heureLocale, jourLocal } from "../../agenda/creneaux";
 import {
   affecterMedecin,
   creerFermeture,
   creerRendezvous,
+  lireRendezvous,
+  modifierRendezvous,
   rattacherRendezvous,
   supprimerRendezvous,
 } from "../../agenda/google";
@@ -28,7 +30,8 @@ import {
 } from "../../agenda/session";
 import { estRole } from "../../agenda/roles";
 import { cabinet } from "../../cabinet";
-import { echec, type EtatFormulaire } from "./formulaire";
+import { prevenirPatient } from "../../agenda/notification";
+import { echec, texte, type EtatFormulaire, type EtatModification } from "./formulaire";
 
 export async function connexion(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const saisi = String(formData.get("identifiant") ?? "");
@@ -54,6 +57,79 @@ export async function annuler(langue: string, id: string) {
   await exigerConnexion(langue);
   await supprimerRendezvous(id);
   refresh();
+}
+
+// Modifie un rendez-vous (de l'espace cabinet, du site ou ajouté directement dans Google Agenda).
+// Si l'horaire change, le patient peut être prévenu par e-mail et WhatsApp : rendez-vous « annulé et remplacé ».
+export async function modifier(
+  langue: string,
+  id: string,
+  _: EtatModification,
+  formData: FormData,
+): Promise<EtatModification> {
+  const utilisateur = await exigerConnexion(langue);
+  const jour = String(formData.get("jour") ?? "");
+  const heure = String(formData.get("heure") ?? "");
+  const duree = Number(formData.get("duree"));
+  const titre = texte(formData, "titre", 200);
+  const nom = texte(formData, "nom", 100);
+  const prenom = texte(formData, "prenom", 100);
+  const telephone = texte(formData, "telephone", 30);
+  const motif = texte(formData, "motif", 300);
+  const email = texte(formData, "email", 100);
+  const medecin = String(formData.get("medecin") ?? "");
+  if (!estJour(jour) || !/^\d{2}:\d{2}$/.test(heure) || !nom || !(duree >= 5 && duree <= 240)) {
+    return echec("Merci de remplir la date, l'heure, la durée et le nom du patient.", formData);
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return echec("Vérifiez l'e-mail.", formData);
+  if (medecin && !(await listerMedecins().catch((): string[] => [])).includes(medecin)) {
+    return echec("Ce médecin n'existe pas (ou plus). Choisissez-en un autre.", formData);
+  }
+
+  let avant;
+  try {
+    avant = await lireRendezvous(id);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Ce rendez-vous est introuvable dans l'agenda Google (supprimé ?).", formData);
+  }
+  // Les fermetures et les événements « journée entière » ne sont pas des rendez-vous de patients
+  if (avant.fermeture || avant.debut.length === 10) return echec("Cet événement ne peut pas être modifié ici.", formData);
+  if (!avant.annulable && !titre) return echec("Indiquez le titre du rendez-vous.", formData);
+
+  const debut = dateLocale(jour, heure);
+  try {
+    await modifierRendezvous(
+      id,
+      { debut, fin: new Date(debut.getTime() + duree * 60_000), titre, nom, prenom, telephone, email, motif, medecin },
+      utilisateur.identifiant,
+    );
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("L'agenda Google n'a pas pu enregistrer la modification. Réessayez dans un instant.", formData);
+  }
+
+  const ancienDebut = new Date(avant.debut);
+  const horaireChange = ancienDebut.getTime() !== debut.getTime();
+  if (baseConfiguree()) {
+    await journaliser(
+      utilisateur.identifiant,
+      "rendez-vous modifié",
+      avant.patientId ?? null,
+      horaireChange ? `${avant.titre} : ${jourLocal(ancienDebut)} ${heureLocale(ancienDebut)} → ${jour} ${heure}` : avant.titre,
+    ).catch(console.error);
+  }
+
+  // Le patient n'est prévenu que si la date ou l'heure change
+  const notification = horaireChange
+    ? await prevenirPatient(
+        { prenom, nom, avant: ancienDebut, apres: debut, medecin: medecin || undefined },
+        { email, telephone },
+        { email: formData.get("prevenirEmail") === "on", whatsapp: formData.get("prevenirWhatsapp") === "on" },
+      )
+    : null;
+  refresh();
+  return { ok: true, notification };
 }
 
 // Rattache (ou détache) après coup un rendez-vous à un médecin, par exemple une réservation faite en ligne

@@ -21,7 +21,7 @@ export const NIVEAUX: { id: Niveau; libelle: string; classe: string }[] = [
 const REGLES: [RegExp, Niveau][] = [
   [/supprim|annulée|mot de passe|déconnecté|export comptable|mode de partage|accès abonné modifié/, "critique"],
   [/bibliothèque|seuil|réponse|fiche validée|calcul/, "faible"],
-  [/^création$|^modification$|modifiée|ajouté|enregistré|rédigé|paiement|facture créée|arrêté|retiré|ignoré|confirmé|classé|connecté/, "eleve"],
+  [/^création$|^modification$|modifiée|rendez-vous modifié|ajouté|enregistré|rédigé|paiement|facture créée|arrêté|retiré|ignoré|confirmé|classé|connecté/, "eleve"],
   [/imprim|ouvert|suivi/, "modere"],
 ];
 

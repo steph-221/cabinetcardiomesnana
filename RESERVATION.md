@@ -96,6 +96,32 @@ Les créneaux fermés ne sont plus proposés aux patients ; les rendez-vous déj
 **Rouvrir**, dans la liste des prochains jours, annule une fermeture. Les fermetures apparaissent aussi dans Google
 Agenda (« Fermé — motif »).
 
+## 7. Modifier un rendez-vous et prévenir le patient
+
+Dans la liste des prochains jours, le bouton **Modifier** (secrétaire, médecin, administrateur) s'affiche sur **tous** les
+rendez-vous, y compris ceux ajoutés directement dans Google Agenda : date, heure, durée, nom, médecin, téléphone, e-mail,
+motif. La modification est écrite dans l'agenda Google et enregistrée au journal.
+
+Si la **date ou l'heure change**, le patient peut être prévenu (cases « Par e-mail » / « Par WhatsApp », cochées par
+défaut) : « votre rendez-vous du … est annulé et remplacé par … ». Sans réglage supplémentaire, l'application prépare le
+message : un lien ouvre l'e-mail ou WhatsApp avec le texte déjà rédigé, il reste à l'envoyer. Pour un **envoi
+automatique**, ajouter ces variables sur Vercel (puis redéployer) :
+
+| Variable | Valeur |
+| --- | --- |
+| `RESEND_API_KEY` | clé API d'un compte <https://resend.com> (e-mail automatique) |
+| `EMAIL_EXPEDITEUR` | adresse d'envoi vérifiée sur Resend, ex. `Cabinet <rdv@cabinetcardiomesnana.com>` |
+| `EMAIL_REPONSE` | (facultatif) adresse qui reçoit les réponses des patients |
+| `WHATSAPP_TOKEN` | jeton d'accès de l'API WhatsApp Business (Meta) |
+| `WHATSAPP_NUMERO_ID` | identifiant du numéro WhatsApp Business |
+| `WHATSAPP_MODELE` | nom du modèle de message approuvé par Meta (corps avec 3 variables : `{{1}}` nom du patient, `{{2}}` ancien rendez-vous, `{{3}}` nouveau rendez-vous) |
+| `WHATSAPP_LANGUE` | (facultatif) langue du modèle, `fr` par défaut |
+
+Chaque canal est indépendant : e-mail automatique et WhatsApp par lien sont possibles ensemble. WhatsApp impose un modèle
+de message approuvé par Meta pour écrire en premier à un patient ; modèle conseillé : « Bonjour {{1}}, votre rendez-vous du
+{{2}} au cabinet est annulé et remplacé par un nouveau rendez-vous : {{3}}. En cas de problème, appelez le 05 39 31 85 50. »
+Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
+
 ## Données personnelles
 
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
