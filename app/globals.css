@@ -25,3 +25,19 @@ section[id] {
 html:lang(ar) {
   font-family: var(--font-arabic), var(--font-geist-sans), sans-serif;
 }
+
+/* Graphiques de la comptabilité : huit teintes dans un ordre fixe (la teinte suit le médecin, jamais son rang).
+   Ordre validé pour le daltonisme et le contraste ; le site n'a pas de mode sombre, seules les valeurs claires sont définies. */
+:root {
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+  --serie-4: #eda100;
+  --serie-5: #e87ba4;
+  --serie-6: #008300;
+  --serie-7: #6250d6;
+  --serie-8: #e34948;
+  --serie-autres: #898781;
+  --viz-grille: #e1e0d9;
+  --viz-axe: #c3c2b7;
+}

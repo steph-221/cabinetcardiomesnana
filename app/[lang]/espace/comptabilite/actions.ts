@@ -16,6 +16,7 @@ import {
   listerPraticiens,
   reglerMiseEnCommun,
   supprimerActe,
+  archiverActe,
   supprimerCharge,
   supprimerPaiement,
   supprimerRecurrente,
@@ -327,6 +328,13 @@ export async function reglerActe(langue: string, id: number | null, _: EtatFormu
   await enregistrerActe({ id, libelle, tarifCts });
   refresh();
   return null;
+}
+
+export async function reglerArchiveActe(langue: string, id: number, archive: boolean) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await archiverActe(id, archive);
+  await journaliser(utilisateur.identifiant, archive ? "acte archivé" : "acte réactivé", null, `acte n° ${id}`);
+  refresh();
 }
 
 export async function retirerActe(langue: string, id: number) {
