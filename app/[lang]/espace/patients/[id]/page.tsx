@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { after, connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
 import {
+  Calculator,
   CalendarClock,
   ExternalLink,
   FilePlus2,
@@ -34,6 +35,7 @@ import { journaliser } from "../../../../dossier/journal";
 import { listerFactures, type Facture } from "../../../../dossier/compta";
 import { libelleStatut, mad } from "../../../../dossier/compta-calculs";
 import { listerOrdonnances, type Ordonnance } from "../../../../dossier/ordonnances";
+import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
 import { delais, listerSuivisPatient, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import {
   age,
@@ -48,6 +50,8 @@ import { couleurStatut } from "../../comptabilite/commun";
 import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerOrdonnance } from "../documents";
+import { FormulaireScore } from "../scores-formulaire";
+import { ScoresDossier } from "../scores-dossier";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
 import { LigneSuivi } from "../liste-suivis";
 import { FormulaireSuivi } from "../suivis";
@@ -101,6 +105,8 @@ async function Dossier({
       return null;
     }),
   ]);
+  // Calculs rattachés au dossier (médecins seulement)
+  const scores = medical ? await listerScoresPatient(id) : [];
   // FEVG mesurées dans les comptes rendus d'ETT : elles complètent la courbe et les alertes
   const fevgEchos = examens.flatMap((e) => {
     const fevg = (e.valeurs.ett as DonneesETT | undefined)?.valeurs.fevg;
@@ -234,6 +240,22 @@ async function Dossier({
 
       {medical && (
         <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} fevgEchos={fevgEchos} />
+      )}
+
+      {medical && (
+        <section id="calculs" className="mt-6 scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
+          <h2 className="mb-1 flex items-center gap-2 text-lg font-semibold text-slate-900">
+            <Calculator className="h-5 w-5 text-red-600" aria-hidden />
+            Calculs
+          </h2>
+          <p className="mb-4 text-xs text-slate-500">
+            Choisissez le calcul, enregistrez-le à la date voulue. Refaites-le au fil du suivi pour voir l&apos;évolution.
+          </p>
+          <FormulaireScore langue={langue} patientId={id} catalogue={catalogueScores} aujourdhui={jourLocal(new Date())} />
+          <div className="mt-6">
+            <ScoresDossier langue={langue} patientId={id} scores={scores} />
+          </div>
+        </section>
       )}
 
       {medical && <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} />}

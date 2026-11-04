@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { trouverCalculateur } from "../../../dossier/calculateurs";
-import type { Champ, Valeurs } from "../../../dossier/calculateurs/types";
+import type { Calculateur, Champ, Valeurs } from "../../../dossier/calculateurs/types";
 
-const couleurs = {
+export const couleurs = {
   faible: "bg-emerald-50 text-emerald-900",
   moyen: "bg-amber-50 text-amber-900",
   eleve: "bg-orange-50 text-orange-900",
@@ -12,19 +12,21 @@ const couleurs = {
   neutre: "bg-slate-50 text-slate-800",
 };
 
-// Interface générique d'un calculateur : cases et choix, résultat immédiat (rien n'est enregistré)
-// On reçoit seulement l'identifiant : un calculateur contient une fonction, qui ne passe pas du serveur au client
-export function CalculateurInteractif({ slug }: { slug: string }) {
-  const calculateur = trouverCalculateur(slug)!;
-  const [valeurs, setValeurs] = useState<Valeurs>({});
-  const resultat = calculateur.evaluer(valeurs);
-  const regler = (cle: string, valeur: boolean | string | number | undefined) => setValeurs((v) => ({ ...v, [cle]: valeur }));
-
+// Champs d'un calculateur (cases, choix, nombres), groupés ; réutilisé par la fiche patient
+export function ChampsCalcul({
+  calculateur,
+  valeurs,
+  regler,
+}: {
+  calculateur: Calculateur;
+  valeurs: Valeurs;
+  regler: (cle: string, valeur: boolean | string | number | undefined) => void;
+}) {
   const groupes = new Map<string, Champ[]>();
   for (const c of calculateur.champs) groupes.set(c.groupe ?? "", [...(groupes.get(c.groupe ?? "") ?? []), c]);
 
   return (
-    <div>
+    <>
       {[...groupes].map(([groupe, champs]) => (
         <fieldset key={groupe} className="mt-6 first:mt-0">
           {groupe && <legend className="mb-2 text-sm font-semibold text-slate-900">{groupe}</legend>}
@@ -79,6 +81,21 @@ export function CalculateurInteractif({ slug }: { slug: string }) {
           </ul>
         </fieldset>
       ))}
+    </>
+  );
+}
+
+// Interface générique d'un calculateur : cases et choix, résultat immédiat (rien n'est enregistré)
+// On reçoit seulement l'identifiant : un calculateur contient une fonction, qui ne passe pas du serveur au client
+export function CalculateurInteractif({ slug }: { slug: string }) {
+  const calculateur = trouverCalculateur(slug)!;
+  const [valeurs, setValeurs] = useState<Valeurs>({});
+  const resultat = calculateur.evaluer(valeurs);
+  const regler = (cle: string, valeur: boolean | string | number | undefined) => setValeurs((v) => ({ ...v, [cle]: valeur }));
+
+  return (
+    <div>
+      <ChampsCalcul calculateur={calculateur} valeurs={valeurs} regler={regler} />
 
       <div className={`mt-6 rounded-xl p-4 ${couleurs[resultat.gravite]}`} aria-live="polite">
         <p>

@@ -14,6 +14,7 @@ import {
 } from "../../../dossier/consultations";
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
+import { ajouterScorePatient, evaluerSaisie, supprimerScorePatient } from "../../../dossier/scores-patients";
 import { ajouterSuivi, changerStatut, delais, supprimerSuivi, type Statut } from "../../../dossier/suivis";
 import { journaliser } from "../../../dossier/journal";
 import {
@@ -319,5 +320,31 @@ export async function effacerSuivi(langue: string, patientId: number, id: number
   const utilisateur = await exigerUtilisateur(langue);
   await supprimerSuivi(patientId, id);
   await journaliser(utilisateur.identifiant, "suivi supprimé", patientId);
+  refresh();
+}
+
+// --- Calculateurs rattachés au dossier : médecins seulement ---
+
+// Enregistre le résultat d'un calcul à une date. Le score est recalculé sur le serveur à partir des réponses.
+export async function enregistrerScorePatient(
+  langue: string,
+  patientId: number,
+  slug: string,
+  date: string,
+  saisie: Record<string, unknown>,
+): Promise<string | null> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!estJour(date)) return "Indiquez la date du calcul.";
+  if (!evaluerSaisie(slug, saisie)) return "Calculateur inconnu.";
+  const id = await ajouterScorePatient(patientId, slug, date, saisie, utilisateur.identifiant);
+  await journaliser(utilisateur.identifiant, "calcul enregistré", patientId, `${slug} (n° ${id}) du ${date}`);
+  refresh();
+  return null;
+}
+
+export async function retirerScorePatient(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await supprimerScorePatient(patientId, id);
+  await journaliser(utilisateur.identifiant, "calcul supprimé", patientId, `n° ${id}`);
   refresh();
 }
