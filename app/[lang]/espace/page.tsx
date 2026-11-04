@@ -22,21 +22,28 @@ const JOURS_AFFICHES = 14;
 
 export default async function Espace({ params, searchParams }: PageProps<"/[lang]/espace">) {
   const { lang } = await params;
-  const { medecin } = await searchParams;
   if (!estLangue(lang)) return null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement de l&apos;agenda…</p>}>
-        <Tableau langue={lang} filtre={typeof medecin === "string" ? medecin : ""} />
+        <Tableau langue={lang} recherche={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Tableau({ langue, filtre }: { langue: string; filtre: string }) {
+async function Tableau({
+  langue,
+  recherche,
+}: {
+  langue: string;
+  recherche: PageProps<"/[lang]/espace">["searchParams"];
+}) {
   // Agenda en direct : jamais préchargé ni mis en cache
   await connection();
+  const { medecin } = await recherche;
+  const filtre = typeof medecin === "string" ? medecin : "";
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) redirect(`/${langue}/espace/connexion`);
 
