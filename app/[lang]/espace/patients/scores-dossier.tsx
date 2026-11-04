@@ -2,6 +2,8 @@
 
 import { Calculator } from "lucide-react";
 import { trouverCalculateur } from "../../../dossier/calculateurs";
+import type { DonneesDossier } from "../../../dossier/calculateurs/preremplissage";
+import { dfg, imc, surfaceCorporelle } from "../../../dossier/calculs";
 import type { Valeurs } from "../../../dossier/calculateurs/types";
 import type { ScorePatient } from "../../../dossier/scores-patients";
 import { Courbe, couleurs } from "./courbe";
@@ -23,6 +25,35 @@ function resume(slug: string, valeurs: Valeurs) {
     } else if (c.type === "nombre" && typeof v === "number") morceaux.push(`${c.libelle} : ${v} ${c.unite ?? ""}`.trim());
   }
   return morceaux.join(" · ");
+}
+
+// Valeurs dérivées des données du dossier : surface, IMC, DFG (CKD-EPI 2021)
+export function ValeursCalculees({ donnees }: { donnees: DonneesDossier }) {
+  const fr = (n: number, chiffres = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
+  const sc = surfaceCorporelle(donnees.poids, donnees.taille);
+  const masse = imc(donnees.poids, donnees.taille);
+  const debit = dfg(donnees.creatinine, donnees.age, donnees.sexe);
+  const manqueMesure = !donnees.poids || !donnees.taille ? "poids ou taille manquant" : undefined;
+  const manqueDfg = !donnees.creatinine
+    ? "créatinine non renseignée"
+    : !donnees.sexe || donnees.age === null
+      ? "sexe ou âge manquant"
+      : undefined;
+  const lignes = [
+    { titre: "Surface corporelle", valeur: sc && `${fr(sc, 2)} m²`, manque: manqueMesure },
+    { titre: "IMC", valeur: masse && `${fr(masse)} kg/m²`, manque: manqueMesure },
+    { titre: "DFG estimé (CKD-EPI 2021)", valeur: debit && `${Math.round(debit)} mL/min/1,73 m²`, manque: manqueDfg },
+  ];
+  return (
+    <dl className="mb-6 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-3">
+      {lignes.map((l) => (
+        <div key={l.titre}>
+          <dt className="text-slate-500">{l.titre}</dt>
+          <dd className="font-semibold text-slate-900">{l.valeur || <span className="font-normal text-slate-400">{l.manque}</span>}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export function ScoresDossier({

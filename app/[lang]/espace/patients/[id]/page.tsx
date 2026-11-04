@@ -52,7 +52,7 @@ import { Retour } from "../commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerOrdonnance } from "../documents";
 import { FormulaireScore } from "../scores-formulaire";
-import { ScoresDossier } from "../scores-dossier";
+import { ScoresDossier, ValeursCalculees } from "../scores-dossier";
 import { BoutonSupprimerPatient, BoutonsTraitement, FormulaireTraitement } from "../formulaires";
 import { LigneSuivi } from "../liste-suivis";
 import { FormulaireSuivi } from "../suivis";
@@ -118,12 +118,14 @@ async function Dossier({
   after(() => journaliser(utilisateur.identifiant, "consultation du dossier", id).catch(console.error));
 
   const ans = age(patient.naissance, jourLocal(new Date()));
-  // Données reprises par défaut dans les calculs : dernières valeurs saisies en consultation
+  // Données reprises par défaut dans les calculs : poids et taille de la fiche, à défaut la dernière consultation
   const donneesCalcul: DonneesDossier = {
     age: ans,
     sexe: patient.sexe,
-    poids: consultations.find((c) => c.poids !== null)?.poids ?? null,
-    taille: consultations.find((c) => c.taille !== null)?.taille ?? null,
+    poids: patient.poids ?? consultations.find((c) => c.poids !== null)?.poids ?? null,
+    taille: patient.taille ?? consultations.find((c) => c.taille !== null)?.taille ?? null,
+    poidsOrigine: patient.poids !== null ? "fiche patient" : "dernière consultation",
+    tailleOrigine: patient.taille !== null ? "fiche patient" : "dernière consultation",
     fc: consultations.find((c) => c.fc !== null)?.fc ?? null,
     creatinine: consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null,
     facteurs: patient.facteursRisque,
@@ -250,7 +252,7 @@ async function Dossier({
       <Suivis langue={langue} patient={patient} suivis={suivis} />
 
       {medical && (
-        <SuiviMedical langue={langue} patient={patient} age={ans} consultations={consultations} fevgEchos={fevgEchos} />
+        <SuiviMedical langue={langue} patient={patient} consultations={consultations} fevgEchos={fevgEchos} />
       )}
 
       {medical && (
@@ -262,6 +264,7 @@ async function Dossier({
           <p className="mb-4 text-xs text-slate-500">
             Choisissez le calcul, enregistrez-le à la date voulue. Refaites-le au fil du suivi pour voir l&apos;évolution.
           </p>
+          <ValeursCalculees donnees={donneesCalcul} />
           <FormulaireScore
             langue={langue}
             patientId={id}

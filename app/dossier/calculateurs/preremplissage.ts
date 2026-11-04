@@ -7,11 +7,14 @@ import type { Calculateur, Valeurs } from "./types";
 export type DonneesDossier = {
   age: number | null;
   sexe: "" | "F" | "M";
-  poids: number | null; // dernière valeur saisie en consultation
+  poids: number | null; // fiche patient, à défaut dernière consultation
   taille: number | null;
   fc: number | null;
   creatinine: number | null; // mg/L, dernière valeur saisie en consultation
   facteurs: string[]; // facteurs de risque du dossier (libellés de la fiche)
+  // D'où viennent poids et taille, pour l'indiquer à côté du champ
+  poidsOrigine?: string;
+  tailleOrigine?: string;
 };
 
 export type Preremplissage = { valeurs: Valeurs; origines: Record<string, string> };
@@ -60,8 +63,8 @@ export function preremplir(calculateur: Calculateur, d: DonneesDossier): Preremp
   for (const c of calculateur.champs) {
     if (c.type === "nombre") {
       if (c.cle === "age" && d.age !== null) fixer(c.cle, d.age, AGE);
-      else if (c.cle === "poids" && d.poids !== null) fixer(c.cle, d.poids, CONSULTATION);
-      else if (c.cle === "taille" && d.taille !== null) fixer(c.cle, d.taille, CONSULTATION);
+      else if (c.cle === "poids" && d.poids !== null) fixer(c.cle, d.poids, d.poidsOrigine ?? CONSULTATION);
+      else if (c.cle === "taille" && d.taille !== null) fixer(c.cle, d.taille, d.tailleOrigine ?? CONSULTATION);
       else if (c.cle === "fc" && d.fc !== null) fixer(c.cle, d.fc, CONSULTATION);
       else if (c.cle === "creatinine" && d.creatinine !== null) fixer(c.cle, d.creatinine, CONSULTATION);
     } else if (c.type === "choix") {

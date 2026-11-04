@@ -179,6 +179,30 @@ export function FormulairePatient({
               className={champ}
             />
           </label>
+          <div className="sm:col-span-2 flex flex-wrap gap-6">
+            <label className={etiquette}>
+              Poids
+              <span className="ms-2 font-normal text-slate-400">kg</span>
+              <input
+                name="poids"
+                inputMode="decimal"
+                placeholder="72"
+                defaultValue={v("poids", decimalFr(patient?.poids))}
+                className={`${champ} w-28`}
+              />
+            </label>
+            <label className={etiquette}>
+              Taille
+              <span className="ms-2 font-normal text-slate-400">cm</span>
+              <input
+                name="taille"
+                inputMode="decimal"
+                placeholder="170"
+                defaultValue={v("taille", decimalFr(patient?.taille))}
+                className={`${champ} w-28`}
+              />
+            </label>
+          </div>
           <label className={etiquette}>
             Antécédents
             <textarea

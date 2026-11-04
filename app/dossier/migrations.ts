@@ -390,4 +390,9 @@ export const migrations: string[][] = [
     )`,
     `CREATE INDEX IF NOT EXISTS scores_patients_patient ON scores_patients (patient_id, calculateur, date)`,
   ],
+  // 15 — Poids et taille dans la fiche patient (modifiables à tout moment, reprises par les calculs)
+  [
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS poids numeric(5, 1)`,
+    `ALTER TABLE patients ADD COLUMN IF NOT EXISTS taille numeric(5, 1)`,
+  ],
 ];

@@ -34,6 +34,12 @@ describe("preremplir", () => {
     expect(imc.taille).toBe(165);
   });
 
+  it("indique d'où viennent poids et taille (fiche patient ou dernière consultation)", () => {
+    const { origines } = preremplir(trouverCalculateur("imc-surface")!, { ...dossier, poidsOrigine: "fiche patient" });
+    expect(origines.poids).toBe("fiche patient");
+    expect(origines.taille).toBe("dernière consultation");
+  });
+
   it("ne reprend pas une valeur absente du dossier", () => {
     const { valeurs } = preremplir(trouverCalculateur("dfg-ckd-epi")!, { ...dossier, creatinine: null });
     expect("creatinine" in valeurs).toBe(false);

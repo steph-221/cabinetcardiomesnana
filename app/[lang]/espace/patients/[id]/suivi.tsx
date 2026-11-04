@@ -1,12 +1,11 @@
 // Suivi médical du dossier : alertes, calculs, courbes d'évolution et consultations (médecins seulement)
 
 import Link from "next/link";
-import { Activity, Calculator, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
-import { dfg, imc, surfaceCorporelle, type Alerte } from "../../../../dossier/calculs";
+import { Activity, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
+import type { Alerte } from "../../../../dossier/calculs";
 import { mesures, type Consultation } from "../../../../dossier/consultations";
 import type { Patient } from "../../../../dossier/patients";
 import { Courbe, couleurs, type Serie } from "../courbe";
-import { CalculCha2ds2va } from "../scores";
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 const fr = (n: number, chiffres = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
@@ -57,24 +56,14 @@ function serie(
 export function SuiviMedical({
   langue,
   patient,
-  age,
   consultations,
   fevgEchos,
 }: {
   langue: string;
   patient: Patient;
-  age: number | null;
   consultations: Consultation[];
   fevgEchos: { date: string; valeur: number }[];
 }) {
-  // Dernières valeurs connues (consultations de la plus récente à la plus ancienne)
-  const poids = consultations.find((c) => c.poids !== null)?.poids ?? null;
-  const taille = consultations.find((c) => c.taille !== null)?.taille ?? null;
-  const creatinine = consultations.find((c) => c.mesures.creatinine !== undefined)?.mesures.creatinine ?? null;
-  const sc = surfaceCorporelle(poids, taille);
-  const masse = imc(poids, taille);
-  const debit = dfg(creatinine, age, patient.sexe);
-
   const courbes = [
     {
       titre: "INR",
@@ -103,45 +92,8 @@ export function SuiviMedical({
       }),
   ].filter((c) => c.series.some((s) => s.points.length > 0));
 
-  // Pré-remplissage du score à partir du dossier
-  const preCoches = [
-    patient.facteursRisque.includes("HTA") && "hta",
-    patient.facteursRisque.includes("Diabète") && "diabete",
-    age !== null && age >= 75 && "age75",
-    age !== null && age >= 65 && age < 75 && "age65",
-  ].filter((c): c is string => Boolean(c));
-
   return (
     <>
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <section className="rounded-2xl border border-slate-200 p-6 text-sm">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900">
-            <Calculator className="h-5 w-5 text-red-600" aria-hidden />
-            Calculs
-          </h2>
-          <dl className="space-y-2">
-            <Valeur titre="Surface corporelle" valeur={sc && `${fr(sc, 2)} m²`} />
-            <Valeur titre="IMC" valeur={masse && `${fr(masse)} kg/m²`} />
-            <Valeur
-              titre="DFG estimé (CKD-EPI 2021)"
-              valeur={debit && `${Math.round(debit)} mL/min/1,73 m²`}
-              manque={
-                !creatinine
-                  ? "créatinine non renseignée"
-                  : !patient.sexe || age === null
-                    ? "sexe ou âge manquant"
-                    : undefined
-              }
-            />
-          </dl>
-          <p className="mt-3 text-xs text-slate-400">D&apos;après les dernières valeurs saisies en consultation.</p>
-        </section>
-        <section className="rounded-2xl border border-slate-200 p-6 text-sm lg:col-span-2">
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">Score CHA₂DS₂-VA</h2>
-          <CalculCha2ds2va preCoches={preCoches} />
-        </section>
-      </div>
-
       {courbes.length > 0 && (
         <section className="mt-6 rounded-2xl border border-slate-200 p-6 text-sm">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-slate-900">
@@ -228,16 +180,6 @@ export function SuiviMedical({
   );
 }
 
-function Valeur({ titre, valeur, manque }: { titre: string; valeur: string | null | 0; manque?: string }) {
-  return (
-    <div>
-      <dt className="text-slate-500">{titre}</dt>
-      <dd className="font-medium text-slate-900">
-        {valeur || <span className="font-normal text-slate-400">{manque ?? "—"}</span>}
-      </dd>
-    </div>
-  );
-}
 
 function Rubrique({ titre, texte }: { titre: string; texte: string }) {
   return (

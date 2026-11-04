@@ -89,6 +89,18 @@ export async function enregistrerPatient(
     }
   }
 
+  // Poids et taille : facultatifs, mais s'ils sont saisis ils doivent être plausibles
+  const poids = decimalSaisi(formData, "poids");
+  const taille = decimalSaisi(formData, "taille");
+  if (accesMedical(utilisateur)) {
+    if (poids === undefined || (poids !== null && (poids < 1 || poids > 300))) {
+      return echecPatient("Poids : indiquez une valeur en kilos, entre 1 et 300.", formData);
+    }
+    if (taille === undefined || (taille !== null && (taille < 30 || taille > 250))) {
+      return echecPatient("Taille : indiquez une valeur en centimètres, entre 30 et 250.", formData);
+    }
+  }
+
   // La secrétaire ne voit pas le contenu médical : il n'est ni lu ni modifié pour elle
   const medical: ContenuMedical | null = accesMedical(utilisateur)
     ? {
@@ -101,6 +113,8 @@ export async function enregistrerPatient(
         notes: texte(formData, "notes", 5000),
         inrMin: inrMin ?? null,
         inrMax: inrMax ?? null,
+        poids: poids ?? null,
+        taille: taille ?? null,
       }
     : null;
 
