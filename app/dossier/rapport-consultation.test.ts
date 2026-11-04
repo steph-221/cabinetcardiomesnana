@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+import { elementsRapport } from "./rapport-consultation";
+import type { Facture } from "./compta";
+import type { Examen } from "./examens";
+import type { Ordonnance } from "./ordonnances";
+import type { ScorePatient } from "./scores-patients";
+
+const consultation = { id: 5, date: "2026-11-04" };
+const score = (c: Partial<ScorePatient>): ScorePatient =>
+  ({ id: 1, slug: "x", titre: "CHA₂DS₂-VA", date: "2026-11-04", valeurs: {}, score: 3, libelle: "Anticoagulation recommandée", gravite: "eleve", consultationId: 5, creePar: "dr", ...c }) as ScorePatient;
+const examen = (c: Partial<Examen>): Examen =>
+  ({ id: 1, type: "ECG", date: "2026-11-04", conclusion: "ACFA à 72/min", valeurs: {}, consultationId: 5, ...c }) as Examen;
+const ordonnance = (c: Partial<Ordonnance>): Ordonnance =>
+  ({ id: 1, patientId: 1, date: "2026-11-04", lignes: [{ medicament: "Bisoprolol 5 mg", posologie: "1 cp le matin", duree: "3 mois" }], remarque: "", fichierDrive: null, consultationId: 5, creePar: "dr", ...c }) as Ordonnance;
+
+const facture = (c: Partial<Facture>): Facture =>
+  ({ id: 1, numero: "2026-11-0001", date: "2026-11-04", totalCts: 30000, payeCts: 30000, annulee: false, statut: "payee", consultationId: 5, ...c }) as Facture;
+
+describe("elementsRapport", () => {
+  it("reprend seulement ce qui est rattaché à cette consultation", () => {
+    const r = elementsRapport(consultation, {
+      scores: [score({}), score({ id: 2, consultationId: 9 }), score({ id: 3, consultationId: null })],
+      examens: [examen({}), examen({ id: 2, consultationId: 9, type: "Holter ECG" })],
+      ordonnances: [ordonnance({}), ordonnance({ id: 2, consultationId: null })],
+      factures: [],
+    });
+    expect(r.calculs).toEqual(["CHA₂DS₂-VA : score 3, Anticoagulation recommandée"]);
+    expect(r.examens).toEqual(["ECG : ACFA à 72/min"]);
+    expect(r.ordonnances).toEqual(["- Bisoprolol 5 mg — 1 cp le matin (3 mois)"]);
+  });
+
+  it("rien de rattaché : rien à ajouter au rapport", () => {
+    expect(elementsRapport(consultation, { scores: [], examens: [], ordonnances: [], factures: [] })).toEqual({ calculs: [], examens: [], ordonnances: [], factures: [] });
+  });
+
+  it("rappelle la date seulement si elle diffère de celle de la consultation", () => {
+    const r = elementsRapport(consultation, {
+      scores: [score({ date: "2026-11-02" })],
+      examens: [examen({ date: "2026-11-03", conclusion: "" })],
+      ordonnances: [ordonnance({ date: "2026-11-05", remarque: "Contrôle INR dans 15 jours" })],
+      factures: [],
+    });
+    expect(r.calculs[0]).toContain("du 02/11/2026");
+    expect(r.examens).toEqual(["ECG du 03/11/2026"]);
+    expect(r.ordonnances).toEqual([
+      "Ordonnance du 05/11/2026 :",
+      "- Bisoprolol 5 mg — 1 cp le matin (3 mois)",
+      "Remarque : Contrôle INR dans 15 jours",
+    ]);
+  });
+
+  it("calcul sans score (formule) : seulement le résultat", () => {
+    expect(elementsRapport(consultation, { scores: [score({ score: null, titre: "DFG", libelle: "55 mL/min" })], examens: [], ordonnances: [], factures: [] }).calculs).toEqual(["DFG : 55 mL/min"]);
+  });
+
+  it("plusieurs ordonnances : chacune est introduite par sa date", () => {
+    const r = elementsRapport(consultation, { scores: [], examens: [], ordonnances: [ordonnance({}), ordonnance({ id: 2 })], factures: [] });
+    expect(r.ordonnances.filter((l) => l.startsWith("Ordonnance")).length).toBe(2);
+  });
+
+  it("un compte rendu long est résumé sur une ligne", () => {
+    const long = `Ligne un\n\nLigne deux ${"x".repeat(700)}`;
+    const [ligne] = elementsRapport(consultation, { scores: [], examens: [examen({ conclusion: long })], ordonnances: [], factures: [] }).examens;
+    expect(ligne.includes("\n")).toBe(false);
+    expect(ligne.endsWith("…")).toBe(true);
+    expect(ligne.length).toBeLessThan(640);
+  });
+});
+
+describe("elementsRapport : facture", () => {
+  const sans = { scores: [], examens: [], ordonnances: [] };
+
+  it("rappelle le numéro, le montant et l'état de la facture rattachée", () => {
+    const r = elementsRapport(consultation, { ...sans, factures: [facture({})] });
+    expect(r.factures).toEqual(["Facture n° 2026-11-0001 : 300,00 MAD, payée"]);
+  });
+
+  it("ignore les factures d'autres consultations, libres ou annulées", () => {
+    const r = elementsRapport(consultation, {
+      ...sans,
+      factures: [
+        facture({ id: 2, consultationId: 9 }),
+        facture({ id: 3, consultationId: null }),
+        facture({ id: 4, annulee: true, statut: "annulee" }),
+      ],
+    });
+    expect(r.factures).toEqual([]);
+  });
+
+  it("facture impayée ou partiellement payée : l'état, et le reste à payer le cas échéant", () => {
+    const r = elementsRapport(consultation, {
+      ...sans,
+      factures: [
+        facture({ id: 2, numero: "2026-11-0002", payeCts: 0, statut: "impayee" }),
+        facture({ id: 3, numero: "2026-11-0003", payeCts: 10000, statut: "partielle" }),
+      ],
+    });
+    expect(r.factures).toEqual([
+      "Facture n° 2026-11-0002 : 300,00 MAD, impayée",
+      "Facture n° 2026-11-0003 : 300,00 MAD, partiellement payée (reste 200,00 MAD)",
+    ]);
+  });
+
+  it("rappelle la date de la facture seulement si elle diffère de celle de la consultation", () => {
+    const r = elementsRapport(consultation, { ...sans, factures: [facture({ date: "2026-11-06" })] });
+    expect(r.factures[0]).toContain("du 06/11/2026");
+  });
+});

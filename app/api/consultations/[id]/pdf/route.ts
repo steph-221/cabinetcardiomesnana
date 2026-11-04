@@ -1,11 +1,16 @@
 // Rapport de consultation en PDF, médecins seulement (toujours à jour : regénéré à chaque ouverture)
 
 import { accesMedical, utilisateurConnecte } from "../../../../agenda/session";
+import { listerFactures } from "../../../../dossier/compta";
 import { lireConsultationSeule } from "../../../../dossier/consultations";
+import { listerExamens } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
+import { listerOrdonnances } from "../../../../dossier/ordonnances";
 import { listerTraitements, lirePatient } from "../../../../dossier/patients";
 import { pdfConsultation } from "../../../../dossier/pdf";
+import { elementsRapport } from "../../../../dossier/rapport-consultation";
 import { nomFichier, reponsePdf } from "../../../../dossier/reponse-pdf";
+import { listerScoresPatient } from "../../../../dossier/scores-patients";
 
 export async function GET(_: Request, ctx: RouteContext<"/api/consultations/[id]/pdf">) {
   const utilisateur = await utilisateurConnecte();
@@ -19,9 +24,21 @@ export async function GET(_: Request, ctx: RouteContext<"/api/consultations/[id]
   const traitements = (await listerTraitements(patient.id))
     .filter((t) => (!t.debut || t.debut <= consultation.date) && (!t.fin || t.fin > consultation.date))
     .map((t) => [t.medicament, t.posologie].filter(Boolean).join(" — "));
+  // Examens, calculs, ordonnances et facture rattachés à cette consultation
+  const [scores, examens, ordonnances, factures] = await Promise.all([
+    listerScoresPatient(patient.id),
+    listerExamens(patient.id),
+    listerOrdonnances(patient.id),
+    // Un souci de lecture des factures ne doit pas empêcher d'imprimer le rapport
+    listerFactures({ patientId: patient.id, limite: 100 }).catch((erreur) => {
+      console.error(erreur);
+      return [];
+    }),
+  ]);
+  const rattaches = elementsRapport(consultation, { scores, examens, ordonnances, factures });
   await journaliser(utilisateur.identifiant, "rapport de consultation imprimé", patient.id, consultation.date);
   return reponsePdf(
-    await pdfConsultation(consultation, patient, traitements),
+    await pdfConsultation(consultation, patient, traitements, rattaches),
     nomFichier("Consultation", patient, consultation.date),
   );
 }

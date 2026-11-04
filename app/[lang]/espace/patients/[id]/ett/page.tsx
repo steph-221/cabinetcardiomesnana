@@ -6,7 +6,8 @@ import { lang as langueRacine } from "next/root-params";
 import { cabinet, estLangue } from "../../../../../cabinet";
 import { jourLocal } from "../../../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../../../agenda/session";
-import { listerConsultations } from "../../../../../dossier/consultations";
+import { consultationDemandee } from "../../../../../dossier/choix-consultation";
+import { consultationsPourChoix, listerConsultations } from "../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../dossier/patients";
 import { lireReferences } from "../../../../../dossier/verification-seuils";
 import { Retour } from "../../commun";
@@ -17,13 +18,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function CompteRenduETT({ params }: PageProps<"/[lang]/espace/patients/[id]/ett">) {
+export default async function CompteRenduETT({ params, searchParams }: PageProps<"/[lang]/espace/patients/[id]/ett">) {
   const lang = await langueRacine();
   if (!estLangue(lang)) return null;
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement…</p>}>
-        <Formulaire langue={lang} params={params} />
+        <Formulaire langue={lang} params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -32,9 +33,11 @@ export default async function CompteRenduETT({ params }: PageProps<"/[lang]/espa
 async function Formulaire({
   langue,
   params,
+  searchParams,
 }: {
   langue: string;
   params: PageProps<"/[lang]/espace/patients/[id]/ett">["params"];
+  searchParams: PageProps<"/[lang]/espace/patients/[id]/ett">["searchParams"];
 }) {
   await connection();
   const utilisateur = await exigerUtilisateur(langue, "medical");
@@ -46,6 +49,8 @@ async function Formulaire({
   const poids = consultations.find((c) => c.poids !== null)?.poids ?? null;
   const taille = consultations.find((c) => c.taille !== null)?.taille ?? null;
   const references = await lireReferences().catch(() => ({}));
+  const choix = await consultationsPourChoix(id);
+  const consultationDefaut = consultationDemandee((await searchParams).consultation, choix);
 
   return (
     <>
@@ -64,6 +69,8 @@ async function Formulaire({
         operateur={utilisateur.admin ? cabinet.medecin : utilisateur.identifiant}
         aujourdhui={jourLocal(new Date())}
         references={references}
+        consultations={choix}
+        consultationDefaut={consultationDefaut}
       />
     </>
   );

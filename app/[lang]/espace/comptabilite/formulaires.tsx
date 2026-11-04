@@ -2,6 +2,8 @@
 
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import type { OptionConsultation } from "../../../dossier/choix-consultation";
+import { ChoixConsultation } from "../patients/choix-consultation";
 import { Ban, Check, Plus, Receipt, Trash2 } from "lucide-react";
 import {
   categoriesCharges,
@@ -65,6 +67,8 @@ export function FormulaireFacture({
   praticienParDefaut,
   actes,
   aujourdhui,
+  consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patient: { id: number; nom: string } | null;
@@ -72,6 +76,8 @@ export function FormulaireFacture({
   praticienParDefaut: number;
   actes: { id: number; libelle: string; tarifCts: number }[];
   aujourdhui: string;
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
   const [etat, envoyer] = useActionState(nouvelleFacture.bind(null, langue), null);
   const compteur = useRef(1);
@@ -121,6 +127,8 @@ export function FormulaireFacture({
           />
         </label>
       )}
+
+      <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={libelleChamp}>

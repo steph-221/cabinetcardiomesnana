@@ -10,6 +10,8 @@ import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { champs, type ChampExamen, type ValeursExamen } from "../../../dossier/comptes-rendus/types";
 import { nouveauCompteRenduExamen } from "./actions-documents";
 import { LigneReference } from "./reference-seuil";
+import { ChoixConsultation } from "./choix-consultation";
+import type { OptionConsultation } from "../../../dossier/choix-consultation";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -39,6 +41,8 @@ export function FormulaireExamen({
   operateur,
   aujourdhui,
   references,
+  consultations,
+  consultationDefaut,
 }: {
   langue: string;
   patientId: number;
@@ -48,6 +52,8 @@ export function FormulaireExamen({
   operateur: string;
   aujourdhui: string;
   references: Record<string, ReferenceSeuil>;
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
   const modele = trouverModele(cle);
   const [etat, envoyer] = useActionState(nouveauCompteRenduExamen.bind(null, langue, patientId, cle), null);
@@ -188,6 +194,7 @@ export function FormulaireExamen({
         </p>
       </fieldset>
 
+      <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
       {etat && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
           {etat.erreur}

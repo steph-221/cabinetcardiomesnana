@@ -2,6 +2,7 @@
 // conclusion), plus les valeurs chiffrées qui alimentent les courbes et les alertes.
 
 import { base } from "./base";
+import type { OptionConsultation } from "./choix-consultation";
 import { rattacherElementsDuJour } from "./liens-consultation";
 import type { CleMesure, Constantes } from "./mesures";
 
@@ -50,6 +51,13 @@ export async function listerConsultations(patientId: number) {
   const sql = await base();
   const lignes = await sql`SELECT * FROM consultations WHERE patient_id = ${patientId} ORDER BY date DESC, id DESC`;
   return lignes.map(versConsultation);
+}
+
+// Liste légère pour choisir une consultation dans un formulaire : numéro, date et motif seulement
+export async function consultationsPourChoix(patientId: number): Promise<OptionConsultation[]> {
+  const sql = await base();
+  const lignes = await sql`SELECT id, date, motif FROM consultations WHERE patient_id = ${patientId} ORDER BY date DESC, id DESC LIMIT 60`;
+  return lignes.map((l) => ({ id: l.id as number, date: l.date as string, motif: l.motif as string }));
 }
 
 export async function lireConsultation(patientId: number, id: number) {

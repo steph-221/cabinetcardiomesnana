@@ -31,6 +31,7 @@ import {
   type LigneFacture,
   type ModePaiement,
 } from "../../../dossier/compta-calculs";
+import { lireChoixConsultation } from "../../../dossier/choix-consultation";
 import { journaliser } from "../../../dossier/journal";
 import { lirePatient, libellePatient } from "../../../dossier/patients";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
@@ -99,7 +100,17 @@ export async function nouvelleFacture(langue: string, _: EtatFormulaire, formDat
   let resultat: { id: number; numero: string };
   try {
     resultat = await creerFacture(
-      { date, patientId, patientNom, praticienId, lignes, remiseCts, totalCts, note: texte(formData, "note", 500) },
+      {
+        date,
+        patientId,
+        patientNom,
+        praticienId,
+        lignes,
+        remiseCts,
+        totalCts,
+        note: texte(formData, "note", 500),
+        consultationId: lireChoixConsultation(formData.get("consultationId")),
+      },
       reglement,
       utilisateur.identifiant,
     );

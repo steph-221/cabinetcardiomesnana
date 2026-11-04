@@ -21,6 +21,7 @@ export type Rendezvous = {
   motif?: string;
   dateNaissance?: string; // "AAAA-MM-JJ"
   email?: string;
+  medecin?: string; // identifiant du médecin auquel le rendez-vous est rattaché
   controle: boolean; // rendez-vous de contrôle court, glissé entre deux consultations
   enLigne: boolean;
   annulable: boolean; // rendez-vous patient créé par le site ou l'espace cabinet
@@ -136,6 +137,7 @@ export async function listerRendezvous(debut: Date, fin: Date): Promise<Rendezvo
       motif: prive.motif,
       dateNaissance: prive.dateNaissance,
       email: prive.email,
+      medecin: prive.medecin || undefined,
       controle: prive.type === "controle",
       enLigne: prive.source === "site",
       annulable: prive.source === "site" || prive.source === "secretariat",
@@ -154,6 +156,7 @@ export async function creerRendezvous(rdv: {
   dateNaissance?: string;
   email?: string;
   patientId?: number;
+  medecin?: string;
   controle?: boolean;
   source: "site" | "secretariat";
   par?: string;
@@ -162,6 +165,7 @@ export async function creerRendezvous(rdv: {
     `Téléphone : ${rdv.telephone}`,
     rdv.dateNaissance && `Date de naissance : ${rdv.dateNaissance.split("-").reverse().join("/")}`,
     rdv.email && `E-mail : ${rdv.email}`,
+    rdv.medecin && `Médecin : ${rdv.medecin}`,
     rdv.motif && `Motif : ${rdv.motif}`,
     rdv.source === "site" ? "Réservé en ligne sur le site" : `Ajouté par ${rdv.par ?? "le secrétariat"}`,
   ]
@@ -188,6 +192,7 @@ export async function creerRendezvous(rdv: {
           motif: rdv.motif,
           dateNaissance: rdv.dateNaissance ?? "",
           email: rdv.email ?? "",
+          medecin: rdv.medecin ?? "",
         },
       },
     }),
@@ -226,6 +231,14 @@ export async function rattacherRendezvous(id: string, patientId: number) {
   await appel(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify({ extendedProperties: { private: { patientId: String(patientId) } } }),
+  });
+}
+
+// Rattache un rendez-vous à un médecin (chaîne vide : détache). Seule cette propriété est modifiée.
+export async function affecterMedecin(id: string, medecin: string) {
+  await appel(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ extendedProperties: { private: { medecin } } }),
   });
 }
 

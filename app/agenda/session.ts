@@ -136,6 +136,16 @@ export async function listerComptes() {
   return comptes.sort((a, b) => a.identifiant.localeCompare(b.identifiant));
 }
 
+// Médecins auxquels rattacher un rendez-vous : l'administrateur et les comptes au rôle « médecin »
+export async function listerMedecins() {
+  const medecins = admin() ? [admin()!.identifiant] : [];
+  if (stockageConfigure()) {
+    const comptes = await listerComptes();
+    medecins.push(...comptes.filter((c) => c.role === "medecin").map((c) => c.identifiant));
+  }
+  return [...new Set(medecins)].sort((a, b) => a.localeCompare(b));
+}
+
 export const identifiantValide = (identifiant: string) => /^[a-z0-9._-]{2,30}$/.test(identifiant);
 
 // Crée le compte, ou remplace son mot de passe s'il existe (ses sessions ouvertes sont alors fermées)
