@@ -30,7 +30,7 @@ import {
 } from "../../agenda/session";
 import { estRole } from "../../agenda/roles";
 import { adresseIp } from "../../agenda/antirobot";
-import { compter, effacer, lire, reserverUneFois } from "../../agenda/limite";
+import { compter, effacer, reserverUneFois, retirerUn } from "../../agenda/limite";
 import { totpAdminActive, verifierTotp } from "../../agenda/totp";
 import { cabinet } from "../../cabinet";
 import { prevenirPatient } from "../../agenda/notification";
@@ -55,10 +55,13 @@ export async function connexion(langue: string, _: EtatFormulaire, formData: For
   const adresse = await adresseIp();
   const refus = (erreur: string): EtatFormulaire => ({ erreur, valeurs: { identifiant: saisi } });
 
-  if (
-    (await lire(`connexion:ip:${adresse}`)) >= ESSAIS_PAR_ADRESSE ||
-    (await lire(`connexion:id:${identifiant}`)) >= ESSAIS_PAR_IDENTIFIANT
-  ) {
+  // Chaque essai est compté AVANT d'être vérifié, en une seule opération atomique : des essais envoyés en rafale
+  // ne peuvent pas passer tous sous le compteur (lire puis incrémenter laissait cette porte ouverte).
+  const [essaisAdresse, essaisIdentifiant] = await Promise.all([
+    compter(`connexion:ip:${adresse}`, FENETRE_CONNEXION),
+    compter(`connexion:id:${identifiant}`, FENETRE_CONNEXION),
+  ]);
+  if ((essaisAdresse ?? 0) > ESSAIS_PAR_ADRESSE || (essaisIdentifiant ?? 0) > ESSAIS_PAR_IDENTIFIANT) {
     await tracerConnexion("connexion verrouillée", identifiant, adresse);
     return refus("Trop d'essais. Réessayez dans 15 minutes.");
   }
@@ -73,17 +76,14 @@ export async function connexion(langue: string, _: EtatFormulaire, formData: For
   }
 
   if (!compte || !valide) {
-    await Promise.all([
-      compter(`connexion:ip:${adresse}`, FENETRE_CONNEXION),
-      compter(`connexion:id:${identifiant}`, FENETRE_CONNEXION),
-    ]);
     await tracerConnexion("connexion échouée", identifiant, adresse);
     // Ralentit les essais de mots de passe à la chaîne
     await new Promise((r) => setTimeout(r, 1000));
     // Même message dans tous les cas : on ne dit pas si c'est le mot de passe ou le code qui est bon
     return refus("Identifiant, mot de passe ou code de vérification incorrect.");
   }
-  await effacer(`connexion:id:${identifiant}`);
+  // Réussite : seuls les échecs comptent
+  await Promise.all([effacer(`connexion:id:${identifiant}`), retirerUn(`connexion:ip:${adresse}`)]);
   await ouvrirSession(compte);
   await tracerConnexion("connexion réussie", identifiant, adresse);
   redirect(`/${langue}/espace`);
