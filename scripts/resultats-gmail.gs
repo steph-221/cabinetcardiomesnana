@@ -32,7 +32,7 @@ function envoyerResultats() {
           if (deja[cle]) continue;
           const reponse = UrlFetchApp.fetch(ADRESSE, {
             method: "post",
-            headers: { Authorization: "Bearer " + secret },
+            headers: { Authorization: "Bearer " + secret, "X-Horodatage": String(Math.floor(Date.now() / 1000)) },
             muteHttpExceptions: true,
             payload: {
               fichier: piece.copyBlob().setContentType("application/pdf"),
