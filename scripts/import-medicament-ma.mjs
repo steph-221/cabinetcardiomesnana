@@ -13,8 +13,8 @@ const get = async (url, essais = 4) => {
   for (let i = 0; i < essais; i++) {
     try {
       const r = await fetch(url, { headers: { "user-agent": "cabinet-ordonnance-import" } });
-      if (r.ok) return await r.text();
-      if (r.status === 404) return null;
+      // Le site renvoie parfois la fiche avec un statut 404 : on lit le corps quand même
+      if (r.ok || r.status === 404) return await r.text();
     } catch {}
     await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
   }
@@ -34,7 +34,7 @@ const texte = (h) =>
 
 function lireFiche(html, url) {
   const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
-  if (!h1) return null;
+  if (!h1 || !html.includes("detail-header")) return null;
   const champ = (nom) => {
     const m = html.match(new RegExp(`detail-header">\\s*${nom}\\s*</div>\\s*<div class="detail-content">([\\s\\S]*?)</div>`, "i"));
     return m ? texte(m[1]) : "";
@@ -67,6 +67,7 @@ async function main() {
   if (process.argv.includes("--reprendre")) {
     try {
       faits = JSON.parse(await readFile(BRUT, "utf8"));
+      for (const u of Object.keys(faits)) if (!faits[u]) delete faits[u]; // refaire les échecs
     } catch {}
   }
   const restantes = urls.filter((u) => !(u in faits));
