@@ -88,9 +88,23 @@ async function Contenu({ langue, theme }: { langue: string; theme: string }) {
     <>
       <section className="mt-6 space-y-6 rounded-2xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900">Suivre un site ou une revue</h2>
-        {proposes.map(([cle, p]) => (
-          <SuivreSitePropose key={cle} langue={langue} cle={cle} libelle={p.bouton} />
-        ))}
+        {proposes
+          .filter(([, p]) => p.groupe === "esc")
+          .map(([cle, p]) => (
+            <SuivreSitePropose key={cle} langue={langue} cle={cle} libelle={p.bouton} />
+          ))}
+        {proposes.some(([, p]) => p.groupe === "revue") && (
+          <details open>
+            <summary className="cursor-pointer text-sm font-medium text-slate-700">Revues cardio (flux RSS)</summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {proposes
+                .filter(([, p]) => p.groupe === "revue")
+                .map(([cle, p]) => (
+                  <SuivreSitePropose key={cle} langue={langue} cle={cle} libelle={p.bouton} />
+                ))}
+            </div>
+          </details>
+        )}
         <details>
           <summary className="cursor-pointer text-sm text-slate-700">Autre site, revue ou flux RSS…</summary>
           <div className="mt-4">
