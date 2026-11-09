@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { FileCheck, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, FileCheck, Plus, Trash2, X } from "lucide-react";
 import {
   champs2D,
   champsDoppler,
@@ -14,8 +14,8 @@ import {
 import { ajouterProposition, referencesCitees } from "../../../dossier/comptes-rendus/references";
 import { avecSeuils } from "../../../dossier/comptes-rendus/references-propositions";
 import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
-import { medicaments } from "../../../dossier/vocabulaire";
-import { nouveauCompteRenduETT, nouvelleOrdonnance, retirerOrdonnance } from "./actions-documents";
+import { nouveauCompteRenduETT, nouvelleOrdonnance, rechercherMedicaments, retirerOrdonnance } from "./actions-documents";
+import type { MedicamentMa } from "../../../dossier/medicaments-ma";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
 import type { OptionConsultation } from "../../../dossier/choix-consultation";
@@ -50,7 +50,113 @@ function Erreur({ etat }: { etat: { erreur: string } | null }) {
 
 // --- Ordonnance ---
 
-type Ligne = { cle: number; medicament: string; posologie: string; duree: string };
+type Ligne = { cle: number; medicament: string; posologie: string; duree: string; fiche?: MedicamentMa };
+
+// Champ « médicament » : suggestions de la base medicament.ma (nom, DCI, classe, prix) avec lien vers la fiche
+function ChampMedicament({
+  valeur,
+  onChange,
+  onChoix,
+}: {
+  valeur: string;
+  onChange: (v: string) => void;
+  onChoix: (m: MedicamentMa) => void;
+}) {
+  const [propositions, setPropositions] = useState<MedicamentMa[]>([]);
+  const [ouvert, setOuvert] = useState(false);
+  const minuteur = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dernier = useRef(0);
+
+  const saisir = (v: string) => {
+    onChange(v);
+    clearTimeout(minuteur.current);
+    if (v.trim().length < 2) return setPropositions([]);
+    minuteur.current = setTimeout(async () => {
+      const n = ++dernier.current;
+      const r = await rechercherMedicaments(v).catch(() => []);
+      if (n === dernier.current) {
+        setPropositions(r);
+        setOuvert(true);
+      }
+    }, 250);
+  };
+
+  return (
+    <label className={`${etiquette} relative block`}>
+      Médicament
+      <input
+        name="medicament"
+        maxLength={150}
+        value={valeur}
+        autoComplete="off"
+        onChange={(e) => saisir(e.target.value)}
+        onFocus={() => propositions.length && setOuvert(true)}
+        onBlur={() => setTimeout(() => setOuvert(false), 150)}
+        placeholder="Bisoprolol 2,5 mg"
+        className={champ}
+      />
+      {ouvert && propositions.length > 0 && (
+        <ul className="absolute left-0 right-0 z-20 mt-1 max-h-80 overflow-auto rounded-lg border border-slate-200 bg-white text-left shadow-lg">
+          {propositions.map((m) => (
+            <li key={m.url}>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChoix(m);
+                  setOuvert(false);
+                }}
+                className="block w-full px-3 py-2 text-left hover:bg-red-50"
+              >
+                <span className="block text-sm font-medium text-slate-900">{m.nom}</span>
+                <span className="block text-xs font-normal text-slate-500">
+                  {[m.dci, m.labo, m.ppv && `PPV ${m.ppv}`].filter(Boolean).join(" · ")}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </label>
+  );
+}
+
+// Informations essentielles du médicament choisi + lien vers sa fiche publique
+function FicheMedicament({ m }: { m: MedicamentMa }) {
+  const infos: [string, string][] = [
+    ["DCI", m.dci],
+    ["Dosage", m.dosage],
+    ["Présentation", m.presentation],
+    ["Classe", m.classe],
+    ["Laboratoire", m.labo],
+    ["PPV", m.ppv],
+    ["Statut", m.statut],
+    ["Tableau", m.tableau],
+  ];
+  return (
+    <div className="sm:col-span-full rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+      <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+        {infos
+          .filter(([, v]) => v)
+          .map(([k, v]) => (
+            <div key={k} className="flex gap-1">
+              <dt className="font-medium text-slate-500">{k} :</dt>
+              <dd className="text-slate-800">{v}</dd>
+            </div>
+          ))}
+      </dl>
+      <a
+        href={m.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 font-medium text-red-700 hover:underline"
+      >
+        <ExternalLink className="h-3 w-3" aria-hidden />
+        Fiche sur medicament.ma
+      </a>
+    </div>
+  );
+}
 
 export function FormulaireOrdonnance({
   langue,
@@ -78,11 +184,6 @@ export function FormulaireOrdonnance({
 
   return (
     <form action={envoyer} className="space-y-4">
-      <datalist id="medicaments">
-        {medicaments.map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
       <ol className="space-y-3">
         {lignes.map((l, i) => (
           <li
@@ -90,18 +191,11 @@ export function FormulaireOrdonnance({
             className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[2rem_2fr_2fr_1fr_auto] sm:items-end"
           >
             <span className="text-sm font-semibold text-slate-500 sm:pb-2">{i + 1}.</span>
-            <label className={etiquette}>
-              Médicament
-              <input
-                name="medicament"
-                list="medicaments"
-                maxLength={150}
-                value={l.medicament}
-                onChange={(e) => modifier(l.cle, "medicament", e.target.value)}
-                placeholder="Bisoprolol 2,5 mg"
-                className={champ}
-              />
-            </label>
+            <ChampMedicament
+              valeur={l.medicament}
+              onChange={(v) => modifier(l.cle, "medicament", v)}
+              onChoix={(m) => setLignes((x) => x.map((y) => (y.cle === l.cle ? { ...y, medicament: m.nom.slice(0, 150), fiche: m } : y)))}
+            />
             <label className={etiquette}>
               Posologie
               <input
@@ -132,6 +226,7 @@ export function FormulaireOrdonnance({
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
+            {l.fiche && l.fiche.nom === l.medicament && <FicheMedicament m={l.fiche} />}
           </li>
         ))}
       </ol>
