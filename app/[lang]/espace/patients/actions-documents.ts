@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { estJour, jourLocal } from "../../../agenda/creneaux";
-import { exigerUtilisateur } from "../../../agenda/session";
+import { accesMedical, exigerUtilisateur, utilisateurConnecte } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
 import { lireChoixConsultation } from "../../../dossier/choix-consultation";
 import { compteDrive, envoyerExamen, mettreALaCorbeille } from "../../../dossier/drive";
 import { champsETT, type DonneesETT } from "../../../dossier/ett";
 import { ajouterExamen, rangerFichierExamen, typesExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
+import { chercherMedicaments, type MedicamentMa } from "../../../dossier/medicaments-ma";
 import {
   creerOrdonnance,
   rangerOrdonnance,
@@ -57,6 +58,13 @@ async function lignesReferences(total: string, brut: FormDataEntryValue | null) 
 }
 
 // --- Ordonnance ---
+
+// Recherche dans la base publique medicament.ma (réservée aux comptes médicaux)
+export async function rechercherMedicaments(saisie: string): Promise<MedicamentMa[]> {
+  const utilisateur = await utilisateurConnecte();
+  if (!utilisateur || !accesMedical(utilisateur)) return [];
+  return chercherMedicaments(String(saisie).slice(0, 80));
+}
 
 export async function nouvelleOrdonnance(
   langue: string,
