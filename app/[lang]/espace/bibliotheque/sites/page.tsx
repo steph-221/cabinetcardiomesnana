@@ -9,6 +9,7 @@ import { baseConfiguree } from "../../../../dossier/base";
 import { typesSource } from "../../../../dossier/sources";
 import { listerSites, sitesARelire, verifierSite, type SiteSuivi } from "../../../../dossier/veille";
 import { BaseNonConfiguree, ErreurLecture, Retour } from "../../patients/commun";
+import { Categories } from "../categories";
 import { AccesAbonne, BoutonsSite, FormulaireSite, SuivreEsc, ToutVerifier } from "./formulaires";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default async function Sites({ params }: PageProps<"/[lang]/espace/biblio
         ajoutez-le à la bibliothèque pour que l&apos;assistant puisse le citer. Seuls les titres et les liens sont
         relevés ; le contenu reste sur le site de l&apos;éditeur.
       </p>
+      <Categories langue={lang} active="sites" />
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Contenu langue={lang} />
       </Suspense>
