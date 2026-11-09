@@ -10,6 +10,10 @@ import { compteDrive, envoyerExamen, mettreALaCorbeille } from "../../../dossier
 import { champsETT, type DonneesETT } from "../../../dossier/ett";
 import { ajouterExamen, rangerFichierExamen, typesExamen } from "../../../dossier/examens";
 import { journaliser } from "../../../dossier/journal";
+import { composer, detecterSituations, type Suggestion } from "../../../dossier/aide-prescription";
+import { produitsParSubstance } from "../../../dossier/aide-prescription-produits";
+import { allergieConcernee } from "../../../dossier/cardio-medicaments";
+import { lireConsultation } from "../../../dossier/consultations";
 import { chercherMedicaments, type MedicamentMa } from "../../../dossier/medicaments-ma";
 import {
   creerOrdonnance,
@@ -17,7 +21,7 @@ import {
   supprimerOrdonnance,
   type LigneOrdonnance,
 } from "../../../dossier/ordonnances";
-import { age as ageAu, lirePatient, type Patient } from "../../../dossier/patients";
+import { age as ageAu, lirePatient, listerTraitements, type Patient } from "../../../dossier/patients";
 import { champs, type DonneesExamen, type ValeursExamen } from "../../../dossier/comptes-rendus/types";
 import { trouverModele } from "../../../dossier/comptes-rendus";
 import { referencesCitees } from "../../../dossier/comptes-rendus/references";
@@ -59,6 +63,37 @@ async function lignesReferences(total: string, brut: FormDataEntryValue | null) 
 
 // --- Ordonnance ---
 
+// Aide à la prescription (information seulement) : situations repérées dans la consultation choisie, avec les
+// familles, substances, posologies usuelles et produits (liens medicament.ma) à envisager
+export async function aidePrescription(patientId: number, consultationId: number | null): Promise<Suggestion[] | null> {
+  const utilisateur = await utilisateurConnecte();
+  if (!utilisateur || !accesMedical(utilisateur) || !Number.isInteger(patientId)) return null;
+  const patient = await lirePatient(patientId);
+  if (!patient) return null;
+  const consultation = consultationId ? await lireConsultation(patientId, consultationId) : null;
+  const traitements = (await listerTraitements(patientId)).filter((t) => !t.fin).map((t) => t.medicament);
+  const rubriques = [
+    { source: "motif", texte: consultation?.motif ?? "" },
+    { source: "examen", texte: consultation?.examen ?? "" },
+    { source: "ECG", texte: consultation?.ecg ?? "" },
+    { source: "autres examens", texte: consultation?.autres ?? "" },
+    { source: "conclusion", texte: consultation?.conclusion ?? "" },
+    { source: "conduite", texte: consultation?.conduite ?? "" },
+    { source: "antécédents", texte: `${patient.antecedents} ${patient.facteursRisque.join(" ")}` },
+  ].filter((r) => r.texte.trim());
+  const contexte = {
+    rubriques,
+    taSys: consultation?.taSys ?? null,
+    taDia: consultation?.taDia ?? null,
+    fc: consultation?.fc ?? null,
+    fevg: consultation?.mesures.fevg ?? patient.fevgBase ?? null,
+    ldl: consultation?.mesures.ldl ?? null,
+    allergies: patient.allergies,
+    traitements,
+  };
+  return composer(detecterSituations(contexte), contexte, await produitsParSubstance(), allergieConcernee);
+}
+
 // Recherche dans la base publique medicament.ma (réservée aux comptes médicaux)
 export async function rechercherMedicaments(saisie: string): Promise<MedicamentMa[]> {
   const utilisateur = await utilisateurConnecte();
@@ -80,8 +115,16 @@ export async function nouvelleOrdonnance(
   const medicaments = formData.getAll("medicament").map((v) => String(v).trim().slice(0, 150));
   const posologies = formData.getAll("posologie").map((v) => String(v).trim().slice(0, 300));
   const durees = formData.getAll("duree").map((v) => String(v).trim().slice(0, 50));
+  // Lien de la fiche medicament.ma quand le médicament vient de la base de référence (sert aux alertes)
+  const fiches = formData.getAll("fiche").map((v) => String(v).trim().slice(0, 300));
+  const ficheValide = (u: string | undefined) => (u && /^https:\/\/medicament\.ma\/medicament\/[^\s]+$/.test(u) ? u : undefined);
   const lignes: LigneOrdonnance[] = medicaments
-    .map((medicament, i) => ({ medicament, posologie: posologies[i] ?? "", duree: durees[i] ?? "" }))
+    .map((medicament, i) => ({
+      medicament,
+      posologie: posologies[i] ?? "",
+      duree: durees[i] ?? "",
+      ...(ficheValide(fiches[i]) ? { fiche: ficheValide(fiches[i]) } : {}),
+    }))
     .filter((l) => l.medicament);
   if (!lignes.length) return echec("Ajoutez au moins un médicament.", formData);
   if (lignes.length > 20) return echec("20 lignes au plus par ordonnance.", formData);

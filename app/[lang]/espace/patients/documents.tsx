@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { ExternalLink, FileCheck, Plus, Trash2, X } from "lucide-react";
+import { ExternalLink, FileCheck, Lightbulb, Plus, Trash2, X } from "lucide-react";
 import {
   champs2D,
   champsDoppler,
@@ -14,11 +14,12 @@ import {
 import { ajouterProposition, referencesCitees } from "../../../dossier/comptes-rendus/references";
 import { avecSeuils } from "../../../dossier/comptes-rendus/references-propositions";
 import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
-import { nouveauCompteRenduETT, nouvelleOrdonnance, rechercherMedicaments, retirerOrdonnance } from "./actions-documents";
+import { aidePrescription, nouveauCompteRenduETT, nouvelleOrdonnance, rechercherMedicaments, retirerOrdonnance } from "./actions-documents";
+import type { Suggestion } from "../../../dossier/aide-prescription";
 import type { MedicamentMa } from "../../../dossier/medicaments-ma";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
-import type { OptionConsultation } from "../../../dossier/choix-consultation";
+import { libelleConsultation, type OptionConsultation } from "../../../dossier/choix-consultation";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -50,7 +51,8 @@ function Erreur({ etat }: { etat: { erreur: string } | null }) {
 
 // --- Ordonnance ---
 
-type Ligne = { cle: number; medicament: string; posologie: string; duree: string; fiche?: MedicamentMa };
+type FicheLiee = Partial<MedicamentMa> & { nom: string; url: string };
+type Ligne = { cle: number; medicament: string; posologie: string; duree: string; fiche?: FicheLiee };
 
 // Champ « médicament » : suggestions de la base medicament.ma (nom, DCI, classe, prix) avec lien vers la fiche
 function ChampMedicament({
@@ -121,17 +123,147 @@ function ChampMedicament({
   );
 }
 
+// Aide à la prescription : repère les situations de la consultation choisie et propose familles, substances,
+// posologies usuelles et produits (nom = lien vers la fiche medicament.ma). Information seulement.
+function AidePrescription({
+  patientId,
+  consultations,
+  defaut,
+  onAjouter,
+}: {
+  patientId: number;
+  consultations: OptionConsultation[];
+  defaut?: number;
+  onAjouter: (p: FicheLiee) => void;
+}) {
+  const [consultation, setConsultation] = useState<string>(String(defaut ?? consultations[0]?.id ?? ""));
+  const [reponse, setReponse] = useState<{ pour: string; valeur: Suggestion[] | "erreur" } | null>(null);
+  // Tant que la réponse ne correspond pas à la consultation choisie, l'analyse est en cours
+  const resultat = reponse?.pour === consultation ? reponse.valeur : null;
+
+  useEffect(() => {
+    let actuel = true;
+    aidePrescription(patientId, consultation ? Number(consultation) : null)
+      .then((r) => actuel && setReponse({ pour: consultation, valeur: r ?? "erreur" }))
+      .catch(() => actuel && setReponse({ pour: consultation, valeur: "erreur" }));
+    return () => {
+      actuel = false;
+    };
+  }, [patientId, consultation]);
+
+  return (
+    <details className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+      <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-amber-950">
+        <Lightbulb className="h-4 w-4" aria-hidden />
+        Aide à la prescription (information, selon la consultation)
+        {Array.isArray(resultat) && resultat.length > 0 && (
+          <span className="rounded-full bg-amber-200 px-2 text-xs">{resultat.length} situation(s)</span>
+        )}
+      </summary>
+      <div className="mt-3 space-y-3 text-sm">
+        <p className="text-xs text-amber-900">
+          Repères tirés du texte de la consultation, des constantes et des antécédents. Ce ne sont que des pistes et des
+          posologies usuelles de l&apos;adulte : vous seul décidez, en fonction du patient (âge, poids, fonction
+          rénale, interactions, grossesse). Chaque nom ouvre la fiche officielle sur medicament.ma.
+        </p>
+        {consultations.length > 0 && (
+          <label className="block text-xs font-medium text-slate-700">
+            Consultation analysée
+            <select value={consultation} onChange={(e) => setConsultation(e.target.value)} className={champ}>
+              {consultations.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {libelleConsultation(c)}
+                </option>
+              ))}
+              <option value="">Aucune (antécédents seuls)</option>
+            </select>
+          </label>
+        )}
+        {resultat === null && <p className="text-xs text-slate-500">Analyse en cours…</p>}
+        {resultat === "erreur" && <p className="text-xs text-red-700">Aide indisponible pour le moment.</p>}
+        {Array.isArray(resultat) && resultat.length === 0 && (
+          <p className="text-xs text-slate-600">
+            Aucune situation reconnue dans cette consultation (HTA, insuffisance cardiaque, angor, FA, dyslipidémie…).
+            Utilisez la recherche de la bibliothèque (Médicaments) pour explorer par famille ou par symptôme.
+          </p>
+        )}
+        {Array.isArray(resultat) &&
+          resultat.map((s) => (
+            <section key={s.cle} className="rounded-lg border border-amber-200 bg-white p-3">
+              <h3 className="font-semibold text-slate-900">{s.libelle}</h3>
+              <p className="text-xs text-slate-500">Repéré : {s.raisons.join(" ; ")}</p>
+              <div className="mt-2 space-y-2">
+                {s.groupes.map((g) => (
+                  <details key={g.cle} className="rounded-md bg-slate-50 p-2">
+                    <summary className="cursor-pointer text-xs font-medium text-slate-800">
+                      {g.libelle}{" "}
+                      <span className="font-normal text-slate-500">
+                        ({g.propositions.map((p) => p.dci).join(", ")})
+                      </span>
+                    </summary>
+                    <ul className="mt-2 space-y-2">
+                      {g.propositions.map((p) => (
+                        <li key={p.dci} className="text-xs text-slate-700">
+                          <p>
+                            <span className="font-semibold capitalize text-slate-900">{p.dci}</span>
+                            {p.dejaPris && <span className="ms-2 rounded bg-emerald-100 px-1.5 text-emerald-800">déjà au traitement</span>}
+                            {p.allergie && (
+                              <span className="ms-2 rounded bg-red-100 px-1.5 text-red-800">
+                                allergie notée : « {p.allergie} »
+                              </span>
+                            )}
+                          </p>
+                          {p.posologie && <p>Repère : {p.posologie}</p>}
+                          {p.attention && <p className="text-slate-500">À surveiller : {p.attention}</p>}
+                          {p.produits.length > 0 && (
+                            <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-1">
+                              {p.produits.map((m) => (
+                                <span key={m.url} className="inline-flex items-center gap-1">
+                                  <a
+                                    href={m.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-red-700 underline"
+                                  >
+                                    {m.nom}
+                                  </a>
+                                  <span className="text-slate-400">{m.ppv}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => onAjouter({ nom: m.nom, url: m.url, ppv: m.ppv, generique: m.generique })}
+                                    className="rounded border border-slate-300 px-1 text-[11px] text-slate-600 hover:bg-slate-100"
+                                    title="Ajoute le nom à l'ordonnance, sans posologie : à compléter par vos soins"
+                                  >
+                                    + ordonnance
+                                  </button>
+                                </span>
+                              ))}
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ))}
+      </div>
+    </details>
+  );
+}
+
 // Informations essentielles du médicament choisi + lien vers sa fiche publique
-function FicheMedicament({ m }: { m: MedicamentMa }) {
+function FicheMedicament({ m }: { m: FicheLiee }) {
   const infos: [string, string][] = [
-    ["DCI", m.dci],
-    ["Dosage", m.dosage],
-    ["Présentation", m.presentation],
-    ["Classe", m.classe],
-    ["Laboratoire", m.labo],
-    ["PPV", m.ppv],
-    ["Statut", m.statut],
-    ["Tableau", m.tableau],
+    ["DCI", m.dci ?? ""],
+    ["Dosage", m.dosage ?? ""],
+    ["Présentation", m.presentation ?? ""],
+    ["Classe", m.classe ?? ""],
+    ["Laboratoire", m.labo ?? ""],
+    ["PPV", m.ppv ?? ""],
+    ["Statut", m.statut ?? ""],
+    ["Tableau", m.tableau ?? ""],
   ];
   return (
     <div className="sm:col-span-full rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
@@ -191,6 +323,7 @@ export function FormulaireOrdonnance({
             className="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[2rem_2fr_2fr_1fr_auto] sm:items-end"
           >
             <span className="text-sm font-semibold text-slate-500 sm:pb-2">{i + 1}.</span>
+            <input type="hidden" name="fiche" value={l.fiche && l.fiche.nom === l.medicament ? l.fiche.url : ""} />
             <ChampMedicament
               valeur={l.medicament}
               onChange={(v) => modifier(l.cle, "medicament", v)}
@@ -243,6 +376,14 @@ export function FormulaireOrdonnance({
         <textarea name="remarque" rows={3} maxLength={2000} defaultValue={etat?.valeurs.remarque} className={champ} />
       </label>
       <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
+      <AidePrescription
+        patientId={patientId}
+        consultations={consultations}
+        defaut={consultationDefaut}
+        onAjouter={(p) =>
+          setLignes((x) => [...x, { cle: compteur.current++, medicament: p.nom.slice(0, 150), posologie: "", duree: "", fiche: p }])
+        }
+      />
       <Erreur etat={etat} />
       <Envoyer>Enregistrer l&apos;ordonnance</Envoyer>
     </form>

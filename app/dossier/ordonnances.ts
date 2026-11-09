@@ -3,7 +3,8 @@
 import { base } from "./base";
 import { consultationDuJour } from "./liens-consultation";
 
-export type LigneOrdonnance = { medicament: string; posologie: string; duree: string };
+// `fiche` : lien vers la fiche medicament.ma quand le médicament vient de la base de référence (sert aux alertes)
+export type LigneOrdonnance = { medicament: string; posologie: string; duree: string; fiche?: string };
 
 export type Ordonnance = {
   id: number;

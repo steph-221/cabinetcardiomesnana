@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ExternalLink, Globe, Library, MessagesSquare, ShieldCheck } from "lucide-react";
+import { ExternalLink, Library, MessagesSquare, ShieldCheck } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { libelleSource, listerSources, typesSource, type Source } from "../../../dossier/bibliotheque";
 import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 import { compterNouveautes, lirePublication } from "../../../dossier/veille";
+import { compterAlertesPrescrits } from "../../../dossier/veille-medicaments";
+import { Categories } from "./categories";
 import { BoutonsSource, ImportSource, type Preremplissage } from "./import";
 
 export const metadata: Metadata = {
@@ -28,13 +30,6 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
           Bibliothèque de références
         </h1>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/${lang}/espace/bibliotheque/sites`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <Globe className="h-4 w-4" aria-hidden />
-            Sites et revues suivis
-          </Link>
           <Link
             href={`/${lang}/espace/seuils`}
             className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
@@ -65,6 +60,7 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
         </a>{" "}
         (usage interne au cabinet).
       </p>
+      <Categories langue={lang} active="documents" />
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Contenu langue={lang} searchParams={searchParams} />
       </Suspense>
@@ -98,10 +94,26 @@ async function Contenu({
     console.error(erreur);
   }
   if (sources === null) return <ErreurLecture />;
+  let alertes = 0;
+  try {
+    alertes = await compterAlertesPrescrits();
+  } catch (erreur) {
+    console.error(erreur);
+  }
   const libelleType = (t: string) => typesSource.find((x) => x.cle === t)?.libelle ?? t;
 
   return (
     <>
+      {alertes > 0 && (
+        <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {alertes === 1
+            ? "1 médicament prescrit a changé sur medicament.ma. "
+            : `${alertes} médicaments prescrits ont changé sur medicament.ma. `}
+          <Link href={`/${langue}/espace/bibliotheque/medicaments`} className="font-medium underline">
+            Voir les patients concernés
+          </Link>
+        </p>
+      )}
       {nouveautes > 0 && (
         <p role="status" className="mt-6 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
           {nouveautes === 1
