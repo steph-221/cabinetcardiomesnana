@@ -8,7 +8,7 @@ import {
   afficherMotDePasse,
   enregistrerAccesSite,
   retirerSite,
-  suivreEsc,
+  suivreSitePropose,
   suivreSite,
   toutVerifier,
   verifier,
@@ -35,16 +35,16 @@ function Erreur({ texte }: { texte?: string }) {
   ) : null;
 }
 
-export function SuivreEsc({ langue }: { langue: string }) {
-  const [etat, envoyer] = useActionState(suivreEsc.bind(null, langue), null);
+export function SuivreSitePropose({ langue, cle, libelle }: { langue: string; cle: string; libelle: string }) {
+  const [etat, envoyer] = useActionState(suivreSitePropose.bind(null, langue, cle), null);
   return (
     <form action={envoyer} className="space-y-2">
       <Envoyer
-        attente="Lecture de la liste de l'ESC…"
+        attente="Lecture de la liste…"
         className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
       >
         <Plus className="h-4 w-4" aria-hidden />
-        Suivre toutes les recommandations de l&apos;ESC
+        {libelle}
       </Envoyer>
       <Erreur texte={etat?.erreur} />
     </form>

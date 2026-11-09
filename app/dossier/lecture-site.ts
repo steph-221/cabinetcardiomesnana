@@ -6,7 +6,15 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { isIP } from "node:net";
 
-export type PublicationLue = { titre: string; url: string; annee: number | null; publieLe: Date | null };
+export type PublicationLue = {
+  titre: string;
+  url: string;
+  annee: number | null;
+  publieLe: Date | null;
+  // Audio ou vidéo joint à la publication (podcast, débat enregistré, webinaire) et résumé court, pour la recherche
+  media?: string;
+  resume?: string;
+};
 
 const TAILLE_MAX = 3_000_000;
 const REDIRECTIONS_MAX = 4;
@@ -205,6 +213,19 @@ const dateValide = (texte: string) => {
 export const estFlux = (texte: string) =>
   /^\s*(?:﻿)?(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<(rss|feed|rdf:RDF)\b/i.test(texte);
 
+// Audio ou vidéo joint à un article : <enclosure url="…" type="audio/mpeg"> (RSS) ou <link rel="enclosure"> (Atom)
+function mediaDe(bloc: string, adresseFlux: string) {
+  for (const m of bloc.matchAll(/<(enclosure|link)\b([^>]*?)\/?>/gi)) {
+    if (m[1].toLowerCase() === "link" && attribut(m[2], "rel") !== "enclosure") continue;
+    if (!/^(audio|video)\//i.test(attribut(m[2], "type"))) continue;
+    try {
+      const url = new URL(attribut(m[2], "url") || attribut(m[2], "href"), adresseFlux);
+      if (url.protocol === "https:") return url.toString();
+    } catch {}
+  }
+  return "";
+}
+
 // Articles d'un flux RSS ou Atom
 export function lireFlux(xml: string, adresseFlux: string): PublicationLue[] {
   const blocs = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((m) => m[2]);
@@ -227,7 +248,9 @@ export function lireFlux(xml: string, adresseFlux: string): PublicationLue[] {
     const publieLe = dateValide(
       balise(bloc, "pubDate") || balise(bloc, "published") || balise(bloc, "dc:date") || balise(bloc, "updated"),
     );
-    lues.push({ titre, url, annee: anneeDe(titre) ?? publieLe?.getUTCFullYear() ?? null, publieLe });
+    // Les descriptions de flux contiennent souvent du HTML échappé : le texte décodé est nettoyé une seconde fois
+    const resume = nettoyer(balise(bloc, "description") || balise(bloc, "summary") || balise(bloc, "itunes:summary")).slice(0, 500);
+    lues.push({ titre, url, annee: anneeDe(titre) ?? publieLe?.getUTCFullYear() ?? null, publieLe, media: mediaDe(bloc, adresseFlux), resume });
     if (lues.length >= PUBLICATIONS_MAX) break;
   }
   return lues;
