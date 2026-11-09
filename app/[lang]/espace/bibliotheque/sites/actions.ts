@@ -13,17 +13,8 @@ import {
   verifierSite,
   type NouveauSite,
 } from "../../../../dossier/veille";
+import { SITES_PROPOSES } from "../../../../dossier/sites-proposes";
 import { echec, texte, type EtatFormulaire } from "../../formulaire";
-
-// Site proposé en un clic : la page qui liste toutes les recommandations de l'ESC
-const ESC: NouveauSite = {
-  nom: "Recommandations de l'ESC",
-  adresse: "https://www.escardio.org/guidelines/clinical-practice-guidelines/all-esc-practice-guidelines/",
-  prefixe: "",
-  organisme: "ESC",
-  type: "recommandation",
-  langue: "en",
-};
 
 const adresseValide = (url: string) => /^https:\/\/[^\s/]+\.[^\s]+$/.test(url);
 
@@ -48,9 +39,16 @@ export async function suivreSite(langue: string, _: EtatFormulaire, formData: Fo
   return ajouter(site, utilisateur.identifiant, formData);
 }
 
-export async function suivreEsc(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
+export async function suivreSitePropose(
+  langue: string,
+  cle: string,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
-  return ajouter(ESC, utilisateur.identifiant, formData);
+  const site = SITES_PROPOSES[cle];
+  if (!site) return echec("Site inconnu.", formData);
+  return ajouter(site, utilisateur.identifiant, formData);
 }
 
 async function ajouter(site: NouveauSite, par: string, formData: FormData): Promise<EtatFormulaire> {
@@ -91,6 +89,13 @@ export async function enregistrerAccesSite(
   const utilisateur = await exigerUtilisateur(langue, "medical");
   const url = texte(formData, "accesUrl", 500);
   if (url && !adresseValide(url)) return echec("La page de connexion doit commencer par https://.", formData);
+  // L'adresse d'une étape de connexion unique (« …?execution=e4s1 ») expire dès la fermeture de la page
+  if (/[?&]execution=/i.test(url)) {
+    return echec(
+      "Cette adresse est une étape temporaire de connexion : elle ne fonctionnera plus demain. Indiquez plutôt la page d'accueil du site (https://www.escardio.org/) et connectez-vous depuis son bouton « Log in ».",
+      formData,
+    );
+  }
   await enregistrerAcces(id, {
     url,
     identifiant: texte(formData, "identifiant", 200),

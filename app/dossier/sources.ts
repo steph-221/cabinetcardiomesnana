@@ -4,6 +4,7 @@ export const typesSource = [
   { cle: "recommandation", libelle: "Recommandation" },
   { cle: "rcp", libelle: "RCP / notice de médicament" },
   { cle: "article", libelle: "Article" },
+  { cle: "debat", libelle: "Débat, podcast ou cas clinique" },
   { cle: "protocole", libelle: "Protocole du cabinet" },
   { cle: "fiche", libelle: "Fiche validée par le médecin" },
 ] as const;

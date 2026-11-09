@@ -17,6 +17,8 @@ export type Publication = {
   vueLe: Date;
   nouvelle: boolean;
   importee: boolean;
+  media: string;
+  resume: string;
 };
 
 export type SiteSuivi = {
@@ -76,6 +78,8 @@ export async function listerSites(): Promise<SiteSuivi[]> {
         vueLe: p.vue_le as Date,
         nouvelle: (p.nouvelle as boolean) && !p.importee && (p.vue_le as Date).getTime() > limite,
         importee: p.importee as boolean,
+        media: (p.media_url as string) ?? "",
+        resume: (p.resume as string) ?? "",
       })),
   }));
 }
@@ -157,11 +161,12 @@ export async function verifierSite(id: number): Promise<{ trouvees: number; nouv
     const premiere = !site.verifie_le;
     const [{ n }] = await sql`
       WITH ajout AS (
-        INSERT INTO publications (site_id, titre, url, annee, publie_le, nouvelle)
-        SELECT ${id}, p.titre, p.url, p.annee, p."publieLe", ${!premiere}
+        INSERT INTO publications (site_id, titre, url, annee, publie_le, nouvelle, media_url, resume)
+        SELECT ${id}, p.titre, p.url, p.annee, p."publieLe", ${!premiere}, COALESCE(p.media, ''), COALESCE(p.resume, '')
         FROM jsonb_to_recordset(${JSON.stringify(lues)}::jsonb)
-          AS p(titre text, url text, annee integer, "publieLe" timestamptz)
+          AS p(titre text, url text, annee integer, "publieLe" timestamptz, media text, resume text)
         ON CONFLICT (site_id, url) DO UPDATE SET titre = EXCLUDED.titre, annee = EXCLUDED.annee,
+          media_url = EXCLUDED.media_url, resume = EXCLUDED.resume,
           publie_le = COALESCE(EXCLUDED.publie_le, publications.publie_le)
         RETURNING (xmax = 0) AS inseree
       )

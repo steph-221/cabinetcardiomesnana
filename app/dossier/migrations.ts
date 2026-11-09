@@ -467,3 +467,10 @@ migrations.push([
   )`,
   `INSERT INTO medicaments_veille (id) VALUES (1) ON CONFLICT DO NOTHING`,
 ]);
+
+// 21 — Débats, podcasts et webinaires suivis par flux RSS : lien vers l'audio ou la vidéo de la publication,
+// et résumé court (relevé dans le flux) pour la recherche par thème.
+migrations.push([
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS media_url text NOT NULL DEFAULT ''`,
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS resume text NOT NULL DEFAULT ''`,
+]);
