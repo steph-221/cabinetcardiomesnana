@@ -324,6 +324,22 @@ réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de doll
 risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
 conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
 
+## Fin de consultation, courrier, vérification d'ordonnance et population (médecins)
+
+- **Fin de consultation** : sur la page d'une consultation, un bandeau réunit **Ordonnance**, **Facture proposée**,
+  **Courrier au confrère** et **Rapport PDF**. La facture s'ouvre avec ses lignes déjà remplies : la consultation, plus un
+  acte par examen fait le même jour (ECG, ETT, Holter, MAPA, effort), d'après les tarifs de Comptabilité → Réglages ; on
+  corrige avant d'enregistrer. Une facture déjà liée à la consultation est montrée à la place.
+- **Courrier au confrère** : modèle fixe rempli avec la consultation (motif, antécédents, traitement, examen, ECG,
+  conclusion, conduite), adressé au médecin traitant de la fiche. **Rien n'est ajouté** : les rubriques vides sont omises ;
+  le texte est modifiable avant d'imprimer le PDF.
+- **Vérification de l'ordonnance** : pendant la rédaction, le site signale une allergie notée au dossier (avec les
+  synonymes courants : aspirine = Kardégic, pénicilline = amoxicilline…), un médicament en double, deux médicaments de la
+  même famille et quelques associations à surveiller (IEC + ARA II, bêtabloquant + diltiazem/vérapamil, deux
+  anticoagulants…). C'est une aide à la vigilance, **les règles sont à relire par le médecin** (`securite-prescription.ts`).
+- **Population** (Patients → Population) : INR hors zone cible d'après le dernier INR de chaque patient qui a une zone dans
+  sa fiche, et patients traités pas revus depuis plus d'un an.
+
 ## Navigation, « À valider » et « Ma journée »
 
 - **Cinq espaces** en haut de l'espace cabinet, avec leurs pages juste dessous : **Aujourd'hui** (Ma journée, À valider,

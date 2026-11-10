@@ -69,7 +69,9 @@ export function FormulaireFacture({
   aujourdhui,
   consultations,
   consultationDefaut,
+  actesInitiaux = [],
 }: {
+  actesInitiaux?: number[];
   langue: string;
   patient: { id: number; nom: string } | null;
   praticiens: Praticien[];
@@ -80,21 +82,21 @@ export function FormulaireFacture({
   consultationDefaut?: number;
 }) {
   const [etat, envoyer] = useActionState(nouvelleFacture.bind(null, langue), null);
-  const compteur = useRef(1);
+  const compteur = useRef(Math.max(actesInitiaux.length, 1) + 1);
   const nouvelleLigne = (libelle = "", prixCts: number | null = null): LigneSaisie => ({
     cle: compteur.current++,
     libelle,
     quantite: "1",
     prix: prixCts === null ? "" : pourChamp(prixCts),
   });
-  const [lignes, setLignes] = useState<LigneSaisie[]>(() => [
-    {
-      cle: 0,
-      libelle: actes[0]?.libelle ?? "",
-      quantite: "1",
-      prix: actes[0] ? pourChamp(actes[0].tarifCts) : "",
-    },
-  ]);
+  const [lignes, setLignes] = useState<LigneSaisie[]>(() => {
+    // Actes proposés par la consultation, sinon le premier acte du tarif
+    const proposes = actesInitiaux.flatMap((id) => actes.filter((a) => a.id === id));
+    const depart = proposes.length ? proposes : actes.slice(0, 1);
+    return depart.length
+      ? depart.map((a, cle) => ({ cle, libelle: a.libelle, quantite: "1", prix: pourChamp(a.tarifCts) }))
+      : [{ cle: 0, libelle: "", quantite: "1", prix: "" }];
+  });
   const [remise, setRemise] = useState("");
   const [mode, setMode] = useState("especes");
   const [encaisse, setEncaisse] = useState<string | null>(null); // null = le total, suivi automatiquement

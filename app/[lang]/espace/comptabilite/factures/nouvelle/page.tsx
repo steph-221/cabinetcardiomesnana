@@ -11,6 +11,7 @@ import { consultationsPourChoix } from "../../../../../dossier/consultations";
 import { baseConfiguree } from "../../../../../dossier/base";
 import { listerActes, listerPraticiens } from "../../../../../dossier/compta";
 import { libellePatient, lirePatient, rechercherPatients } from "../../../../../dossier/patients";
+import { lireActesDemandes } from "../../../../../dossier/proposition-facture";
 import { BaseNonConfiguree, Retour } from "../../../patients/commun";
 import { FormulaireFacture } from "../../formulaires";
 
@@ -107,6 +108,8 @@ async function Contenu({
     ? (await consultationsPourChoix(patient.id)).map((c) => ({ ...c, motif: accesMedical(utilisateur) ? c.motif : "" }))
     : [];
   const consultationDefaut = consultationDemandee(params.consultation, consultations);
+  // Actes proposés en fin de consultation (« actes=1,4 ») : les lignes de la facture sont déjà là
+  const actesInitiaux = lireActesDemandes(params.actes, actesActifs);
 
   return (
     <>
@@ -127,6 +130,7 @@ async function Contenu({
         aujourdhui={jourLocal(new Date())}
         consultations={consultations}
         consultationDefaut={consultationDefaut}
+        actesInitiaux={actesInitiaux}
       />
     </>
   );

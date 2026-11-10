@@ -30,7 +30,15 @@ export const espaces: Espace[] = [
       { cle: "resultats", libelle: "Résultats", chemin: "/resultats", acces: "tous" },
     ],
   },
-  { cle: "patients", libelle: "Patients", icone: "dossier", pages: [{ cle: "patients", libelle: "Patients", chemin: "/patients", acces: "tous" }] },
+  {
+    cle: "patients",
+    libelle: "Patients",
+    icone: "dossier",
+    pages: [
+      { cle: "patients", libelle: "Patients", chemin: "/patients", acces: "tous" },
+      { cle: "population", libelle: "Population", chemin: "/population", acces: "medical" },
+    ],
+  },
   { cle: "agenda", libelle: "Agenda", icone: "agenda", pages: [{ cle: "agenda", libelle: "Agenda", chemin: "", acces: "tous", exact: true }] },
   {
     cle: "savoir",
