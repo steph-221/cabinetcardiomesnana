@@ -10,7 +10,8 @@ import { lireConsultation, listerConsultations, mesures } from "../../../../../.
 import { age, libellePatient, lirePatient } from "../../../../../../dossier/patients";
 import { donneesPourCalculs, fevgDesExamens } from "../../../../../../dossier/donnees-calculs";
 import { listerExamens } from "../../../../../../dossier/examens";
-import { listerFactures } from "../../../../../../dossier/compta";
+import { listerActes, listerFactures } from "../../../../../../dossier/compta";
+import { actesProposes } from "../../../../../../dossier/proposition-facture";
 import { listerOrdonnances } from "../../../../../../dossier/ordonnances";
 import { resultatsDesExamens } from "../../../../../../dossier/resultats";
 import { listerScoresPatient } from "../../../../../../dossier/scores-patients";
@@ -20,6 +21,7 @@ import { lireLexique } from "../../../../../../dossier/lexique";
 import { Retour } from "../../../commun";
 import { BoutonSupprimerConsultation, FormulaireConsultation } from "../../../consultation";
 import { ElementsConsultation } from "../../../elements-consultation";
+import { FinConsultation } from "../../../fin-consultation";
 
 export const metadata: Metadata = {
   title: "Consultation",
@@ -69,6 +71,10 @@ async function Formulaire({
     listerScoresPatient(id),
   ]);
   const resultats = await resultatsDesExamens(examens.map((e) => e.id));
+  // Facture proposée : la consultation, plus un acte par examen du jour ; une facture déjà liée est montrée à la place
+  const actes = (await listerActes().catch(() => [])).filter((a) => !a.archive);
+  const typesDuJour = examens.filter((e) => e.consultationId === consultation.id || e.date === consultation.date).map((e) => e.type);
+  const factureLiee = factures.find((f) => f.consultationId === consultation.id && !f.annulee);
   const donnees = donneesPourCalculs({
     patient,
     age: age(patient.naissance, consultation.date),
@@ -87,6 +93,13 @@ async function Formulaire({
         Saisie par {consultation.creePar}
         {consultation.modifiePar !== consultation.creePar && `, modifiée par ${consultation.modifiePar}`}
       </p>
+      <FinConsultation
+        langue={langue}
+        patientId={id}
+        consultationId={consultation.id}
+        actesFacture={actesProposes(actes, typesDuJour)}
+        factureExistante={factureLiee ? { id: factureLiee.id, numero: factureLiee.numero } : null}
+      />
       <ElementsConsultation
         langue={langue}
         patientId={id}

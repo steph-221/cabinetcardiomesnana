@@ -8,7 +8,7 @@ describe("espaces de l'espace cabinet", () => {
     for (const avant of ["", "/patients", "/suivis", "/comptabilite", "/lexique", "/assistant", "/calculateurs", "/bibliotheque", "/resultats", "/reprise", "/drive", "/journal", "/comptes"]) {
       expect(chemins, avant).toContain(avant);
     }
-    expect(chemins).toEqual(expect.arrayContaining(["/aujourdhui", "/a-valider", "/rappels", "/modeles-ia"]));
+    expect(chemins).toEqual(expect.arrayContaining(["/aujourdhui", "/a-valider", "/rappels", "/population", "/modeles-ia"]));
   });
 
   it("montre à la secrétaire ni le savoir médical, ni la reprise Word, ni l'administration", () => {

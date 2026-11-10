@@ -189,6 +189,35 @@ export function pdfOrdonnance(o: { date: string; lignes: LigneOrdonnance[]; rema
   );
 }
 
+// --- Courrier au confrère ---
+
+export function pdfCourrier(c: { date: string; destinataire: string; objet: string; texte: string }) {
+  return renderToBuffer(
+    <Document title={propre(c.objet)} author={cabinet.medecin}>
+      <Page size="A4" style={s.page}>
+        <Entete />
+        <Text style={{ textAlign: "right" }}>
+          {propre(cabinet.adresse.ville)}, le {jourLong(c.date)}
+        </Text>
+        {c.destinataire && (
+          <Text style={[s.gras, { marginTop: 14 }]}>{propre(c.destinataire)}</Text>
+        )}
+        <Text style={[s.gras, { marginTop: 14, marginBottom: 12 }]}>{propre(c.objet)}</Text>
+        {propre(c.texte)
+          .split(/\n{2,}/)
+          .filter((p) => p.trim())
+          .map((p, i) => (
+            <Text key={i} style={{ marginBottom: 8, lineHeight: 1.4 }}>
+              {p.trim()}
+            </Text>
+          ))}
+        <Text style={s.signature}>Signature et cachet</Text>
+        <Pied />
+      </Page>
+    </Document>,
+  );
+}
+
 // --- Rapport de consultation ---
 
 export function pdfConsultation(

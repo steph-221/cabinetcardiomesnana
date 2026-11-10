@@ -18,6 +18,7 @@ import { aidePrescription, nouveauCompteRenduETT, nouvelleOrdonnance, rechercher
 import type { Suggestion } from "../../../dossier/aide-prescription";
 import type { MedicamentMa } from "../../../dossier/medicaments-ma";
 import { lireOrdonnanceDictee } from "../../../dossier/ordonnance-dictee";
+import { verifierOrdonnance } from "../../../dossier/securite-prescription";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
 import { libelleConsultation, type OptionConsultation } from "../../../dossier/choix-consultation";
@@ -298,7 +299,10 @@ export function FormulaireOrdonnance({
   consultations,
   consultationDefaut,
   dicteeInitiale = "",
+  allergies = "",
 }: {
+  // Allergies notées au dossier, pour la vérification de l'ordonnance
+  allergies?: string;
   langue: string;
   patientId: number;
   traitements: { medicament: string; posologie: string }[];
@@ -315,6 +319,11 @@ export function FormulaireOrdonnance({
       : traitements.length
       ? traitements.map((t, i) => ({ cle: i, medicament: t.medicament, posologie: t.posologie, duree: "" }))
       : [{ cle: 0, medicament: "", posologie: "", duree: "" }],
+  );
+  // Vérifications pendant la rédaction : allergie, doublon, même famille, associations à signaler (aide seulement)
+  const avertissements = verifierOrdonnance(
+    lignes.filter((l) => l.medicament.trim()).map((l) => ({ medicament: l.medicament, dci: l.fiche?.dci })),
+    allergies,
   );
   const modifier = (cle: number, nom: keyof Omit<Ligne, "cle">, valeur: string) =>
     setLignes((l) => l.map((x) => (x.cle === cle ? { ...x, [nom]: valeur } : x)));
@@ -389,6 +398,20 @@ export function FormulaireOrdonnance({
           setLignes((x) => [...x, { cle: compteur.current++, medicament: p.nom.slice(0, 150), posologie: "", duree: "", fiche: p }])
         }
       />
+      {avertissements.length > 0 && (
+        <ul aria-label="Vérifications de l'ordonnance" className="space-y-2">
+          {avertissements.map((a, i) => (
+            <li
+              key={i}
+              className={`rounded-lg p-3 text-sm ${a.niveau === "critique" ? "bg-red-50 font-medium text-red-800" : "bg-amber-50 text-amber-900"}`}
+            >
+              {a.niveau === "critique" ? "Critique : " : "Attention : "}
+              {a.texte}
+            </li>
+          ))}
+          <li className="text-xs text-slate-500">Aide à la vigilance : l&apos;absence d&apos;alerte ne prouve rien, vous gardez la décision.</li>
+        </ul>
+      )}
       <Erreur etat={etat} />
       <Envoyer>Enregistrer l&apos;ordonnance</Envoyer>
     </form>

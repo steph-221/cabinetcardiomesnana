@@ -69,6 +69,7 @@ async function Formulaire({
         consultations={consultations}
         consultationDefaut={consultationDefaut}
         dicteeInitiale={dictee}
+        allergies={patient.allergies}
       />
     </>
   );
