@@ -228,6 +228,7 @@ export async function validerImport(
     adresse: "",
     couverture: "",
     medecinTraitant: "",
+    langue: "" as const,
   };
   if (!existant && (!identite.nom || !identite.prenom)) return echec("Indiquez le nom et le prénom.", formData);
   if (identite.naissance && !dateValide(identite.naissance) && identite.naissance > "1900-01-01") {

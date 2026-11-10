@@ -10,6 +10,7 @@ import {
   FolderOpen,
   HardDrive,
   History,
+  Cpu,
   Landmark,
   Library,
   LogOut,
@@ -21,7 +22,9 @@ import { accesMedical, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
 import { compterEnRetard } from "../../dossier/suivis";
 import { deconnexion } from "./actions";
+import { lireLexique } from "../../dossier/lexique";
 import { Onglet } from "./onglet";
+import { Voix } from "./voix/voix";
 
 // Les onglets restent en haut de chaque page de l'espace, pour passer d'une rubrique à l'autre
 export default async function LayoutEspace({ children, params }: LayoutProps<"/[lang]/espace">) {
@@ -51,8 +54,19 @@ async function Onglets({ langue }: { langue: string }) {
     }
   }
 
+  let lexique: { entendu: string; correct: string }[] = [];
+  if (baseConfiguree() && accesMedical(utilisateur)) {
+    try {
+      lexique = (await lireLexique()).map(({ entendu, correct }) => ({ entendu, correct }));
+    } catch (erreur) {
+      console.error(erreur);
+    }
+  }
+
   const base = `/${langue}/espace`;
   return (
+    <>
+    <Voix langue={langue} medical={accesMedical(utilisateur)} lexique={lexique} />
     <div className="sticky top-16 z-40 border-b border-slate-200 bg-white/90 backdrop-blur" lang="fr" dir="ltr">
       <nav aria-label="Espace cabinet" className="mx-auto flex max-w-6xl items-center gap-1.5 overflow-x-auto px-4 py-2 sm:px-6">
         <Onglet href={base} exact>
@@ -121,6 +135,12 @@ async function Onglets({ langue }: { langue: string }) {
           </Onglet>
         )}
         {utilisateur.admin && (
+          <Onglet href={`${base}/modeles-ia`}>
+            <Cpu className="h-4 w-4" aria-hidden />
+            Modèles IA
+          </Onglet>
+        )}
+        {utilisateur.admin && (
           <Onglet href={`${base}/journal`}>
             <History className="h-4 w-4" aria-hidden />
             Journal
@@ -144,5 +164,6 @@ async function Onglets({ langue }: { langue: string }) {
         </form>
       </nav>
     </div>
+    </>
   );
 }

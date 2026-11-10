@@ -72,6 +72,7 @@ async function Fiche({
     adresse: "",
     couverture: "",
     medecinTraitant: "",
+    langue: "",
   };
   let dossier = "";
   const id = Number(lire("patient"));

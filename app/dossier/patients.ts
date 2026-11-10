@@ -3,7 +3,10 @@
 
 import { numeroInternational } from "../agenda/identite";
 import { base } from "./base";
+import { estLanguePatient, languesPatient, type LanguePatient } from "./langues-patient";
 import type { StatutTabac } from "./mode-de-vie";
+
+export { estLanguePatient, languesPatient, type LanguePatient };
 
 export const facteursRisque = [
   "HTA",
@@ -29,6 +32,8 @@ export type Identite = {
   adresse: string;
   couverture: string;
   medecinTraitant: string;
+  // Langue que parle le patient en consultation : sert à la reconnaissance vocale de sa parole, puis aux messages
+  langue: LanguePatient;
 };
 
 export type ContenuMedical = {
@@ -86,6 +91,7 @@ const versPatient = (l: Ligne): Patient => ({
   adresse: l.adresse as string,
   couverture: l.couverture as string,
   medecinTraitant: l.medecin_traitant as string,
+  langue: ((l.langue as string | undefined) ?? "") as LanguePatient,
   facteursRisque: l.facteurs_risque as string[],
   antecedents: l.antecedents as string,
   allergies: l.allergies as string,
@@ -194,11 +200,12 @@ export async function creerPatient(identite: Identite, medical: ContenuMedical |
   const sql = await base();
   const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null, poids: null, taille: null, tabac: "" as StatutTabac, paquetsAnnees: null, alcoolVerres: null, fevgBase: null, creatinineBase: null };
   const [{ id }] = await sql`
-    INSERT INTO patients (nom, prenom, sexe, naissance, telephone, email, cin, adresse, couverture, medecin_traitant,
+    INSERT INTO patients (nom, prenom, sexe, naissance, telephone, email, cin, adresse, couverture, medecin_traitant, langue,
                           facteurs_risque, antecedents, allergies, notes, inr_min, inr_max, poids, taille, tabac_statut,
                           tabac_paquets_annees, alcool_verres, fevg_base, creatinine_base, cree_par, modifie_par)
     VALUES (${identite.nom}, ${identite.prenom}, ${identite.sexe}, ${identite.naissance}, ${identite.telephone},
             ${identite.email}, ${identite.cin}, ${identite.adresse}, ${identite.couverture}, ${identite.medecinTraitant},
+            ${identite.langue},
             ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${m.inrMin}, ${m.inrMax}, ${m.poids},
             ${m.taille}, ${m.tabac}, ${m.paquetsAnnees}, ${m.alcoolVerres}, ${m.fevgBase}, ${m.creatinineBase},
             ${par}, ${par})
@@ -213,7 +220,8 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
     UPDATE patients SET nom = ${identite.nom}, prenom = ${identite.prenom}, sexe = ${identite.sexe},
       naissance = ${identite.naissance}, telephone = ${identite.telephone}, email = ${identite.email},
       cin = ${identite.cin}, adresse = ${identite.adresse}, couverture = ${identite.couverture},
-      medecin_traitant = ${identite.medecinTraitant}, modifie_le = now(), modifie_par = ${par}
+      medecin_traitant = ${identite.medecinTraitant}, langue = ${identite.langue}, modifie_le = now(),
+      modifie_par = ${par}
     WHERE id = ${id}`;
   if (medical) {
     await sql`
@@ -225,6 +233,17 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
         creatinine_base = ${medical.creatinineBase}
       WHERE id = ${id}`;
   }
+}
+
+// Ajoute une ligne datée aux notes du dossier (note vocale), sans toucher au reste. Faux si la place manque.
+export async function ajouterNote(id: number, ligne: string, par: string) {
+  const sql = await base();
+  const lignes = await sql`
+    UPDATE patients SET notes = CASE WHEN notes = '' THEN ${ligne} ELSE notes || E'\n' || ${ligne} END,
+      modifie_le = now(), modifie_par = ${par}
+    WHERE id = ${id} AND length(notes) + length(${ligne}) < 5000
+    RETURNING id`;
+  return lignes.length > 0;
 }
 
 export async function supprimerPatient(id: number) {

@@ -14,11 +14,11 @@ export async function POST(request: Request) {
     return Response.json({ erreur: "Claude n'est pas configuré (voir DOSSIER.md)." }, { status: 503 });
   }
 
-  const { texte } = (await request.json().catch(() => ({}))) as { texte?: unknown };
+  const { texte, superieur } = (await request.json().catch(() => ({}))) as { texte?: unknown; superieur?: unknown };
   if (typeof texte !== "string" || !texte.trim()) return Response.json({ erreur: "Rien à corriger." }, { status: 400 });
   if (texte.length > 20_000) return Response.json({ erreur: "Dictée trop longue." }, { status: 413 });
   try {
-    const correction = await corriger(texte.trim(), await lireLexique());
+    const correction = await corriger(texte.trim(), await lireLexique(), superieur === true);
     await journaliser(utilisateur.identifiant, "dictée améliorée par Claude", null, `${texte.length} caractères`);
     return Response.json(correction);
   } catch (erreur) {

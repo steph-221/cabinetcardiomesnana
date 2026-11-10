@@ -23,8 +23,6 @@ export default async function Sites({
   searchParams,
 }: PageProps<"/[lang]/espace/bibliotheque/sites">) {
   const { lang } = await params;
-  const { q } = await searchParams;
-  const theme = (Array.isArray(q) ? q[0] : q)?.trim().slice(0, 80) ?? "";
   if (!estLangue(lang)) return null;
 
   return (
@@ -42,7 +40,7 @@ export default async function Sites({
       </p>
       <Categories langue={lang} active="sites" />
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
-        <Contenu langue={lang} theme={theme} />
+        <Contenu langue={lang} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -50,8 +48,16 @@ export default async function Sites({
 
 const date = (d: Date) => d.toLocaleDateString("fr-FR", { timeZone: "Africa/Casablanca" });
 
-async function Contenu({ langue, theme }: { langue: string; theme: string }) {
+async function Contenu({
+  langue,
+  searchParams,
+}: {
+  langue: string;
+  searchParams: PageProps<"/[lang]/espace/bibliotheque/sites">["searchParams"];
+}) {
   await connection();
+  const { q } = await searchParams;
+  const theme = (Array.isArray(q) ? q[0] : q)?.trim().slice(0, 80) ?? "";
   await exigerUtilisateur(langue, "medical");
   if (!baseConfiguree()) return <BaseNonConfiguree />;
   let sites: SiteSuivi[] | null = null;

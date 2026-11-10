@@ -4,8 +4,7 @@
 // L'assistant ne fait que proposer. Le médecin lit le passage, puis valide ou demande une correction : rien n'est
 // considéré comme vérifié sans lui. Clé : ANTHROPIC_API_KEY.
 
-import Anthropic from "@anthropic-ai/sdk";
-import type { BetaTextBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { appelerIA } from "./ia/appel";
 import { base } from "./base";
 import { libelleSource, rechercherPassages } from "./bibliotheque";
 import { trouverSeuil, type ReferenceSeuil } from "./comptes-rendus/seuils";
@@ -40,7 +39,6 @@ Règles :
 5. Une valeur proche mais différente (par exemple 470 ms au lieu de 450 ms) est une contradiction. Signale aussi quand la source donne plusieurs valeurs selon le sexe, l'âge ou la méthode.
 6. Le médecin garde la décision : tu ne fais que proposer.`;
 
-let client: Anthropic | null = null;
 
 const versReference = (l: Record<string, unknown>): ReferenceSeuil => ({
   seuil: l.seuil as string,
@@ -86,27 +84,19 @@ export async function verifierSeuil(id: string): Promise<ReferenceSeuil> {
     return sans(`Aucun passage de la bibliothèque ne correspond. Ajoutez la recommandation citée (${seuil.source}) à la bibliothèque, ou vérifiez la règle dans le document.`);
   }
 
-  client ??= new Anthropic();
-  const reponse = await client.beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 2000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
-    system: [{ type: "text", text: CONSIGNES, cache_control: { type: "ephemeral" } }],
-    messages: [
-      {
-        role: "user",
-        content: `Règle appliquée par le logiciel : ${seuil.regle}\nSource citée par le logiciel : ${seuil.source}\n\nExtraits de la bibliothèque :\n${passages
-          .map((p, i) => `[${i + 1}] ${libelleSource(p.source)}${p.page ? ` — p. ${p.page}` : ""}\n${p.texte}`)
-          .join("\n\n")}`,
-      },
-    ],
+  const reponse = await appelerIA({
+    tache: "seuil",
+    consignes: CONSIGNES,
+    schema,
+    maxTokens: 2000,
+    contenu: `Règle appliquée par le logiciel : ${seuil.regle}\nSource citée par le logiciel : ${seuil.source}\n\nExtraits de la bibliothèque :\n${passages
+      .map((p, i) => `[${i + 1}] ${libelleSource(p.source)}${p.page ? ` — p. ${p.page}` : ""}\n${p.texte}`)
+      .join("\n\n")}`,
   });
-  if (reponse.stop_reason === "refusal" || reponse.stop_reason === "max_tokens") {
+  if (reponse.arret === "refusal" || reponse.arret === "max_tokens") {
     return sans("La vérification automatique n'a pas abouti. Réessayez ou vérifiez la règle dans le document.");
   }
-  const texte = reponse.content.find((b): b is BetaTextBlock => b.type === "text")?.text ?? "{}";
+  const texte = reponse.texte || "{}";
   const brut = JSON.parse(texte) as { verdict?: string; explication?: string; passage?: number; citation?: string };
   const passage = passages[(brut.passage ?? 0) - 1];
   const citation = normaliser(brut.citation ?? "");

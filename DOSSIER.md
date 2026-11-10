@@ -308,6 +308,33 @@ réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de doll
 risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
 conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
 
+## La voix partout (médecins)
+
+- **Micro sur chaque champ de texte** : cliquer dans un champ (antécédents, notes, conclusions, remarques, question à
+  l'assistant…) fait apparaître un micro à son coin ; **Ctrl+M** dicte sans la souris, **Échap** arrête. Le texte est
+  corrigé à la volée (ponctuation dictée, lexique, sigles, médicaments) et inséré **à la position du curseur**, sans
+  limite de 5 minutes. Gratuit : reconnaissance du navigateur (Chrome, Edge, Safari).
+- **Note vocale** (bouton rouge en bas à droite, ou Ctrl+M hors d'un champ) : on dicte librement, le site range la
+  dictée en actions (note au dossier, suivi à prévoir, traitement à ajouter ou arrêter, ordonnance à préparer). Le nom du
+  patient est masqué avant l'envoi à Claude ; **chaque action se relit et se coche avant d'être enregistrée**. Sans clé
+  Anthropic, la dictée devient une simple note. Une ordonnance s'ouvre préremplie dans son formulaire.
+- **Langue du patient** : champ de la fiche (français ou arabe). Dans la dictée de consultation, « Qui parle ? » permet
+  d'écouter le patient en arabe ou en français : sa parole est rapportée **en français** dans « Motif » et « Autres »,
+  à relire. La reconnaissance gratuite de l'arabe marocain parlé est incertaine : à essayer avec de vrais patients.
+- **Le lexique apprend** : après l'enregistrement d'un formulaire, les mots corrigés à la main depuis la dictée sont
+  proposés au lexique (un clic). Les noms de médicaments et sigles connus ne sont jamais proposés.
+- Le moteur de voix est remplaçable (`app/voix/moteur.ts`) sans toucher aux écrans.
+- L'espace cabinet s'installe sur téléphone (« Ajouter à l'écran d'accueil »).
+
+## Modèles IA par tâche (administrateur)
+
+**Modèles IA** (onglet) liste chaque tâche confiée à Claude avec son modèle et son effort : Haiku pour les tâches
+étroites (mots-clés, correction de dictée, note vocale, reprise Word), Sonnet pour la rédaction et la mise en français,
+Opus pour l'assistant à références et la vérification des seuils. Quand la réponse ne passe pas son contrôle (valeur
+hors bornes, texte vide, référence inconnue…), elle est redemandée une fois au modèle supérieur. Les réglages sont
+modifiables sans redéploiement ; la page montre jetons et coût estimé par mois et par tâche. Valeurs de départ :
+`app/dossier/ia/taches.ts`. Ce sont des points de départ : surveillez la colonne « Secondes tentatives ».
+
 ## Reprise des anciens comptes rendus Word (médecins)
 
 Le bouton **Reprise Word** de l'agenda fait entrer les anciens rapports de consultation et comptes rendus

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { Plus, Save, Square, Trash2 } from "lucide-react";
 import { statutsTabac } from "../../../dossier/mode-de-vie";
+import { languesPatient } from "../../../dossier/langues-patient";
 import type { Patient } from "../../../dossier/patients";
 import {
   arreter,
@@ -151,6 +152,16 @@ export function FormulairePatient({
             defaultValue={v("medecinTraitant", patient?.medecinTraitant)}
             className={champ}
           />
+        </label>
+        <label className={etiquette}>
+          Langue parlée
+          <select name="languePatient" defaultValue={v("languePatient", patient?.langue)} className={champ}>
+            {languesPatient.map((l) => (
+              <option key={l.valeur} value={l.valeur}>
+                {l.libelle}
+              </option>
+            ))}
+          </select>
         </label>
         <label className={`${etiquette} sm:col-span-2 lg:col-span-3`}>
           Adresse

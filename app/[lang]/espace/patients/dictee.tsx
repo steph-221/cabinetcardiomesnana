@@ -42,7 +42,11 @@ type Etape =
   | { nom: "pret" }
   | { nom: "enregistrement"; secondes: number; texte: string; provisoire: string }
   | { nom: "relecture"; brut: string; correction: Correction; parClaude: boolean }
+  | { nom: "traduction" }
   | { nom: "erreur"; message: string };
+
+// Qui parle : le médecin (dicte son rapport) ou le patient (sa parole est rapportée en français, relue ensuite)
+type Locuteur = "medecin" | "fr" | "ar";
 
 // Dictée de toute la consultation : texte corrigé gratuitement, amélioré par Claude si on le demande, relu puis inséré
 // dans le formulaire (rien n'est enregistré avant « Enregistrer la consultation »)
@@ -51,8 +55,11 @@ export function DicteeConsultation({
   libellesValeurs,
   lexique,
   claude,
+  languePatient = "",
   inserer,
 }: {
+  // Langue parlée par le patient (fiche) : proposée d'office pour la parole du patient
+  languePatient?: "" | "fr" | "ar";
   langue: string;
   libellesValeurs: Record<string, string>;
   lexique: { entendu: string; correct: string }[];
@@ -67,6 +74,7 @@ export function DicteeConsultation({
   const minuteur = useRef<ReturnType<typeof setInterval> | null>(null);
   const debut = useRef(0);
   const appris = useRef([...lexique]);
+  const [locuteur, setLocuteur] = useState<Locuteur>("medecin");
 
   useEffect(
     () => () => {
@@ -97,7 +105,7 @@ export function DicteeConsultation({
     actif.current = true;
 
     const r = new Classe();
-    r.lang = "fr-FR";
+    r.lang = locuteur === "ar" ? "ar-MA" : "fr-FR";
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
@@ -154,7 +162,25 @@ export function DicteeConsultation({
       setEtape({ nom: "erreur", message: "Aucune parole reconnue. Parlez plus près du micro et recommencez." });
       return;
     }
+    if (locuteur !== "medecin") return void rapporterPatient(brut);
     setEtape({ nom: "relecture", brut, correction: corrigerLocalement(brut, appris.current), parClaude: false });
+  }
+
+  // Parole du patient : Claude la rapporte en français dans les rubriques ; le médecin relit avant insertion
+  async function rapporterPatient(brut: string, superieur = false) {
+    setEtape({ nom: "traduction" });
+    try {
+      const reponse = await fetch("/api/dictee/patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texte: brut, langue: locuteur === "ar" ? "ar" : "fr", superieur }),
+      });
+      const corps = (await reponse.json().catch(() => ({}))) as Correction & { erreur?: string };
+      if (!reponse.ok) throw new Error(corps.erreur ?? "Erreur inattendue.");
+      setEtape({ nom: "relecture", brut, correction: corps, parClaude: true });
+    } catch (e) {
+      setEtape({ nom: "erreur", message: e instanceof Error ? e.message : "Erreur inattendue." });
+    }
   }
 
   const bouton = "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium";
@@ -165,11 +191,35 @@ export function DicteeConsultation({
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={commencer} className={`${bouton} bg-red-600 text-white hover:bg-red-700`}>
             <Mic className="h-4 w-4" aria-hidden />
-            Dicter la consultation
+            {locuteur === "medecin" ? "Dicter la consultation" : "Écouter le patient"}
           </button>
+          {claude && (
+            <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+              Qui parle ?
+              <select
+                value={locuteur}
+                onChange={(e) => setLocuteur(e.target.value as Locuteur)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+              >
+                <option value="medecin">Le médecin (français)</option>
+                <option value="ar">Le patient — arabe</option>
+                <option value="fr">Le patient — français</option>
+              </select>
+              {languePatient && locuteur === "medecin" && (
+                <button
+                  type="button"
+                  onClick={() => setLocuteur(languePatient)}
+                  className="rounded-md px-2 py-1 text-red-700 underline"
+                >
+                  Patient : {languePatient === "ar" ? "arabe" : "français"}
+                </button>
+              )}
+            </label>
+          )}
           <span className="text-xs text-slate-600">
-            Dites par exemple « motif : contrôle… à la ligne… conclusion : … ». 5 minutes au plus. Vous relirez avant
-            l&apos;insertion.
+            {locuteur === "medecin"
+              ? "Dites par exemple « motif : contrôle… à la ligne… conclusion : … ». 5 minutes au plus. Vous relirez avant l'insertion."
+              : "La parole du patient est transcrite puis rapportée en français dans « Motif » et « Autres » : vous relirez avant l'insertion."}
           </span>
         </div>
       )}
@@ -193,6 +243,13 @@ export function DicteeConsultation({
             )}
           </p>
         </div>
+      )}
+
+      {etape.nom === "traduction" && (
+        <p role="status" className="inline-flex items-center gap-2 text-sm text-slate-700">
+          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+          Mise en français de la parole du patient…
+        </p>
       )}
 
       {etape.nom === "erreur" && (

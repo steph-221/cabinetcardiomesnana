@@ -2,9 +2,9 @@
 // et chaque phrase de sa réponse est rattachée au passage cité (citations de l'API Claude). Sans passage
 // pertinent, il répond « Pas de réponse dans la bibliothèque » plutôt que de deviner. Clé : ANTHROPIC_API_KEY.
 
-import Anthropic from "@anthropic-ai/sdk";
-import type { BetaContentBlock, BetaTextBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import type { BetaContentBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { libelleSource, rechercherPassages, typesSource, type Passage } from "./bibliotheque";
+import { appelerIA } from "./ia/appel";
 
 export const SANS_REPONSE = "Pas de réponse dans la bibliothèque.";
 
@@ -23,9 +23,6 @@ export type Reponse = {
   contexte: string | null;
   sansReponse: boolean;
 };
-
-let client: Anthropic | null = null;
-const anthropic = () => (client ??= new Anthropic());
 
 const schemaTermes = {
   type: "object",
@@ -59,28 +56,33 @@ Règles :
 5. Si le dossier clinique anonyme du patient est fourni (profil, traitements, consultations, examens avec leurs conclusions et dates, scores, ordonnances), appuie-toi sur lui pour appliquer les sources à ce patient (adaptation au DFG, au poids, à l'âge, aux traitements en cours, aux conclusions d'examens…), en datant les valeurs que tu utilises. Ces données du dossier ne sont pas des sources : ne les cite pas comme références médicales. Signale les données qui manquent ou qui datent pour conclure.
 6. Réponse courte et structurée : phrases brèves, listes quand c'est utile, sans formule de politesse ni avertissement général. Le médecin garde la décision.`;
 
-// Mots-clés de recherche, en anglais et en français
-export async function termesRecherche(question: string, contexte: string | null) {
-  const reponse = await anthropic().beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 2000,
-    // Si un filtre de sécurité refuse la demande à tort, l'API la relance sur le modèle de repli recommandé
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema: schemaTermes } },
-    system: [{ type: "text", text: CONSIGNES_TERMES, cache_control: { type: "ephemeral" } }],
-    messages: [
-      {
-        role: "user",
-        content: `${contexte ? `Résumé clinique du patient :\n${contexte}\n\n` : ""}Question :\n${question}`,
-      },
-    ],
-  });
-  const texte = reponse.content.find((b): b is BetaTextBlock => b.type === "text")?.text ?? "{}";
-  const brut = JSON.parse(texte) as { en?: unknown; fr?: unknown };
+const lireTermes = (texte: string) => {
+  const brut = JSON.parse(texte || "{}") as { en?: unknown; fr?: unknown };
   const liste = (v: unknown) =>
     Array.isArray(v) ? v.filter((t): t is string => typeof t === "string").map((t) => t.slice(0, 60)) : [];
   return { en: liste(brut.en).slice(0, 20), fr: liste(brut.fr).slice(0, 20) };
+};
+
+// Mots-clés de recherche, en anglais et en français. `superieur` : seconde tentative sur le modèle au-dessus,
+// quand les premiers mots-clés n'ont rien trouvé dans la bibliothèque.
+export async function termesRecherche(question: string, contexte: string | null, superieur = false) {
+  const { texte } = await appelerIA({
+    tache: "mots_cles",
+    consignes: CONSIGNES_TERMES,
+    contenu: `${contexte ? `Résumé clinique du patient :\n${contexte}\n\n` : ""}Question :\n${question}`,
+    schema: schemaTermes,
+    maxTokens: 2000,
+    controle: (t) => {
+      const termes = lireTermes(t);
+      return termes.en.length + termes.fr.length > 0;
+    },
+    superieur,
+  });
+  try {
+    return lireTermes(texte);
+  } catch {
+    return { en: [], fr: [] };
+  }
 }
 
 const libelleType = (type: string) => typesSource.find((t) => t.cle === type)?.libelle ?? type;
@@ -105,8 +107,17 @@ function blocs(contenu: BetaContentBlock[], nbPassages: number): Bloc[] {
 
 export async function repondre(question: string, contexte: string | null): Promise<Reponse> {
   // Pour la recherche, le début du résumé (profil, traitements, dernières valeurs) suffit
-  const termes = await termesRecherche(question, contexte ? contexte.slice(0, 3000) : null);
-  const trouves: Passage[] = await rechercherPassages(termes);
+  const debut = contexte ? contexte.slice(0, 3000) : null;
+  let termes = await termesRecherche(question, debut);
+  let trouves: Passage[] = await rechercherPassages(termes);
+  if (!trouves.length) {
+    // Rien trouvé : avant de répondre « pas de réponse », de meilleurs mots-clés sont demandés au modèle supérieur
+    const autres = await termesRecherche(question, debut, true).catch(() => null);
+    if (autres && autres.en.length + autres.fr.length > 0) {
+      termes = autres;
+      trouves = await rechercherPassages(termes);
+    }
+  }
   const passages = trouves.map((p) => ({
     id: p.id,
     page: p.page,
@@ -123,34 +134,25 @@ export async function repondre(question: string, contexte: string | null): Promi
     };
   }
 
-  const reponse = await anthropic().beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 8000,
-    // Si un filtre de sécurité refuse la demande à tort, l'API la relance sur le modèle de repli recommandé
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium" },
-    system: [{ type: "text", text: CONSIGNES_REPONSE, cache_control: { type: "ephemeral" } }],
-    messages: [
+  const reponse = await appelerIA({
+    tache: "assistant",
+    consignes: CONSIGNES_REPONSE,
+    maxTokens: 8000,
+    contenu: [
+      ...passages.map((p) => ({
+        type: "document" as const,
+        source: { type: "text" as const, media_type: "text/plain" as const, data: p.texte },
+        title: `${p.source.libelle}${p.page ? ` — p. ${p.page}` : ""}`,
+        context: libelleType(p.source.type),
+        citations: { enabled: true },
+      })),
       {
-        role: "user",
-        content: [
-          ...passages.map((p) => ({
-            type: "document" as const,
-            source: { type: "text" as const, media_type: "text/plain" as const, data: p.texte },
-            title: `${p.source.libelle}${p.page ? ` — p. ${p.page}` : ""}`,
-            context: libelleType(p.source.type),
-            citations: { enabled: true },
-          })),
-          {
-            type: "text" as const,
-            text: `${contexte ? `Dossier clinique anonyme du patient (date du jour : ${new Date().toLocaleDateString("fr-FR", { timeZone: "Africa/Casablanca" })}) :\n${contexte}\n\n` : ""}Question :\n${question}`,
-          },
-        ],
+        type: "text" as const,
+        text: `${contexte ? `Dossier clinique anonyme du patient (date du jour : ${new Date().toLocaleDateString("fr-FR", { timeZone: "Africa/Casablanca" })}) :\n${contexte}\n\n` : ""}Question :\n${question}`,
       },
     ],
   });
-  const resultat = blocs(reponse.content, passages.length);
+  const resultat = blocs(reponse.contenu, passages.length);
   const texte = resultat.map((b) => b.texte).join("");
   return {
     blocs: resultat.length ? resultat : [{ texte: SANS_REPONSE, citations: [] }],
