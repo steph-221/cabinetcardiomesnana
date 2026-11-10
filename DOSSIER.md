@@ -295,6 +295,22 @@ deviner.
   jamais lui-même aux revues : la connexion se fait dans le navigateur, avec ces identifiants. Si `SESSION_SECRET`
   change, il faut ressaisir les mots de passe.
 
+### Identifier les publications par leur DOI, thèmes, file de lecture
+
+- **DOI** : chaque publication suivie est identifiée (DOI lu dans le lien, sinon sur la page ; résumé et PDF en accès libre
+  par Europe PMC quand ils existent). Elle affiche alors **Version officielle (DOI)** et, si possible, **PDF en accès
+  libre**. Les éditeurs qui refusent les robots (cas de l'ESC chez Oxford University Press) restent sans PDF direct : le
+  DOI ouvre leur page dans votre navigateur.
+- **Dépôt de PDF** : dans **Ajouter une source**, le DOI est lu sur la première page du PDF choisi. S'il correspond à une
+  publication suivie (ou à des métadonnées publiques), titre, année, organisme, type et lien se remplissent seuls ; un
+  document déjà importé est signalé. Après l'ajout d'une recommandation plus récente, l'ancienne édition du même sujet est
+  proposée pour être marquée « remplacée ».
+- **Par thème** : l'accueil de la bibliothèque classe documents et publications par thème clinique (FA, insuffisance
+  cardiaque, coronaires…), d'après leur titre. Chaque thème a sa page : en vigueur, à ajouter ou à lire, versions remplacées.
+- **File de lecture** : sur chaque publication, **À lire** l'épingle en tête et **Écarter** la masque (récupérable).
+- **Veille de nuit** : `vercel.json` appelle chaque nuit `/api/taches/veille`. Ajouter la variable `CRON_SECRET` (16
+  caractères au moins) sur Vercel puis redéployer ; sans elle la tâche répond « non activée ».
+
 **Contrôle de qualité** : chaque réponse se note **Juste** ou **À revoir**, avec un commentaire. Une réponse juste peut
 devenir une **fiche validée** de la bibliothèque, citée ensuite comme « Dr Taouab », avec ses sources d'origine. Les
 questions, les réponses et les sources citées sont conservées et journalisées.

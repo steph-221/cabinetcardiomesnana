@@ -8,6 +8,7 @@ import {
   creerSite,
   enregistrerAcces,
   lireMotDePasse,
+  classerPublication,
   sitesARelire,
   supprimerSite,
   verifierSite,
@@ -72,6 +73,13 @@ export async function verifier(langue: string, id: number) {
   const resultat = await verifierSite(id);
   refresh();
   return resultat;
+}
+
+// File de lecture : « à lire » épingle la publication, « écartée » la masque, « » la remet à sa place
+export async function classer(langue: string, id: number, etat: string) {
+  await exigerUtilisateur(langue, "medical");
+  await classerPublication(id, etat === "a_lire" || etat === "ecartee" ? etat : "");
+  refresh();
 }
 
 export async function toutVerifier(langue: string) {

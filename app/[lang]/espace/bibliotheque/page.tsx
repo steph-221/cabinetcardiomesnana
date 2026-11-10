@@ -8,9 +8,10 @@ import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { libelleSource, listerSources, typesSource, type Source } from "../../../dossier/bibliotheque";
 import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
-import { compterNouveautes, lirePublication } from "../../../dossier/veille";
+import { compterNouveautes, lirePublication, listerSites } from "../../../dossier/veille";
 import { compterAlertesPrescrits } from "../../../dossier/veille-medicaments";
 import { Categories } from "./categories";
+import { GrilleThemes } from "./themes";
 import { BoutonsSource, ImportSource, type Preremplissage } from "./import";
 
 export const metadata: Metadata = {
@@ -82,13 +83,16 @@ async function Contenu({
   let sources: Source[] | null = null;
   let nouveautes = 0;
   let initial: Preremplissage | undefined;
+  let aLire: string[] = [];
   try {
-    const [liste, nombre, p] = await Promise.all([
+    const [liste, nombre, p, sites] = await Promise.all([
       listerSources(),
       compterNouveautes(),
       Number.isInteger(publicationId) && publicationId > 0 ? lirePublication(publicationId) : null,
+      listerSites().catch(() => []),
     ]);
     [sources, nouveautes] = [liste, nombre];
+    aLire = sites.flatMap((s) => s.publications.filter((x) => !x.importee && x.etat !== "ecartee").map((x) => `${x.titre} ${x.resume}`));
     if (p) initial = { ...p, publication: p.id };
   } catch (erreur) {
     console.error(erreur);
@@ -124,6 +128,7 @@ async function Contenu({
           </Link>
         </p>
       )}
+      <GrilleThemes langue={langue} titres={sources.filter((s) => s.statut === "en_vigueur").map((s) => s.titre)} aLire={aLire} />
       <section id="ajouter" className="mt-6 scroll-mt-6 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 font-semibold text-slate-900">Ajouter une source</h2>
         {initial && (

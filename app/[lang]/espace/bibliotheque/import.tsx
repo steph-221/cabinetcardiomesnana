@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { FileUp, RotateCcw, Trash2, Archive } from "lucide-react";
 import { typesSource } from "../../../dossier/sources";
-import { basculerStatut, commencerImport, envoyerPages, retirerSource, terminerImport } from "./actions";
+import { doiDePdf } from "../../../dossier/resolution";
+import { basculerStatut, commencerImport, envoyerPages, identifierDocument, retirerSource, terminerImport } from "./actions";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -38,6 +39,57 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
   const [mode, setMode] = useState<"pdf" | "texte">("pdf");
   const [etat, setEtat] = useState<{ erreur?: string; progres?: string; fait?: string }>({});
   const [occupe, setOccupe] = useState(false);
+  // Document déposé : DOI lu sur sa première page, publication suivie reconnue, anciennes éditions à remplacer
+  const [doi, setDoi] = useState("");
+  const [publication, setPublication] = useState<number | null>(initial?.publication ?? null);
+  const [identification, setIdentification] = useState("");
+  const [remplacables, setRemplacables] = useState<{ id: number; titre: string; annee: number | null }[]>([]);
+  const lu = useRef<{ fichier: File; pages: Page[] } | null>(null);
+
+  async function pagesDe(fichier: File) {
+    if (lu.current?.fichier === fichier) return lu.current.pages;
+    const pages = await lirePdf(fichier);
+    lu.current = { fichier, pages };
+    return pages;
+  }
+
+  // Dès le choix du fichier : DOI → publication suivie ou métadonnées publiques → champs remplis
+  async function reconnaitre(fichier: File | undefined) {
+    setDoi("");
+    setIdentification("");
+    setRemplacables([]);
+    if (!fichier) return;
+    setIdentification("Lecture du document…");
+    try {
+      const pages = await pagesDe(fichier);
+      const trouve = doiDePdf(`${pages[0]?.texte ?? ""}\n${pages[1]?.texte ?? ""}`);
+      if (!trouve) return setIdentification("Aucun DOI lu sur la première page : remplissez les champs ci-dessous.");
+      const r = await identifierDocument(langue, trouve);
+      if (!r.trouve) return setIdentification("");
+      setDoi(r.doi);
+      setPublication(r.publication ?? initial?.publication ?? null);
+      const formulaire = document.getElementById("import-source") as HTMLFormElement | null;
+      const mettre = (nom: string, valeur: string) => {
+        const champ = formulaire?.elements.namedItem(nom);
+        if (valeur && (champ instanceof HTMLInputElement || champ instanceof HTMLSelectElement)) champ.value = valeur;
+      };
+      mettre("titre", r.titre);
+      mettre("organisme", r.organisme);
+      mettre("annee", r.annee ? String(r.annee) : "");
+      mettre("type", r.type);
+      mettre("langueSource", r.langue);
+      mettre("url", r.url);
+      setIdentification(
+        r.existante
+          ? `Ce document est déjà dans la bibliothèque (« ${r.existante.titre} »). Ne l'ajoutez pas une seconde fois.`
+          : r.titre
+            ? `Document reconnu (DOI ${r.doi})${r.publication ? ", publication suivie retrouvée" : ""} : vérifiez les champs remplis, puis ajoutez-le.`
+            : `DOI ${r.doi} lu, mais ses informations n'ont pas pu être retrouvées : remplissez les champs.`,
+      );
+    } catch {
+      setIdentification("");
+    }
+  }
 
   async function importer(formData: FormData) {
     setOccupe(true);
@@ -48,7 +100,7 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
         const fichier = formData.get("fichier");
         if (!(fichier instanceof File) || !fichier.size) throw new Error("Choisissez le fichier PDF.");
         setEtat({ progres: "Lecture du PDF…" });
-        pages = await lirePdf(fichier).catch(() => {
+        pages = await pagesDe(fichier).catch(() => {
           throw new Error("Ce fichier n'a pas pu être lu. Vérifiez qu'il s'agit bien d'un PDF.");
         });
       } else {
@@ -71,7 +123,8 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
         type: String(formData.get("type") ?? ""),
         langue: String(formData.get("langueSource") ?? ""),
         url: String(formData.get("url") ?? ""),
-        publication: initial?.publication ?? null,
+        publication,
+        doi,
       });
       if ("erreur" in debut) throw new Error(debut.erreur);
 
@@ -90,8 +143,12 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
         setEtat({ progres: `Indexation : page ${i} sur ${pages.length}…` });
         passages += await envoyerPages(langue, debut.id, lot);
       }
-      const ok = await terminerImport(langue, debut.id, pages.length, titre);
+      const { ok, remplacables: anciennes } = await terminerImport(langue, debut.id, pages.length, titre);
       if (!ok) throw new Error("Aucun passage n'a pu être indexé.");
+      setRemplacables(anciennes);
+      setDoi("");
+      setIdentification("");
+      lu.current = null;
       setEtat({ fait: `« ${titre} » ajouté : ${pages.length} page(s), ${passages} passages indexés.` });
       (document.getElementById("import-source") as HTMLFormElement | null)?.reset();
     } catch (erreur) {
@@ -129,7 +186,14 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
       {mode === "pdf" ? (
         <label className="text-sm font-medium text-slate-700 sm:col-span-2">
           Fichier PDF
-          <input name="fichier" type="file" accept="application/pdf" required className={champ} />
+          <input
+            name="fichier"
+            type="file"
+            accept="application/pdf"
+            required
+            className={champ}
+            onChange={(e) => reconnaitre(e.target.files?.[0])}
+          />
           <span className="mt-1 block text-xs font-normal text-slate-500">
             Le PDF est lu sur cet ordinateur : seul son texte est envoyé et indexé, le fichier n&apos;est pas conservé.
           </span>
@@ -214,6 +278,36 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
           </span>
         )}
       </div>
+      {identification && (
+        <p role="status" className="rounded-lg bg-sky-50 p-3 text-sm text-sky-900 sm:col-span-2">
+          {identification}
+        </p>
+      )}
+      {remplacables.length > 0 && (
+        <div role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 sm:col-span-2">
+          <p className="font-medium">Une édition plus ancienne du même sujet est encore en vigueur :</p>
+          <ul className="mt-2 space-y-1">
+            {remplacables.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {a.titre}
+                  {a.annee ? ` (${a.annee})` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await basculerStatut(langue, a.id, "remplacee");
+                    setRemplacables((l) => l.filter((x) => x.id !== a.id));
+                  }}
+                  className="rounded-md px-2 py-1 text-xs font-medium text-amber-900 underline hover:bg-amber-100"
+                >
+                  Marquer remplacée
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {etat.erreur && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 sm:col-span-2">
           {etat.erreur}

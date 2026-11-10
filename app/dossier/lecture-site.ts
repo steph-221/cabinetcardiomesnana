@@ -105,7 +105,7 @@ function obtenir(url: URL, cible: { address: string; family: number }) {
 }
 
 // Télécharge la page de liste (ou le flux), en suivant au plus quelques redirections, toutes vérifiées
-async function telecharger(adresse: string) {
+export async function telecharger(adresse: string) {
   let url = new URL(adresse);
   for (let i = 0; i <= REDIRECTIONS_MAX; i++) {
     const reponse = await obtenir(url, await verifierAdresse(url));

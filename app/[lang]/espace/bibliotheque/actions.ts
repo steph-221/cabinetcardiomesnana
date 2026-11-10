@@ -7,11 +7,16 @@ import {
   changerStatut,
   creerSource,
   estTypeSource,
+  sourceParDoi,
+  sourcesRemplacables,
   supprimerSource,
   terminerSource,
   type NouvelleSource,
 } from "../../../dossier/bibliotheque";
 import { journaliser } from "../../../dossier/journal";
+import { telecharger } from "../../../dossier/lecture-site";
+import { lienDoi, metadonneesCrossref } from "../../../dossier/resolution";
+import { publicationParDoi } from "../../../dossier/veille";
 
 // L'import se fait en trois temps depuis le navigateur, qui lit lui-même le PDF : création de la source,
 // envoi du texte par lots de pages (les PDF de l'ESC dépassent la taille d'envoi autorisée), puis clôture.
@@ -26,6 +31,7 @@ export async function commencerImport(
     langue: string;
     url: string;
     publication?: number | null;
+    doi?: string;
   },
 ): Promise<{ id: number } | { erreur: string }> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
@@ -52,6 +58,7 @@ export async function commencerImport(
     langue: meta.langue === "en" ? "en" : "fr",
     url,
     publicationId: Number.isInteger(meta.publication) && meta.publication! > 0 ? meta.publication! : null,
+    doi: /^10\.\d{4,9}\/\S+$/.test(String(meta.doi ?? "")) ? String(meta.doi).slice(0, 200).toLowerCase() : "",
   };
   const id = await creerSource(source, utilisateur.identifiant);
   return { id };
@@ -72,8 +79,44 @@ export async function terminerImport(langue: string, sourceId: number, pages: nu
   const ok = await terminerSource(sourceId, Math.max(0, Math.floor(pages)));
   if (ok) await journaliser(utilisateur.identifiant, "source ajoutée à la bibliothèque", null, titre.slice(0, 200));
   else await supprimerSource(sourceId);
+  // Anciennes éditions du même sujet : proposées pour être marquées « remplacées »
+  const remplacables = ok ? await sourcesRemplacables(sourceId).catch(() => []) : [];
   refresh();
-  return ok;
+  return { ok, remplacables };
+}
+
+export type Identification =
+  | { trouve: false }
+  | {
+      trouve: true;
+      doi: string;
+      // Source déjà dans la bibliothèque pour ce DOI
+      existante: { id: number; titre: string } | null;
+      publication: number | null;
+      titre: string;
+      annee: number | null;
+      organisme: string;
+      type: string;
+      langue: "fr" | "en";
+      url: string;
+    };
+
+// Reconnaît un document déposé d'après son DOI : publication suivie, sinon métadonnées publiques (Crossref).
+// Les champs du formulaire se remplissent alors seuls.
+export async function identifierDocument(langue: string, doi: string): Promise<Identification> {
+  await exigerUtilisateur(langue, "medical");
+  const propre = String(doi ?? "").trim().toLowerCase().slice(0, 200);
+  if (!/^10\.\d{4,9}\/\S+$/.test(propre)) return { trouve: false };
+  const [existante, suivie] = await Promise.all([sourceParDoi(propre), publicationParDoi(propre)]);
+  const base = { trouve: true as const, doi: propre, existante: existante ? { id: existante.id, titre: existante.titre } : null };
+  if (suivie) {
+    return { ...base, publication: suivie.id, titre: suivie.titre, annee: suivie.annee, organisme: suivie.organisme, type: suivie.type, langue: suivie.langue, url: lienDoi(propre) };
+  }
+  const meta = await metadonneesCrossref(propre, async (u) => (await telecharger(u)).texte);
+  if (!meta) return { ...base, publication: null, titre: "", annee: null, organisme: "", type: "article", langue: "en", url: lienDoi(propre) };
+  const organisme = /european heart journal|esc/i.test(`${meta.revue} ${meta.titre}`) && /\bESC\b/.test(meta.titre) ? "ESC" : meta.revue;
+  const type = /guidelines?|consensus|recommandations?/i.test(meta.titre) ? "recommandation" : "article";
+  return { ...base, publication: null, titre: meta.titre, annee: meta.annee, organisme, type, langue: "en", url: lienDoi(propre) };
 }
 
 export async function basculerStatut(langue: string, sourceId: number, statut: "en_vigueur" | "remplacee") {
