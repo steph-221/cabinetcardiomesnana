@@ -324,6 +324,19 @@ réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de doll
 risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
 conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
 
+## Navigation, « À valider » et « Ma journée »
+
+- **Cinq espaces** en haut de l'espace cabinet, avec leurs pages juste dessous : **Aujourd'hui** (Ma journée, À valider,
+  Suivis, Résultats), **Patients**, **Agenda**, **Savoir** (Assistant, Bibliothèque, Calculateurs, Lexique) et **Cabinet**
+  (Comptabilité, Reprise Word, puis pour l'administrateur Modèles IA, Drive, Journal, Comptes). Les adresses des pages ne
+  changent pas. La secrétaire ne voit pas Savoir ni la reprise Word.
+- **À valider** réunit au même endroit ce que le site a préparé : résultats d'analyses à classer ou à relire, suivis en
+  retard, anciens comptes rendus Word, médicaments prescrits modifiés, seuils proposés par l'assistant. Une pastille rouge
+  indique le nombre d'éléments en attente.
+- **Ma journée** liste les rendez-vous du jour. Pour les médecins, chaque patient dont le dossier est connu affiche sa
+  préparation : allergies, alertes du dossier (INR, FC, TA, DFG, FEVG), dernière consultation (motif, conclusion, conduite),
+  examens depuis, résultats à relire, suivis dus et traitements en cours. La secrétaire voit les rendez-vous et les dossiers.
+
 ## La voix partout (médecins)
 
 - **Micro sur chaque champ de texte** : cliquer dans un champ (antécédents, notes, conclusions, remarques, question à
