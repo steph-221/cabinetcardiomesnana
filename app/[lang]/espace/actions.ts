@@ -14,6 +14,7 @@ import {
 } from "../../agenda/google";
 import { baseConfiguree } from "../../dossier/base";
 import { journaliser } from "../../dossier/journal";
+import { noterCreneauLibere } from "../../dossier/liste-attente";
 import { libellePatient, lirePatient } from "../../dossier/patients";
 import { chercherPourRendezvous, completerIdentite, type DossierPropose } from "../../dossier/rendez-vous";
 import {
@@ -99,7 +100,12 @@ const exigerConnexion = (langue: string) => exigerUtilisateur(langue);
 
 export async function annuler(langue: string, id: string) {
   await exigerConnexion(langue);
+  // Le créneau libéré est retenu pour la liste d'attente (sans bloquer l'annulation en cas d'échec)
+  const rdv = baseConfiguree() ? await lireRendezvous(id).catch(() => null) : null;
   await supprimerRendezvous(id);
+  if (rdv && !rdv.fermeture && rdv.debut.length > 10) {
+    await noterCreneauLibere({ debut: new Date(rdv.debut), fin: new Date(rdv.fin), medecin: rdv.medecin ?? "", origine: "annulé par le secrétariat" }).catch(console.error);
+  }
   refresh();
 }
 

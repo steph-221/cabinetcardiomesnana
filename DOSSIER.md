@@ -301,6 +301,8 @@ deviner.
   par Europe PMC quand ils existent). Elle affiche alors **Version officielle (DOI)** et, si possible, **PDF en accès
   libre**. Les éditeurs qui refusent les robots (cas de l'ESC chez Oxford University Press) restent sans PDF direct : le
   DOI ouvre leur page dans votre navigateur.
+- **Plusieurs PDF à la fois** : sous **Ajouter une source**, « Ajouter plusieurs PDF à la fois ». Chaque fichier est reconnu par son DOI et ajouté
+  sans formulaire ; un fichier sans DOI, scanné, déjà présent ou dont le titre est introuvable est signalé et laissé à l'ajout à la main.
 - **Dépôt de PDF** : dans **Ajouter une source**, le DOI est lu sur la première page du PDF choisi. S'il correspond à une
   publication suivie (ou à des métadonnées publiques), titre, année, organisme, type et lien se remplissent seuls ; un
   document déjà importé est signalé. Après l'ajout d'une recommandation plus récente, l'ancienne édition du même sujet est

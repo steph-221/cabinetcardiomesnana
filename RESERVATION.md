@@ -178,6 +178,14 @@ détectés sont une liste de départ : à compléter selon ce que écrivent vos 
 Données de santé : ces messages peuvent contenir des informations médicales ; ils transitent par Meta et sont gardés dans la
 base du cabinet. À inclure dans la demande d'autorisation CNDP (voir DOSSIER.md) avant d'activer l'assistant.
 
+## 10. Liste d'attente
+
+**Aujourd'hui → Liste d'attente** : le secrétariat y inscrit les patients qui veulent un créneau plus tôt (nom, téléphone ou e-mail,
+souhait). Quand un rendez-vous est **annulé** (par le patient avec son lien, ou depuis l'agenda), son créneau apparaît dans
+**Créneaux libérés**. **Prévenir** prépare pour le patient le message « un créneau s'est libéré » avec les prochains créneaux libérés
+(lien WhatsApp ou e-mail à envoyer d'un clic) et note la date ; **Placé** ou **Retirer** sort le patient de la liste. Rien ne part
+tout seul. Un créneau reste proposé jusqu'à ce qu'on clique **Pris ou ignoré**, ou que sa date passe.
+
 ## Données personnelles
 
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les

@@ -8,12 +8,12 @@ describe("espaces de l'espace cabinet", () => {
     for (const avant of ["", "/patients", "/suivis", "/comptabilite", "/lexique", "/assistant", "/calculateurs", "/bibliotheque", "/resultats", "/reprise", "/drive", "/journal", "/comptes"]) {
       expect(chemins, avant).toContain(avant);
     }
-    expect(chemins).toEqual(expect.arrayContaining(["/aujourdhui", "/a-valider", "/messages", "/rappels", "/population", "/modeles-ia"]));
+    expect(chemins).toEqual(expect.arrayContaining(["/aujourdhui", "/a-valider", "/messages", "/rappels", "/liste-attente", "/population", "/modeles-ia"]));
   });
 
   it("montre à la secrétaire ni le savoir médical, ni la reprise Word, ni l'administration", () => {
     const pages = espacesVisibles({ medical: false, admin: false }).flatMap((e) => e.pages.map((p) => p.cle));
-    expect(pages).toEqual(["journee", "a-valider", "messages", "rappels", "suivis", "resultats", "patients", "agenda", "comptabilite"]);
+    expect(pages).toEqual(["journee", "a-valider", "messages", "rappels", "liste-attente", "suivis", "resultats", "patients", "agenda", "comptabilite"]);
     expect(espacesVisibles({ medical: false, admin: false }).map((e) => e.cle)).not.toContain("savoir");
   });
 
