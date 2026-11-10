@@ -1,7 +1,7 @@
 // Veille de nuit : relit les sites et revues suivis et identifie leurs nouvelles publications (DOI, résumé, PDF libre).
 // Appelée chaque nuit par la tâche planifiée Vercel (vercel.json), qui envoie CRON_SECRET en « Authorization: Bearer ».
 
-import { timingSafeEqual } from "node:crypto";
+import { secretTacheValide } from "../autorisation";
 import { baseConfiguree } from "../../../dossier/base";
 import { journaliser } from "../../../dossier/journal";
 import { resoudrePublications, sitesARelire, verifierSite } from "../../../dossier/veille";
@@ -9,17 +9,9 @@ import { base } from "../../../dossier/base";
 
 export const maxDuration = 120;
 
-function secretValide(request: Request) {
-  const attendu = process.env.CRON_SECRET;
-  if (!attendu || attendu.length < 16) return false;
-  const recu = Buffer.from((request.headers.get("authorization") ?? "").replace(/^Bearer /, ""));
-  const a = Buffer.from(attendu);
-  return recu.length === a.length && timingSafeEqual(recu, a);
-}
-
 export async function GET(request: Request) {
   if (!process.env.CRON_SECRET) return Response.json({ erreur: "Tâche planifiée non activée (CRON_SECRET)." }, { status: 503 });
-  if (!secretValide(request)) return Response.json({ erreur: "Accès refusé." }, { status: 401 });
+  if (!secretTacheValide(request)) return Response.json({ erreur: "Accès refusé." }, { status: 401 });
   if (!baseConfiguree()) return Response.json({ erreur: "Base de données non configurée." }, { status: 503 });
 
   const debut = Date.now();

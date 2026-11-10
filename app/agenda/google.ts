@@ -26,6 +26,8 @@ export type Rendezvous = {
   enLigne: boolean;
   annulable: boolean; // rendez-vous patient créé par le site ou l'espace cabinet
   fermeture: boolean; // créneaux fermés par l'administrateur
+  confirme?: string; // ISO : le patient a confirmé par son lien
+  rappelLe?: string; // ISO : rappel envoyé ou préparé
 };
 
 const config = () => ({
@@ -146,6 +148,8 @@ function versRendezvous(e: EvenementGoogle): Rendezvous {
     enLigne: prive.source === "site",
     annulable: prive.source === "site" || prive.source === "secretariat",
     fermeture: prive.source === "fermeture",
+    confirme: prive.confirme || undefined,
+    rappelLe: prive.rappelLe || undefined,
   };
 }
 
@@ -256,6 +260,14 @@ export async function rattacherRendezvous(id: string, patientId: number) {
   });
 }
 
+// Marque un rendez-vous : confirmé par le patient, rappel envoyé (« » efface la marque)
+export async function marquerRendezvous(id: string, marques: { confirme?: string; rappelLe?: string }) {
+  await appel(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ extendedProperties: { private: marques } }),
+  });
+}
+
 // Rattache un rendez-vous à un médecin (chaîne vide : détache). Seule cette propriété est modifiée.
 export async function affecterMedecin(id: string, medecin: string) {
   await appel(`/calendars/${idAgenda()}/events/${encodeURIComponent(id)}`, {
@@ -300,6 +312,8 @@ export async function modifierRendezvous(
         motif: modif.motif,
         medecin: modif.medecin,
         ...(rdv.annulable ? { nom, prenom } : {}),
+        // Nouvelle date ou heure : l'ancienne confirmation et l'ancien rappel ne valent plus
+        ...(new Date(actuel.start.dateTime ?? "").getTime() !== modif.debut.getTime() ? { confirme: "", rappelLe: "" } : {}),
       },
     },
   };

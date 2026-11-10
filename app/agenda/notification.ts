@@ -7,6 +7,7 @@
 
 import { cabinet } from "../cabinet";
 import { nomComplet, numeroInternational } from "./identite";
+import { messageRappel, type Rappel } from "./rappel";
 
 const dateLongue = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
@@ -48,11 +49,14 @@ export type Resultat = {
   whatsapp: { statut: Statut; lien?: string };
 };
 
-const emailConfigure = () => Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_EXPEDITEUR);
+export const emailConfigure = () => Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_EXPEDITEUR);
 const whatsappConfigure = () =>
   Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_NUMERO_ID && process.env.WHATSAPP_MODELE);
+// Modèle WhatsApp des rappels, distinct de celui des changements : {{1}} nom, {{2}} date et heure, {{3}} lien ou téléphone
+const whatsappRappelConfigure = () =>
+  Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_NUMERO_ID && process.env.WHATSAPP_MODELE_RAPPEL);
 
-async function envoyerEmail(a: string, sujet: string, texte: string) {
+export async function envoyerEmail(a: string, sujet: string, texte: string) {
   const reponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
@@ -69,7 +73,7 @@ async function envoyerEmail(a: string, sujet: string, texte: string) {
 }
 
 // Message « modèle » WhatsApp Business : trois variables {{1}} nom, {{2}} ancien rendez-vous, {{3}} nouveau
-async function envoyerWhatsApp(numero: string, variables: string[]) {
+async function envoyerWhatsApp(numero: string, variables: string[], modele = process.env.WHATSAPP_MODELE) {
   const reponse = await fetch(`https://graph.facebook.com/v21.0/${process.env.WHATSAPP_NUMERO_ID}/messages`, {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`, "Content-Type": "application/json" },
@@ -78,7 +82,7 @@ async function envoyerWhatsApp(numero: string, variables: string[]) {
       to: numero,
       type: "template",
       template: {
-        name: process.env.WHATSAPP_MODELE,
+        name: modele,
         language: { code: process.env.WHATSAPP_LANGUE || "fr" },
         components: [{ type: "body", parameters: variables.map((text) => ({ type: "text", text })) }],
       },
@@ -120,6 +124,55 @@ export async function prevenirPatient(
     if (whatsappConfigure()) {
       try {
         await envoyerWhatsApp(numero, [nomComplet(c.prenom, c.nom.toUpperCase()), ancien, nouveau]);
+        resultat.whatsapp.statut = "envoye";
+      } catch (erreur) {
+        console.error(erreur);
+        resultat.whatsapp.statut = "echec";
+      }
+    }
+    if (resultat.whatsapp.statut !== "envoye") {
+      resultat.whatsapp.lien = `https://wa.me/${numero}?text=${encodeURIComponent(texte)}`;
+    }
+  }
+  return resultat;
+}
+
+// Rappel de rendez-vous : e-mail automatique si Resend est configuré, WhatsApp automatique si le modèle de rappel est
+// approuvé par Meta (WHATSAPP_MODELE_RAPPEL) ; sinon, lien à envoyer à la main. Ne lève jamais d'erreur.
+export async function rappelerPatient(
+  r: Rappel,
+  contact: { email?: string; telephone?: string },
+  canaux: { email: boolean; whatsapp: boolean } = { email: true, whatsapp: true },
+): Promise<Resultat> {
+  const { sujet, texte, quand } = messageRappel(r);
+  const resultat: Resultat = { email: { statut: "absent" }, whatsapp: { statut: "absent" } };
+
+  if (canaux.email && contact.email) {
+    resultat.email = { statut: "lien", adresse: contact.email };
+    if (emailConfigure()) {
+      try {
+        await envoyerEmail(contact.email, sujet, texte);
+        resultat.email.statut = "envoye";
+      } catch (erreur) {
+        console.error(erreur);
+        resultat.email.statut = "echec";
+      }
+    }
+    if (resultat.email.statut !== "envoye") {
+      resultat.email.lien = `mailto:${contact.email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(texte)}`;
+    }
+  }
+
+  const numero = canaux.whatsapp && contact.telephone ? numeroInternational(contact.telephone) : null;
+  if (numero) {
+    resultat.whatsapp = { statut: "lien" };
+    if (whatsappRappelConfigure()) {
+      try {
+        await envoyerWhatsApp(
+          numero,
+          [nomComplet(r.prenom, r.nom.toUpperCase()), quand, r.lien ?? cabinet.telephones.fixe.numero],
+          process.env.WHATSAPP_MODELE_RAPPEL,
+        );
         resultat.whatsapp.statut = "envoye";
       } catch (erreur) {
         console.error(erreur);
