@@ -132,6 +132,23 @@ de message approuvé par Meta pour écrire en premier à un patient ; modèle co
 {{2}} au cabinet est annulé et remplacé par un nouveau rendez-vous : {{3}}. En cas de problème, appelez le 05 39 31 85 50. »
 Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
 
+## 8. Rappels, confirmation par le patient et relances automatiques
+
+- Page **Rappels** (Aujourd'hui → Rappels) : rendez-vous des 3 prochains jours avec leur état (pas encore rappelé, rappel
+  envoyé sans réponse, **confirmé**). **Envoyer le rappel** envoie l'e-mail si Resend est configuré, sinon prépare l'e-mail
+  et le message WhatsApp à envoyer d'un clic. Chaque rappel contient un **lien personnel** : le patient y **confirme sa venue**
+  ou **annule** (le créneau est libéré aussitôt, l'événement Google supprimé, l'action inscrite au journal). Le lien est
+  signé avec `SESSION_SECRET` (32 caractères au moins) ; sans lui, le rappel invite à téléphoner.
+- Une modification de date ou d'heure efface la confirmation et le rappel de l'ancien horaire.
+- **Tâche automatique** (`vercel.json`, chaque jour à 15 h UTC, soit 16 h au Maroc hors ramadan) : rappelle les rendez-vous
+  du lendemain pas encore confirmés ni rappelés, et **relance par e-mail** les suivis dus des patients qui ont une adresse
+  (le suivi passe en « relancé » ; les autres restent pour la secrétaire, avec le lien WhatsApp). Elle demande la variable
+  `CRON_SECRET` (16 caractères au moins) et, pour partir toute seule, `RESEND_API_KEY` et `EMAIL_EXPEDITEUR`.
+- WhatsApp automatique pour les rappels : modèle distinct de celui des changements, à faire approuver par Meta, et variable
+  `WHATSAPP_MODELE_RAPPEL` (corps à 3 variables : `{{1}}` nom, `{{2}}` date et heure, `{{3}}` lien de confirmation ou
+  téléphone). Modèle conseillé : « Bonjour {{1}}, rappel de votre rendez-vous au cabinet : {{2}}. Pour confirmer ou annuler :
+  {{3}} ». Sans cette variable, le lien WhatsApp est simplement préparé.
+
 ## Données personnelles
 
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
