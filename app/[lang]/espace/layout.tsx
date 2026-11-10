@@ -39,6 +39,7 @@ async function Onglets({ langue }: { langue: string }) {
       const groupes = await groupesAValider(jourLocal(new Date()), medical);
       pastilles["a-valider"] = total(groupes);
       pastilles.suivis = groupes.find((g) => g.cle === "suivis")?.n ?? 0;
+      pastilles.messages = groupes.find((g) => g.cle === "messages")?.n ?? 0;
     } catch (erreur) {
       console.error(erreur);
     }

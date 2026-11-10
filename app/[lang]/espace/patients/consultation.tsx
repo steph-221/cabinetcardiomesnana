@@ -109,6 +109,7 @@ export function FormulaireConsultation({
           lexique={dictee.lexique}
           claude={dictee.claude}
           languePatient={dictee.languePatient}
+          patientId={patientId}
           inserer={inserer}
         />
       </div>
