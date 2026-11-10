@@ -2,10 +2,11 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { Copy, Eye, KeyRound, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Bookmark, BookmarkCheck, Copy, Eye, EyeOff, KeyRound, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { typesSource } from "../../../../dossier/sources";
 import {
   afficherMotDePasse,
+  classer,
   enregistrerAccesSite,
   retirerSite,
   suivreSitePropose,
@@ -115,6 +116,38 @@ export function FormulaireSite({ langue }: { langue: string }) {
       </div>
       <Erreur texte={etat?.erreur} />
     </form>
+  );
+}
+
+// File de lecture d'une publication : à lire (épinglée), écartée (masquée), ou remise à sa place
+export function BoutonsLecture({ langue, id, etat }: { langue: string; id: number; etat: "" | "a_lire" | "ecartee" }) {
+  const [enCours, demarrer] = useTransition();
+  const aller = (e: "" | "a_lire" | "ecartee") => demarrer(() => classer(langue, id, e));
+  return (
+    <span className="inline-flex gap-1">
+      {etat === "a_lire" ? (
+        <button type="button" disabled={enCours} onClick={() => aller("")} className={`${petit} text-amber-800`}>
+          <BookmarkCheck className="h-3 w-3" aria-hidden />
+          À lire
+        </button>
+      ) : (
+        <button type="button" disabled={enCours} onClick={() => aller("a_lire")} className={`${petit} text-slate-600`}>
+          <Bookmark className="h-3 w-3" aria-hidden />
+          À lire
+        </button>
+      )}
+      {etat === "ecartee" ? (
+        <button type="button" disabled={enCours} onClick={() => aller("")} className={`${petit} text-slate-600`}>
+          <Eye className="h-3 w-3" aria-hidden />
+          Remettre
+        </button>
+      ) : (
+        <button type="button" disabled={enCours} onClick={() => aller("ecartee")} className={`${petit} text-slate-600`}>
+          <EyeOff className="h-3 w-3" aria-hidden />
+          Écarter
+        </button>
+      )}
+    </span>
   );
 }
 

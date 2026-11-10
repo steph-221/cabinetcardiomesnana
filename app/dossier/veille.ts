@@ -5,7 +5,8 @@
 
 import { base } from "./base";
 import { chiffrer, dechiffrer } from "./chiffrement";
-import { lireSite } from "./lecture-site";
+import { lireSite, telecharger } from "./lecture-site";
+import { doiDePage, extraireDoi, metadonneesCrossref, pdfDePage, resumeEuropePmc } from "./resolution";
 import type { TypeSource } from "./sources";
 
 export type Publication = {
@@ -19,6 +20,11 @@ export type Publication = {
   importee: boolean;
   media: string;
   resume: string;
+  // Identifiant du document, lien direct vers son PDF quand il est en accès libre, et rang dans la file de lecture
+  doi: string;
+  pdfUrl: string;
+  libre: boolean;
+  etat: "" | "a_lire" | "ecartee";
 };
 
 export type SiteSuivi = {
@@ -76,10 +82,14 @@ export async function listerSites(): Promise<SiteSuivi[]> {
         annee: p.annee as number | null,
         publieLe: p.publie_le as Date | null,
         vueLe: p.vue_le as Date,
-        nouvelle: (p.nouvelle as boolean) && !p.importee && (p.vue_le as Date).getTime() > limite,
+        nouvelle: (p.nouvelle as boolean) && !p.importee && p.etat !== "ecartee" && (p.vue_le as Date).getTime() > limite,
         importee: p.importee as boolean,
         media: (p.media_url as string) ?? "",
         resume: (p.resume as string) ?? "",
+        doi: (p.doi as string) ?? "",
+        pdfUrl: (p.pdf_url as string) ?? "",
+        libre: Boolean(p.libre),
+        etat: ((p.etat as string) ?? "") as Publication["etat"],
       })),
   }));
 }
@@ -89,16 +99,34 @@ export async function compterNouveautes() {
   const sql = await base();
   const [ligne] = await sql`
     SELECT count(*)::int AS n FROM publications p
-    WHERE p.nouvelle AND p.vue_le > now() - make_interval(days => ${JOURS_NOUVEAUTE})
+    WHERE p.nouvelle AND p.etat <> 'ecartee' AND p.vue_le > now() - make_interval(days => ${JOURS_NOUVEAUTE})
       AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.publication_id = p.id)`;
   return ligne.n as number;
+}
+
+// Publication suivie qui porte ce DOI (identifiée par la veille), pour reconnaître un PDF déposé
+export async function publicationParDoi(doi: string) {
+  const sql = await base();
+  const [l] = await sql`
+    SELECT p.id, p.titre, p.annee, s.organisme, s.type, s.langue
+    FROM publications p JOIN sites_suivis s ON s.id = p.site_id WHERE p.doi = ${doi} ORDER BY p.id DESC LIMIT 1`;
+  return l
+    ? {
+        id: l.id as number,
+        titre: l.titre as string,
+        annee: l.annee as number | null,
+        organisme: l.organisme as string,
+        type: l.type as TypeSource,
+        langue: l.langue as "fr" | "en",
+      }
+    : null;
 }
 
 // Publication et site d'origine, pour pré-remplir l'ajout à la bibliothèque
 export async function lirePublication(id: number) {
   const sql = await base();
   const [l] = await sql`
-    SELECT p.id, p.titre, p.url, p.annee, s.organisme, s.type, s.langue
+    SELECT p.id, p.titre, p.url, p.annee, p.doi, s.organisme, s.type, s.langue
     FROM publications p JOIN sites_suivis s ON s.id = p.site_id WHERE p.id = ${id}`;
   if (!l) return null;
   return {
@@ -106,6 +134,7 @@ export async function lirePublication(id: number) {
     titre: l.titre as string,
     url: l.url as string,
     annee: l.annee as number | null,
+    doi: (l.doi as string) ?? "",
     organisme: l.organisme as string,
     type: l.type as TypeSource,
     langue: l.langue as "fr" | "en",
@@ -172,6 +201,8 @@ export async function verifierSite(id: number): Promise<{ trouvees: number; nouv
       )
       SELECT count(*) FILTER (WHERE inseree)::int AS n FROM ajout`;
     await sql`UPDATE sites_suivis SET verifie_le = now(), erreur = '' WHERE id = ${id}`;
+    // Les nouveautés sont identifiées tout de suite ; sans succès, la publication reste affichée sans DOI
+    await resoudrePublications(id).catch((e) => console.error(e));
     return { trouvees: lues.length, nouvelles: premiere ? 0 : (n as number) };
   } catch (erreur) {
     const message = erreur instanceof Error && erreur.message.length < 200 ? erreur.message : "Lecture impossible.";
@@ -187,4 +218,52 @@ export async function sitesARelire() {
     SELECT id FROM sites_suivis
     WHERE verifie_le IS NULL OR verifie_le < now() - make_interval(secs => ${DELAI_VERIFICATION / 1000})`;
   return lignes.map((l) => l.id as number);
+}
+
+// Rang dans la file de lecture : « à lire » (épinglée), « écartée » (masquée), ou vide
+export async function classerPublication(id: number, etat: "" | "a_lire" | "ecartee") {
+  const sql = await base();
+  await sql`UPDATE publications SET etat = ${etat} WHERE id = ${id}`;
+}
+
+// Identifie les publications d'un site : DOI (dans le lien lui-même, sinon sur la page), puis résumé et PDF en accès
+// libre. `maximum` limite le travail d'un passage ; chaque publication n'est tentée qu'une fois (resolue_le).
+// Un éditeur qui refuse les robots (cas d'Oxford University Press) laisse simplement la publication sans PDF direct :
+// son lien « version officielle » reste le DOI.
+export async function resoudrePublications(siteId: number, maximum = 6): Promise<number> {
+  const sql = await base();
+  const lignes = await sql`
+    SELECT id, titre, url, resume FROM publications
+    WHERE site_id = ${siteId} AND resolue_le IS NULL AND etat <> 'ecartee'
+    ORDER BY publie_le DESC NULLS LAST, annee DESC NULLS LAST, id DESC LIMIT ${maximum}`;
+  const lire = async (url: string) => (await telecharger(url)).texte;
+  for (const l of lignes) {
+    let doi = extraireDoi(l.url as string);
+    let pdf = "";
+    if (!doi) {
+      try {
+        const page = await telecharger(l.url as string);
+        doi = doiDePage(page.texte);
+        pdf = pdfDePage(page.texte, page.url);
+      } catch {
+        // Page inaccessible : la publication reste sans identifiant
+      }
+    }
+    let resume = (l.resume as string) ?? "";
+    let libre = false;
+    if (doi) {
+      const [pmc, crossref] = await Promise.all([resumeEuropePmc(doi, lire), metadonneesCrossref(doi, lire)]);
+      if (pmc) {
+        resume = resume || pmc.resume;
+        libre = pmc.libre;
+        pdf = pmc.pdf || pdf;
+      }
+      if (crossref && !(l.titre as string).trim()) await sql`UPDATE publications SET titre = ${crossref.titre} WHERE id = ${l.id}`;
+    }
+    await sql`
+      UPDATE publications SET doi = ${doi ?? ""}, pdf_url = ${pdf}, libre = ${libre}, resume = ${resume},
+        resolue_le = now()
+      WHERE id = ${l.id}`;
+  }
+  return lignes.length;
 }

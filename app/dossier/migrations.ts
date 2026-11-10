@@ -498,3 +498,16 @@ migrations.push([
   )`,
   `CREATE INDEX IF NOT EXISTS ia_usage_quand ON ia_usage (quand DESC)`,
 ]);
+
+// 23 — Publications identifiées par leur DOI (lien direct, résumé, PDF en accès libre) et file de lecture
+// (« à lire » épinglée, « écartée » masquée) ; une source importée garde le DOI de son document.
+migrations.push([
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS doi text NOT NULL DEFAULT ''`,
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS pdf_url text NOT NULL DEFAULT ''`,
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS libre boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS etat text NOT NULL DEFAULT '' CHECK (etat IN ('', 'a_lire', 'ecartee'))`,
+  `ALTER TABLE publications ADD COLUMN IF NOT EXISTS resolue_le timestamptz`,
+  `CREATE INDEX IF NOT EXISTS publications_doi ON publications (doi) WHERE doi <> ''`,
+  `ALTER TABLE sources ADD COLUMN IF NOT EXISTS doi text NOT NULL DEFAULT ''`,
+  `CREATE INDEX IF NOT EXISTS sources_doi ON sources (doi) WHERE doi <> ''`,
+]);

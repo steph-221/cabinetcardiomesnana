@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { after, connection } from "next/server";
-import { BookCheck, ExternalLink, FilePlus2, Globe, Headphones, Search } from "lucide-react";
+import { BookCheck, ExternalLink, FilePlus2, FileText, Globe, Headphones, Search } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { exigerUtilisateur } from "../../../../agenda/session";
 import { baseConfiguree } from "../../../../dossier/base";
@@ -11,7 +11,9 @@ import { listerSites, sitesARelire, verifierSite, type SiteSuivi } from "../../.
 import { BaseNonConfiguree, ErreurLecture, Retour } from "../../patients/commun";
 import { Categories } from "../categories";
 import { SITES_PROPOSES } from "../../../../dossier/sites-proposes";
-import { AccesAbonne, BoutonsSite, FormulaireSite, SuivreSitePropose, ToutVerifier } from "./formulaires";
+import { AccesAbonne, BoutonsLecture, BoutonsSite, FormulaireSite, SuivreSitePropose, ToutVerifier } from "./formulaires";
+import { lienDoi } from "../../../../dossier/resolution";
+import { libelleTheme, themesDe } from "../../../../dossier/themes";
 
 export const metadata: Metadata = {
   title: "Sites et revues suivis",
@@ -56,8 +58,9 @@ async function Contenu({
   searchParams: PageProps<"/[lang]/espace/bibliotheque/sites">["searchParams"];
 }) {
   await connection();
-  const { q } = await searchParams;
+  const { q, ecartees } = await searchParams;
   const theme = (Array.isArray(q) ? q[0] : q)?.trim().slice(0, 80) ?? "";
+  const voirEcartees = (Array.isArray(ecartees) ? ecartees[0] : ecartees) === "1";
   await exigerUtilisateur(langue, "medical");
   if (!baseConfiguree()) return <BaseNonConfiguree />;
   let sites: SiteSuivi[] | null = null;
@@ -83,11 +86,22 @@ async function Contenu({
   const mots = theme.toLowerCase().split(/\s+/).filter(Boolean);
   const correspond = (p: SiteSuivi["publications"][number]) =>
     mots.every((m) => `${p.titre} ${p.resume}`.toLowerCase().includes(m));
+  // File de lecture : les publications « à lire » en tête, les écartées masquées (sauf demande)
+  const nbEcartees = suivis.reduce((n, s) => n + s.publications.filter((p) => p.etat === "ecartee").length, 0);
+  const rang = (p: SiteSuivi["publications"][number]) => (p.etat === "a_lire" ? 0 : 1);
+  const visibles = suivis.map((s) => ({
+    ...s,
+    publications: s.publications
+      .filter((p) => voirEcartees || p.etat !== "ecartee")
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => rang(a.p) - rang(b.p) || a.i - b.i)
+      .map(({ p }) => p),
+  }));
   const affiches = mots.length
-    ? suivis
+    ? visibles
         .map((s) => ({ ...s, publications: s.publications.filter(correspond) }))
         .filter((s) => s.publications.length > 0)
-    : suivis;
+    : visibles;
   const libelleType = (t: string) => typesSource.find((x) => x.cle === t)?.libelle ?? t;
 
   return (
@@ -138,7 +152,15 @@ async function Contenu({
       {theme && affiches.length === 0 && <p className="mt-4 text-sm text-slate-500">Aucune publication ne correspond à « {theme} ».</p>}
 
       {affiches.length > 0 && (
-        <div className="mt-8 flex justify-end">
+        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+          {nbEcartees > 0 && (
+            <Link
+              href={voirEcartees ? `/${langue}/espace/bibliotheque/sites` : `/${langue}/espace/bibliotheque/sites?ecartees=1`}
+              className="text-xs text-slate-500 underline"
+            >
+              {voirEcartees ? "Masquer les publications écartées" : `Voir les ${nbEcartees} publication(s) écartée(s)`}
+            </Link>
+          )}
           <ToutVerifier langue={langue} />
         </div>
       )}
@@ -215,6 +237,9 @@ async function Contenu({
                           Écouter
                         </a>
                       )}
+                      {p.etat === "a_lire" && (
+                        <span className="ms-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">À lire</span>
+                      )}
                       {p.nouvelle && (
                         <span className="ms-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
                           Nouveau
@@ -224,7 +249,29 @@ async function Contenu({
                         {p.publieLe ? `publié le ${date(p.publieLe)}` : `relevé le ${date(p.vueLe)}`}
                       </p>
                       {p.resume && <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">{p.resume}</p>}
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                        {themesDe(`${p.titre} ${p.resume}`)
+                          .slice(0, 2)
+                          .map((t) => (
+                            <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5">
+                              {libelleTheme(t)}
+                            </span>
+                          ))}
+                        {p.pdfUrl && (
+                          <a href={p.pdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-red-700 underline">
+                            <FileText className="h-3 w-3" aria-hidden />
+                            PDF en accès libre
+                          </a>
+                        )}
+                        {p.doi && (
+                          <a href={lienDoi(p.doi)} target="_blank" rel="noopener noreferrer" className="text-red-700 underline">
+                            Version officielle (DOI)
+                          </a>
+                        )}
+                      </p>
                     </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                    {!p.importee && <BoutonsLecture langue={langue} id={p.id} etat={p.etat} />}
                     {p.importee ? (
                       <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
                         <BookCheck className="h-3.5 w-3.5" aria-hidden />
@@ -239,6 +286,7 @@ async function Contenu({
                         Ajouter à la bibliothèque
                       </Link>
                     )}
+                    </div>
                   </li>
                 ))}
               </ul>
