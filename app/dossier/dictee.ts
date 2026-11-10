@@ -2,8 +2,8 @@
 // avec le vocabulaire de cardiologie et le lexique du cabinet. La reconnaissance vocale se fait dans le navigateur,
 // et une première correction gratuite y est déjà appliquée (correction-locale.ts). Clé : ANTHROPIC_API_KEY.
 
-import Anthropic from "@anthropic-ai/sdk";
 import { rubriques, type Correction } from "./correction-locale";
+import { appelerIA } from "./ia/appel";
 import { bornes, bornesConstantes, mesures, type Constantes } from "./mesures";
 import { glossaire } from "./vocabulaire";
 
@@ -55,34 +55,74 @@ Règles :
 Glossaire :
 ${glossaire}`;
 
-let client: Anthropic | null = null;
-
-export async function corriger(transcription: string, lexique: { entendu: string; correct: string }[]) {
-  client ??= new Anthropic();
-  const reponse = await client.beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 8000,
-    // Si un filtre de sécurité refuse la demande à tort, l'API la relance sur le modèle de repli recommandé
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
-    system: [{ type: "text", text: CONSIGNES, cache_control: { type: "ephemeral" } }],
-    messages: [
-      {
-        role: "user",
-        content: [
-          lexique.length
-            ? `Lexique du cabinet (forme entendue → forme correcte) :\n${lexique.map((l) => `- ${l.entendu} → ${l.correct}`).join("\n")}`
-            : "Lexique du cabinet : vide.",
-          `Transcription de la dictée :\n${transcription}`,
-        ].join("\n\n"),
-      },
-    ],
+// Réponse à refaire sur le modèle supérieur : illisible, valeur chiffrée invraisemblable ou trop de mots douteux
+function utilisable(texte: string) {
+  const c = JSON.parse(texte) as Correction;
+  if (!c.rubriques || (c.incertains ?? []).length > 8) return false;
+  return Object.entries(c.valeurs ?? {}).every(([cle, v]) => {
+    const [min, max] = bornes[cle] ?? [0, -1];
+    return v === null || v === undefined || (typeof v === "number" && v >= min && v <= max);
   });
-  if (reponse.stop_reason === "refusal") throw new Error("La correction automatique a été refusée");
-  if (reponse.stop_reason === "max_tokens") throw new Error("Dictée trop longue pour la correction automatique");
-  const texte = reponse.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
-  return verifier(JSON.parse(texte) as Correction);
+}
+
+async function demander(
+  tache: "dictee" | "traduction_patient",
+  consignes: string,
+  contenu: string,
+  superieur: boolean,
+  refus: string,
+) {
+  const reponse = await appelerIA({ tache, consignes, contenu, schema, maxTokens: 8000, controle: utilisable, superieur });
+  if (reponse.arret === "refusal") throw new Error(refus);
+  if (reponse.arret === "max_tokens") throw new Error("Dictée trop longue pour la correction automatique");
+  return verifier(JSON.parse(reponse.texte) as Correction);
+}
+
+// `superieur` : « Refaire avec le modèle supérieur », demandé par le médecin après une première correction
+export async function corriger(
+  transcription: string,
+  lexique: { entendu: string; correct: string }[],
+  superieur = false,
+) {
+  return demander(
+    "dictee",
+    CONSIGNES,
+    [
+      lexique.length
+        ? `Lexique du cabinet (forme entendue → forme correcte) :\n${lexique.map((l) => `- ${l.entendu} → ${l.correct}`).join("\n")}`
+        : "Lexique du cabinet : vide.",
+      `Transcription de la dictée :\n${transcription}`,
+    ].join("\n\n"),
+    superieur,
+    "La correction automatique a été refusée",
+  );
+}
+
+// Parole du patient, transcrite par la reconnaissance vocale (arabe ou français) : rapportée en français dans le
+// rapport de consultation, sans rien y ajouter.
+const CONSIGNES_PATIENT = `Tu reçois la transcription automatique de ce qu'un patient a dit à son cardiologue pendant la consultation, au Maroc. La transcription est en arabe (souvent en arabe marocain, la darija, parfois mêlé de mots français) ou en français, sans ponctuation et avec des erreurs de reconnaissance.
+
+Rédige en français, pour le rapport de consultation, ce que le patient a rapporté.
+
+Règles :
+1. Rapporte fidèlement : symptômes, ancienneté, circonstances, traitements pris ou oubliés, antécédents cités. Style de compte rendu : phrases courtes, à la troisième personne (« Dyspnée d'effort depuis un mois. Dit avoir arrêté son traitement. »).
+2. N'ajoute JAMAIS ce qui n'a pas été dit : aucun diagnostic, aucune interprétation, aucun examen, aucun traitement, aucune valeur. Ce n'est pas l'avis du médecin.
+3. Rubriques : range les plaintes et leur histoire dans « motif » ; ce que le patient dit de ses résultats d'examens ou d'analyses dans « autres ». Les rubriques « examen », « ecg », « conclusion » et « conduite » restent vides : elles appartiennent au médecin.
+4. Valeurs chiffrées : recopie dans « valeurs » uniquement une valeur clairement énoncée avec son unité habituelle (taSys et taDia en mmHg, fc en bpm, poids en kg, taille en cm, inr, fevg en %, ldl en g/L, creatinine en mg/L, hba1c en %, ntprobnp en pg/mL). Sinon null.
+5. Passage inaudible, incohérent ou que tu n'es pas sûr d'avoir compris : ne devine pas. Écris « [passage non compris] » à sa place et signale-le dans « incertains » (entendu = le passage tel que transcrit, propose = ta meilleure lecture en français).
+6. Noms de médicaments : écris-les correctement d'après le glossaire, et signale dans « incertains » ceux que tu as dû deviner.
+
+Glossaire :
+${glossaire}`;
+
+export async function rapporterPatient(transcription: string, langue: "fr" | "ar", superieur = false) {
+  return demander(
+    "traduction_patient",
+    CONSIGNES_PATIENT,
+    `Langue choisie par le médecin pour la reconnaissance : ${langue === "ar" ? "arabe" : "français"}.\n\nTranscription :\n${transcription}`,
+    superieur,
+    "La mise en français a été refusée",
+  );
 }
 
 // Ne garde que des valeurs vraisemblables : une valeur hors bornes est retirée (elle reste dans le texte)

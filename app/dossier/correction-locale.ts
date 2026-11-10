@@ -246,3 +246,54 @@ export function corrigerLocalement(brut: string, entreesLexique: { entendu: stri
     incertains: incertains.filter((i, k) => incertains.findIndex((j) => j.entendu === i.entendu) === k),
   };
 }
+
+// Mise en forme d'un fragment dicté dans un champ libre : la ponctuation et les retours à la ligne du début sont
+// gardés (ils se rattachent au texte déjà saisi) ; la première lettre ne prend une majuscule qu'en début de phrase.
+function mettreEnFormeFragment(texte: string, majuscule: boolean) {
+  return texte
+    .split(LIGNE)
+    .map((ligne, i) => {
+      const propre = ligne
+        .replace(/\s+/g, " ")
+        .replace(/\s+([.,])/g, "$1")
+        .replace(/([.,;:])(?=\p{L})/gu, "$1 ")
+        .trim()
+        .replace(/([.!?]\s+)(\p{Ll})/gu, (_, avant: string, lettre: string) => avant + lettre.toUpperCase());
+      return i > 0 || majuscule ? propre.replace(/^(\P{L}*)(\p{Ll})/u, (_, avant: string, l: string) => avant + l.toUpperCase()) : propre;
+    })
+    .join("\n");
+}
+
+// Correction gratuite d'un texte dicté dans n'importe quel champ : commandes de ponctuation, lexique du cabinet,
+// sigles et médicaments. Pas de rangement par rubrique ni de valeurs chiffrées (c'est le rôle de corrigerLocalement).
+// `majuscule` : faux quand le fragment s'insère au milieu d'une phrase.
+export function corrigerTexte(
+  brut: string,
+  entreesLexique: { entendu: string; correct: string }[],
+  majuscule = true,
+): { texte: string; incertains: Correction["incertains"] } {
+  const incertains: Correction["incertains"] = [];
+  const texte = medicamentsEcrits(siglesEcrits(lexique(commandes(brut), entreesLexique)), incertains);
+  return {
+    texte: mettreEnFormeFragment(texte, majuscule),
+    incertains: incertains.filter((i, k) => incertains.findIndex((j) => j.entendu === i.entendu) === k),
+  };
+}
+
+// Insertion d'un fragment dicté dans un texte, à la position du curseur : l'espace qui manque est ajouté, celui en
+// trop retiré, et la majuscule dépend de ce qui précède. Renvoie le nouveau texte et la position du curseur.
+export function insererFragment(
+  avant: string,
+  apres: string,
+  brut: string,
+  entreesLexique: { entendu: string; correct: string }[],
+) {
+  const debutDePhrase = /(^|[.!?\n])\s*$/.test(avant);
+  const { texte, incertains } = corrigerTexte(brut, entreesLexique, debutDePhrase);
+  if (!texte.trim()) return { valeur: avant + apres, curseur: avant.length, insere: "", incertains };
+  const colle = /^[.,;:!?)\n]/.test(texte) || /(^|[\s(«'’-])$/.test(avant);
+  const debut = colle ? (/^[.,\n]/.test(texte) ? avant.replace(/[ \t]+$/, "") : avant) : `${avant} `;
+  const fin = apres && !/^[\s.,;:!?)]/.test(apres) && !texte.endsWith("\n") ? " " : "";
+  const insere = texte + fin;
+  return { valeur: debut + insere + apres, curseur: debut.length + insere.length, insere: texte, incertains };
+}

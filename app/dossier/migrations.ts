@@ -474,3 +474,27 @@ migrations.push([
   `ALTER TABLE publications ADD COLUMN IF NOT EXISTS media_url text NOT NULL DEFAULT ''`,
   `ALTER TABLE publications ADD COLUMN IF NOT EXISTS resume text NOT NULL DEFAULT ''`,
 ]);
+
+// 22 — Langue parlée par le patient (reconnaissance vocale de sa parole, messages) ; journal des appels à Claude
+// (jetons et coût estimé par tâche et par modèle, sans aucune donnée de patient).
+migrations.push([
+  `ALTER TABLE patients ADD COLUMN IF NOT EXISTS langue text NOT NULL DEFAULT '' CHECK (langue IN ('', 'fr', 'ar'))`,
+  `CREATE TABLE IF NOT EXISTS ia_usage (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    quand timestamptz NOT NULL DEFAULT now(),
+    tache text NOT NULL,
+    modele text NOT NULL,
+    niveau text NOT NULL,
+    effort text NOT NULL,
+    entree integer NOT NULL DEFAULT 0,
+    sortie integer NOT NULL DEFAULT 0,
+    cache_lecture integer NOT NULL DEFAULT 0,
+    cache_ecriture integer NOT NULL DEFAULT 0,
+    cout numeric(12, 6) NOT NULL DEFAULT 0,
+    duree_ms integer NOT NULL DEFAULT 0,
+    escalade boolean NOT NULL DEFAULT false,
+    issue text NOT NULL DEFAULT 'ok',
+    par text NOT NULL DEFAULT ''
+  )`,
+  `CREATE INDEX IF NOT EXISTS ia_usage_quand ON ia_usage (quand DESC)`,
+]);

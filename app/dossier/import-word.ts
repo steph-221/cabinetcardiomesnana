@@ -1,8 +1,7 @@
 // Reprise des comptes rendus Word : extraction par Claude du contenu médical (texte masqué, sans identité), puis
 // enregistrement de la proposition jusqu'à sa validation par le médecin, qui crée ou complète le dossier.
 
-import Anthropic from "@anthropic-ai/sdk";
-import type { BetaTextBlock } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { appelerIA } from "./ia/appel";
 import { base } from "./base";
 import { champsETT } from "./ett";
 import { bornes, mesures, type CleMesure } from "./mesures";
@@ -129,7 +128,6 @@ Règles :
 Glossaire :
 ${glossaire}`;
 
-let client: Anthropic | null = null;
 
 // Garde les nombres plausibles ; une valeur hors bornes passe dans « à vérifier »
 function borne(v: unknown, cle: string, min: number | undefined, max: number | undefined, aVerifier: string[]) {
@@ -220,19 +218,19 @@ export function nettoyerProposition(brut: Record<string, unknown>): Proposition 
 }
 
 export async function extraire(texteMasque: string): Promise<Proposition> {
-  client ??= new Anthropic();
-  const reponse = await client.beta.messages.create({
-    model: "claude-opus-5-5",
-    max_tokens: 16000,
-    // Si un filtre de sécurité refuse la demande à tort, l'API la relance sur le modèle de repli recommandé
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
-    system: [{ type: "text", text: CONSIGNES, cache_control: { type: "ephemeral" } }],
-    messages: [{ role: "user", content: `Compte rendu :\n\n${texteMasque}` }],
+  const reponse = await appelerIA({
+    tache: "reprise_word",
+    consignes: CONSIGNES,
+    contenu: `Compte rendu :\n\n${texteMasque}`,
+    schema,
+    maxTokens: 16000,
+    // Visite sans date lisible ou trop de points douteux : à refaire sur le modèle supérieur
+    controle: (t) => {
+      const p = nettoyerProposition(JSON.parse(t));
+      return p.visites.every((v) => v.date) && p.aVerifier.length <= 5;
+    },
   });
-  const texte = reponse.content.find((b): b is BetaTextBlock => b.type === "text")?.text ?? "{}";
-  return nettoyerProposition(JSON.parse(texte));
+  return nettoyerProposition(JSON.parse(reponse.texte || "{}"));
 }
 
 // Proposition vide (sans clé Anthropic) : le médecin remplit lui-même le formulaire de validation

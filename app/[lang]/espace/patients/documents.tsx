@@ -17,6 +17,7 @@ import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { aidePrescription, nouveauCompteRenduETT, nouvelleOrdonnance, rechercherMedicaments, retirerOrdonnance } from "./actions-documents";
 import type { Suggestion } from "../../../dossier/aide-prescription";
 import type { MedicamentMa } from "../../../dossier/medicaments-ma";
+import { lireOrdonnanceDictee } from "../../../dossier/ordonnance-dictee";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
 import { libelleConsultation, type OptionConsultation } from "../../../dossier/choix-consultation";
@@ -296,18 +297,22 @@ export function FormulaireOrdonnance({
   traitements,
   consultations,
   consultationDefaut,
+  dicteeInitiale = "",
 }: {
   langue: string;
   patientId: number;
   traitements: { medicament: string; posologie: string }[];
   consultations: OptionConsultation[];
   consultationDefaut?: number;
+  dicteeInitiale?: string;
 }) {
   const [etat, envoyer] = useActionState(nouvelleOrdonnance.bind(null, langue, patientId), null);
-  const compteur = useRef(traitements.length + 1);
+  const compteur = useRef(traitements.length + 31);
   // Les traitements en cours sont proposés d'emblée : une ligne se retire d'un clic
   const [lignes, setLignes] = useState<Ligne[]>(() =>
-    traitements.length
+    dicteeInitiale
+      ? lireOrdonnanceDictee(dicteeInitiale, []).lignes.map((l, i) => ({ cle: i, medicament: l.medicament, posologie: l.posologie, duree: l.duree }))
+      : traitements.length
       ? traitements.map((t, i) => ({ cle: i, medicament: t.medicament, posologie: t.posologie, duree: "" }))
       : [{ cle: 0, medicament: "", posologie: "", duree: "" }],
   );

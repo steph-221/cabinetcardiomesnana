@@ -55,7 +55,7 @@ export function FormulaireConsultation({
   definitions: readonly { cle: string; libelle: string; unite: string }[];
   choixSuivi: Choix;
   // Lexique du cabinet pour la correction gratuite ; claude : amélioration par Claude disponible
-  dictee: { lexique: { entendu: string; correct: string }[]; claude: boolean };
+  dictee: { lexique: { entendu: string; correct: string }[]; claude: boolean; languePatient?: "" | "fr" | "ar" };
   aujourdhui: string;
 }) {
   const formulaire = useRef<HTMLFormElement>(null);
@@ -108,6 +108,7 @@ export function FormulaireConsultation({
           }}
           lexique={dictee.lexique}
           claude={dictee.claude}
+          languePatient={dictee.languePatient}
           inserer={inserer}
         />
       </div>

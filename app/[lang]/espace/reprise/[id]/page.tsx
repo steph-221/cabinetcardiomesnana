@@ -67,6 +67,7 @@ async function Contenu({
         adresse: "",
         couverture: "",
         medecinTraitant: "",
+        langue: "",
       });
       for (const p of memes) candidats.set(p.id, p);
     }

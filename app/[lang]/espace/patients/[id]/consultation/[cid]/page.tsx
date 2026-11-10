@@ -108,6 +108,7 @@ async function Formulaire({
         dictee={{
           lexique: (await lireLexique()).map(({ entendu, correct }) => ({ entendu, correct })),
           claude: claudeConfigure(),
+          languePatient: patient.langue,
         }}
         aujourdhui={jourLocal(new Date())}
       />

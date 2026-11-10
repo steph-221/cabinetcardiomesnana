@@ -44,7 +44,10 @@ async function Formulaire({
   if (!patient) notFound();
   const enCours = (await listerTraitements(id)).filter((t) => !t.fin);
   const consultations = await consultationsPourChoix(id);
-  const consultationDefaut = consultationDemandee((await searchParams).consultation, consultations);
+  const recherche = await searchParams;
+  const consultationDefaut = consultationDemandee(recherche.consultation, consultations);
+  const dicteeBrute = Array.isArray(recherche.dictee) ? recherche.dictee[0] : recherche.dictee;
+  const dictee = (dicteeBrute ?? "").slice(0, 2000);
 
   return (
     <>
@@ -65,6 +68,7 @@ async function Formulaire({
         traitements={enCours.map((t) => ({ medicament: t.medicament, posologie: t.posologie }))}
         consultations={consultations}
         consultationDefaut={consultationDefaut}
+        dicteeInitiale={dictee}
       />
     </>
   );

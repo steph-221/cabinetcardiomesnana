@@ -17,10 +17,11 @@ export async function POST(request: Request) {
     return Response.json({ erreur: "Claude n'est pas configuré (voir DOSSIER.md)." }, { status: 503 });
   }
 
-  const { type, texte, patient } = (await request.json().catch(() => ({}))) as {
+  const { type, texte, patient, superieur } = (await request.json().catch(() => ({}))) as {
     type?: unknown;
     texte?: unknown;
     patient?: unknown;
+    superieur?: unknown;
   };
   if (typeof type !== "string" || !typesRedaction.includes(type)) {
     return Response.json({ erreur: "Choisissez le type d'examen." }, { status: 400 });
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   const patientId = typeof patient === "number" && Number.isInteger(patient) && patient > 0 ? patient : null;
   try {
     const contexte = patientId ? await resumeClinique(patientId) : null;
-    const resultat = await rediger(type, texte.trim(), contexte);
+    const resultat = await rediger(type, texte.trim(), contexte, superieur === true);
     await journaliser(utilisateur.identifiant, "compte rendu rédigé par Claude", patientId, type);
     return Response.json(resultat);
   } catch (erreur) {

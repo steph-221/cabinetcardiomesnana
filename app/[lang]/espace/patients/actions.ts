@@ -24,6 +24,7 @@ import {
   arreterTraitement,
   creerPatient,
   doublonsPossibles,
+  estLanguePatient,
   facteursRisque,
   libellePatient,
   lirePatient,
@@ -62,6 +63,7 @@ export async function enregistrerPatient(
   const utilisateur = await exigerUtilisateur(langue);
   const sexe = String(formData.get("sexe") ?? "");
   const naissance = String(formData.get("naissance") ?? "");
+  const languePatient = String(formData.get("languePatient") ?? "");
   const identite: Identite = {
     nom: texte(formData, "nom", 100),
     prenom: texte(formData, "prenom", 100),
@@ -73,6 +75,7 @@ export async function enregistrerPatient(
     adresse: texte(formData, "adresse", 300),
     couverture: texte(formData, "couverture", 100),
     medecinTraitant: texte(formData, "medecinTraitant", 100),
+    langue: estLanguePatient(languePatient) ? languePatient : "",
   };
   if (!identite.nom) return echecPatient("Le nom du patient est obligatoire.", formData);
   if (naissance && (!estJour(naissance) || naissance < "1900-01-01" || naissance > jourLocal(new Date()))) {
