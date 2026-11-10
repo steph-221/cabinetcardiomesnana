@@ -12,7 +12,7 @@ import { compterNouveautes, lirePublication, listerSites } from "../../../dossie
 import { compterAlertesPrescrits } from "../../../dossier/veille-medicaments";
 import { Categories } from "./categories";
 import { GrilleThemes } from "./themes";
-import { BoutonsSource, ImportSource, type Preremplissage } from "./import";
+import { BoutonsSource, ImportParLot, ImportSource, type Preremplissage } from "./import";
 
 export const metadata: Metadata = {
   title: "Bibliothèque de références",
@@ -142,6 +142,12 @@ async function Contenu({
           </p>
         )}
         <ImportSource key={initial?.publication ?? 0} langue={langue} initial={initial} />
+        <details className="mt-6 border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-sm font-medium text-slate-700">Ajouter plusieurs PDF à la fois</summary>
+          <div className="mt-4">
+            <ImportParLot langue={langue} />
+          </div>
+        </details>
       </section>
       <section className="mt-8">
         <h2 className="font-semibold text-slate-900">

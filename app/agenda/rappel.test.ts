@@ -54,3 +54,14 @@ describe("relance de suivi", () => {
     expect(sujetRelance("INR")).toBe("Votre suivi au cabinet de cardiologie : INR");
   });
 });
+
+describe("créneau libéré pour la liste d'attente", () => {
+  it("propose au plus trois créneaux et le moyen de réserver", async () => {
+    const { messageCreneauLibere } = await import("./rappel");
+    const m = messageCreneauLibere({ prenom: "Omar", nom: "Bennani" }, ["jeudi 12 novembre à 10:00", "jeudi 12 novembre à 11:00", "vendredi 13 novembre à 09:30", "samedi 14 novembre à 09:30"]);
+    expect(m.texte).toContain("Bonjour Omar BENNANI,");
+    expect(m.texte.match(/^- /gm)).toHaveLength(3);
+    expect(m.texte).toContain("rendez-vous");
+    expect(messageCreneauLibere({ nom: "Idrissi" }, []).texte).toContain("peut-être disponible");
+  });
+});

@@ -27,6 +27,7 @@ export const espaces: Espace[] = [
       { cle: "a-valider", libelle: "À valider", chemin: "/a-valider", acces: "tous" },
       { cle: "messages", libelle: "Messages", chemin: "/messages", acces: "tous" },
       { cle: "rappels", libelle: "Rappels", chemin: "/rappels", acces: "tous" },
+      { cle: "liste-attente", libelle: "Liste d'attente", chemin: "/liste-attente", acces: "tous" },
       { cle: "suivis", libelle: "Suivis", chemin: "/suivis", acces: "tous" },
       { cle: "resultats", libelle: "Résultats", chemin: "/resultats", acces: "tous" },
     ],

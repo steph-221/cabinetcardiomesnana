@@ -42,3 +42,22 @@ export function texteRelance(s: RelanceSuivi) {
 }
 
 export const sujetRelance = (quoi: string) => `Votre suivi au cabinet de cardiologie : ${quoi}`;
+
+// Message proposé à un patient en attente quand un créneau se libère (liste d'attente). Les créneaux sont déjà mis en
+// forme (« jeudi 12 novembre à 10:00 »).
+export function messageCreneauLibere(p: { prenom?: string; nom: string }, creneaux: string[]) {
+  const liste = creneaux.slice(0, 3).map((c) => `- ${c}`);
+  const texte = [
+    `Bonjour ${nomComplet(p.prenom, p.nom.toUpperCase())},`,
+    "",
+    creneaux.length
+      ? `Un créneau vient de se libérer au cabinet de cardiologie du ${cabinet.medecin} :`
+      : `Un créneau est peut-être disponible au cabinet de cardiologie du ${cabinet.medecin}.`,
+    ...liste,
+    "",
+    `Il est attribué au premier qui répond : appelez le ${cabinet.telephones.fixe.numero} ou le ${cabinet.telephones.mobile.numero}, ou réservez en ligne : ${cabinet.site}/fr/rendez-vous`,
+    `Cordialement,`,
+    `Le cabinet du ${cabinet.medecin}`,
+  ].join("\n");
+  return { sujet: "Un créneau s'est libéré au cabinet de cardiologie", texte };
+}

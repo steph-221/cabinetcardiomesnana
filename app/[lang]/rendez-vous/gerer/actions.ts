@@ -4,6 +4,7 @@ import { lireRendezvous, marquerRendezvous, supprimerRendezvous } from "../../..
 import { signatureValide } from "../../../agenda/lien-patient";
 import { baseConfiguree } from "../../../dossier/base";
 import { journaliser } from "../../../dossier/journal";
+import { noterCreneauLibere } from "../../../dossier/liste-attente";
 
 export type EtatLien = { statut: "confirme" | "annule" | "erreur"; message: string } | null;
 
@@ -21,6 +22,8 @@ export async function repondre(_: EtatLien, formData: FormData): Promise<EtatLie
     if (new Date(rdv.debut).getTime() < Date.now()) return { statut: "erreur", message: "Ce rendez-vous est déjà passé." };
     if (choix === "annuler") {
       await supprimerRendezvous(id);
+      // Le créneau libéré est proposé aux patients de la liste d'attente (sans bloquer l'annulation en cas d'échec)
+      if (baseConfiguree()) await noterCreneauLibere({ debut: new Date(rdv.debut), fin: new Date(rdv.fin), medecin: rdv.medecin ?? "", origine: "annulé par le patient" }).catch(console.error);
       if (baseConfiguree()) await journaliser("patient", "rendez-vous annulé par le patient", rdv.patientId ?? null, rdv.titre).catch(console.error);
       return { statut: "annule", message: "Votre rendez-vous est annulé. Le créneau est libéré." };
     }

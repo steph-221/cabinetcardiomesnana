@@ -24,6 +24,22 @@ async function lirePdf(fichier: File): Promise<Page[]> {
   return text.map((texte, i) => ({ page: i + 1, texte }));
 }
 
+// Envoie les pages au serveur par lots (au plus 25 pages ou environ 300 000 caractères) ; renvoie le nombre de passages
+async function envoyerEnLots(langue: string, id: number, pages: Page[], surProgres: (fait: number, total: number) => void) {
+  let passages = 0;
+  for (let i = 0; i < pages.length; ) {
+    const lot: Page[] = [];
+    let taille = 0;
+    while (i < pages.length && lot.length < PAGES_PAR_LOT && (taille === 0 || taille + pages[i].texte.length < CARACTERES_PAR_LOT)) {
+      taille += pages[i].texte.length;
+      lot.push(pages[i++]);
+    }
+    surProgres(i, pages.length);
+    passages += await envoyerPages(langue, id, lot);
+  }
+  return passages;
+}
+
 // Valeurs pré-remplies quand la source vient d'une publication d'un site suivi
 export type Preremplissage = {
   publication: number;
@@ -128,21 +144,9 @@ export function ImportSource({ langue, initial }: { langue: string; initial?: Pr
       });
       if ("erreur" in debut) throw new Error(debut.erreur);
 
-      let passages = 0;
-      for (let i = 0; i < pages.length; ) {
-        const lot: Page[] = [];
-        let taille = 0;
-        while (
-          i < pages.length &&
-          lot.length < PAGES_PAR_LOT &&
-          (taille === 0 || taille + pages[i].texte.length < CARACTERES_PAR_LOT)
-        ) {
-          taille += pages[i].texte.length;
-          lot.push(pages[i++]);
-        }
-        setEtat({ progres: `Indexation : page ${i} sur ${pages.length}…` });
-        passages += await envoyerPages(langue, debut.id, lot);
-      }
+      const passages = await envoyerEnLots(langue, debut.id, pages, (fait, total) =>
+        setEtat({ progres: `Indexation : page ${fait} sur ${total}…` }),
+      );
       const { ok, remplacables: anciennes } = await terminerImport(langue, debut.id, pages.length, titre);
       if (!ok) throw new Error("Aucun passage n'a pu être indexé.");
       setRemplacables(anciennes);
@@ -372,6 +376,147 @@ export function BoutonsSource({
           Retirer
         </Envoyer>
       </form>
+    </div>
+  );
+}
+
+type Resultat = { nom: string; etat: "ajoute" | "doublon" | "manuel" | "erreur"; detail: string };
+
+// Plusieurs PDF à la fois : chacun est reconnu par son DOI (publication suivie ou métadonnées publiques) et ajouté sans
+// formulaire. Ce qui n'est pas reconnu (pas de DOI, document scanné, informations introuvables) est laissé à l'ajout
+// à la main, jamais ajouté au hasard.
+export function ImportParLot({ langue }: { langue: string }) {
+  const [resultats, setResultats] = useState<Resultat[]>([]);
+  const [progres, setProgres] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const [remplacables, setRemplacables] = useState<{ id: number; titre: string; annee: number | null }[]>([]);
+
+  async function lancer(fichiers: File[]) {
+    setOccupe(true);
+    setResultats([]);
+    setRemplacables([]);
+    const note = (r: Resultat) => setResultats((liste) => [...liste, r]);
+    for (const [n, fichier] of fichiers.entries()) {
+      const etiquette = `${n + 1}/${fichiers.length} — ${fichier.name}`;
+      try {
+        setProgres(`${etiquette} : lecture…`);
+        const pages = await lirePdf(fichier).catch(() => null);
+        if (!pages) {
+          note({ nom: fichier.name, etat: "erreur", detail: "fichier illisible (est-ce un PDF ?)" });
+          continue;
+        }
+        if (pages.reduce((total, p) => total + p.texte.trim().length, 0) < 200) {
+          note({ nom: fichier.name, etat: "manuel", detail: "presque pas de texte (document scanné ?) : à ajouter à la main" });
+          continue;
+        }
+        const doi = doiDePdf(`${pages[0]?.texte ?? ""}\n${pages[1]?.texte ?? ""}`);
+        if (!doi) {
+          note({ nom: fichier.name, etat: "manuel", detail: "aucun DOI lu sur la première page : à ajouter à la main" });
+          continue;
+        }
+        const r = await identifierDocument(langue, doi);
+        if (!r.trouve || !r.titre) {
+          note({ nom: fichier.name, etat: "manuel", detail: `DOI ${doi} lu, mais titre introuvable : à ajouter à la main` });
+          continue;
+        }
+        if (r.existante) {
+          note({ nom: fichier.name, etat: "doublon", detail: `déjà dans la bibliothèque (« ${r.existante.titre} »)` });
+          continue;
+        }
+        const debut = await commencerImport(langue, {
+          titre: r.titre,
+          organisme: r.organisme,
+          annee: r.annee ? String(r.annee) : "",
+          type: r.type,
+          langue: r.langue,
+          url: r.url,
+          publication: r.publication,
+          doi: r.doi,
+        });
+        if ("erreur" in debut) {
+          note({ nom: fichier.name, etat: "erreur", detail: debut.erreur });
+          continue;
+        }
+        const passages = await envoyerEnLots(langue, debut.id, pages, (fait, total) => setProgres(`${etiquette} : indexation, page ${fait} sur ${total}…`));
+        const fin = await terminerImport(langue, debut.id, pages.length, r.titre);
+        if (!fin.ok) {
+          note({ nom: fichier.name, etat: "erreur", detail: "aucun passage n'a pu être indexé" });
+          continue;
+        }
+        setRemplacables((liste) => [...liste, ...fin.remplacables.filter((a) => !liste.some((x) => x.id === a.id))]);
+        note({ nom: fichier.name, etat: "ajoute", detail: `« ${r.titre} » : ${pages.length} page(s), ${passages} passages` });
+      } catch {
+        note({ nom: fichier.name, etat: "erreur", detail: "l'import a échoué, réessayez ce fichier seul" });
+      }
+    }
+    setProgres("");
+    setOccupe(false);
+  }
+
+  const couleur: Record<Resultat["etat"], string> = {
+    ajoute: "bg-emerald-50 text-emerald-900",
+    doublon: "bg-slate-100 text-slate-700",
+    manuel: "bg-amber-50 text-amber-900",
+    erreur: "bg-red-50 text-red-800",
+  };
+  const libelle: Record<Resultat["etat"], string> = { ajoute: "Ajouté", doublon: "Déjà là", manuel: "À faire à la main", erreur: "Échec" };
+
+  return (
+    <div className="space-y-4 text-sm">
+      <label className="block font-medium text-slate-700">
+        Plusieurs fichiers PDF
+        <input
+          type="file"
+          accept="application/pdf"
+          multiple
+          disabled={occupe}
+          className={champ}
+          onChange={(e) => {
+            const fichiers = [...(e.target.files ?? [])];
+            if (fichiers.length) void lancer(fichiers);
+            e.target.value = "";
+          }}
+        />
+        <span className="mt-1 block text-xs font-normal text-slate-500">
+          Le DOI de chaque document est lu sur sa première page : titre, année, organisme et lien se remplissent seuls. Les
+          fichiers sont lus sur cet ordinateur ; seul leur texte est envoyé.
+        </span>
+      </label>
+      {progres && <p role="status" className="text-slate-600">{progres}</p>}
+      {resultats.length > 0 && (
+        <ul className="space-y-1">
+          {resultats.map((r, i) => (
+            <li key={i} className={`rounded-lg p-2 ${couleur[r.etat]}`}>
+              <span className="font-medium">{libelle[r.etat]}</span> — {r.nom} : {r.detail}
+            </li>
+          ))}
+        </ul>
+      )}
+      {remplacables.length > 0 && (
+        <div role="status" className="rounded-lg bg-amber-50 p-3 text-amber-900">
+          <p className="font-medium">Éditions plus anciennes du même sujet, encore en vigueur :</p>
+          <ul className="mt-2 space-y-1">
+            {remplacables.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {a.titre}
+                  {a.annee ? ` (${a.annee})` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await basculerStatut(langue, a.id, "remplacee");
+                    setRemplacables((l) => l.filter((x) => x.id !== a.id));
+                  }}
+                  className="rounded-md px-2 py-1 text-xs font-medium underline hover:bg-amber-100"
+                >
+                  Marquer remplacée
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
