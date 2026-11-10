@@ -38,7 +38,10 @@ export function Navigation({
   const lien = (p: Page) => `${base}${secretaire && p.cheminSecretaire ? p.cheminSecretaire : p.chemin}`;
   const courant = espaces.find((e) => e.cle === actif?.espace.cle);
   const sous = useRef<HTMLAnchorElement>(null);
-  useEffect(() => sous.current?.scrollIntoView({ block: "nearest", inline: "nearest" }), [chemin]);
+  useEffect(() => {
+    // Accolades : un effet ne doit rien retourner (scrollIntoView renvoie une promesse dans les Chrome récents)
+    sous.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [chemin]);
 
   const classe = (actifOui: boolean) =>
     `group inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${

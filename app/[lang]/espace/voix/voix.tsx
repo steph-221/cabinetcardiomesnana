@@ -39,7 +39,9 @@ export function Voix({
   const [position, setPosition] = useState<{ haut: number; gauche: number } | null>(null);
   const [note, setNote] = useState(false);
 
-  useEffect(() => reglerLexique(lexique), [lexique]);
+  useEffect(() => {
+    reglerLexique(lexique);
+  }, [lexique]);
   // Changer de page arrête la dictée en cours
   useEffect(() => arreterDictee, [chemin]);
 
