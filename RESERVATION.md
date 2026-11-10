@@ -149,6 +149,35 @@ Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
   téléphone). Modèle conseillé : « Bonjour {{1}}, rappel de votre rendez-vous au cabinet : {{2}}. Pour confirmer ou annuler :
   {{3}} ». Sans cette variable, le lien WhatsApp est simplement préparé.
 
+## 9. Messages WhatsApp des patients et assistant
+
+Les messages écrits au numéro WhatsApp Business du cabinet arrivent dans **Aujourd'hui → Messages** (pastille rouge pour
+ceux à traiter, rappel dans « À valider »). Un patient retrouvé par son téléphone a un lien vers son dossier.
+
+1. Dans Meta (WhatsApp Business → configuration du webhook), déclarer l'adresse `https://www.cabinetcardiomesnana.com/api/whatsapp`
+   et le champ `messages`.
+2. Variables sur Vercel (puis redéployer) :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `WHATSAPP_VERIFY_TOKEN` | texte secret de 16 caractères au moins, le même que dans Meta (vérification de l'adresse) |
+   | `WHATSAPP_APP_SECRET` | « secret de l'application » Meta : chaque message reçu est vérifié par sa signature, sinon refusé |
+   | `WHATSAPP_TOKEN`, `WHATSAPP_NUMERO_ID` | déjà utilisés pour l'envoi automatique (section 7) |
+   | `WHATSAPP_ASSISTANT` | `1` pour activer les réponses automatiques ; sans elle, les messages sont seulement rangés |
+
+**Ce que l'assistant fait, et seulement cela** (règles fixes dans `app/agenda/assistant-whatsapp.ts`, sans IA) : donner les
+horaires, l'adresse et le moyen de prendre rendez-vous, saluer, et pour tout le reste accuser réception (une seule fois par
+conversation et par demi-journée) en laissant le message au secrétariat. Il répond dans la langue du message (français ou
+arabe). **Il ne donne jamais d'avis médical.**
+
+**Urgences** : un message qui évoque une douleur thoracique, un essoufflement brutal, un malaise, etc. reçoit le rappel d'appeler
+le 141 ou le 15, est marqué **Urgence possible** en rouge en tête de la boîte, et inscrit au journal. Le site **n'envoie pas de
+notification** au médecin : quelqu'un doit consulter la boîte (la pastille rouge est visible sur toutes les pages). Les mots
+détectés sont une liste de départ : à compléter selon ce que écrivent vos patients, sans jamais s'y fier seul.
+
+Données de santé : ces messages peuvent contenir des informations médicales ; ils transitent par Meta et sont gardés dans la
+base du cabinet. À inclure dans la demande d'autorisation CNDP (voir DOSSIER.md) avant d'activer l'assistant.
+
 ## Données personnelles
 
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les

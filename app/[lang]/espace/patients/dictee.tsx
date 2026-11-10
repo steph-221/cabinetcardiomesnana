@@ -6,6 +6,7 @@ import { corrigerLocalement, type Correction, type Rubrique } from "../../../dos
 import { ajouterAuLexique } from "../lexique/actions";
 
 const DUREE_MAX = 5 * 60; // secondes
+const DUREE_MAX_CONSULTATION = 60 * 60;
 
 const libelles: Record<Rubrique, string> = {
   motif: "Motif",
@@ -46,7 +47,7 @@ type Etape =
   | { nom: "erreur"; message: string };
 
 // Qui parle : le médecin (dicte son rapport) ou le patient (sa parole est rapportée en français, relue ensuite)
-type Locuteur = "medecin" | "fr" | "ar";
+type Locuteur = "medecin" | "fr" | "ar" | "consultation";
 
 // Dictée de toute la consultation : texte corrigé gratuitement, amélioré par Claude si on le demande, relu puis inséré
 // dans le formulaire (rien n'est enregistré avant « Enregistrer la consultation »)
@@ -56,8 +57,11 @@ export function DicteeConsultation({
   lexique,
   claude,
   languePatient = "",
+  patientId,
   inserer,
 }: {
+  // Dossier de la consultation : son nom est masqué avant l'envoi de la consultation écoutée
+  patientId?: number;
   // Langue parlée par le patient (fiche) : proposée d'office pour la parole du patient
   languePatient?: "" | "fr" | "ar";
   langue: string;
@@ -75,6 +79,8 @@ export function DicteeConsultation({
   const debut = useRef(0);
   const appris = useRef([...lexique]);
   const [locuteur, setLocuteur] = useState<Locuteur>("medecin");
+  // Accord du patient pour l'écoute de toute la consultation (obligatoire, inscrit au journal)
+  const [accord, setAccord] = useState(false);
 
   useEffect(
     () => () => {
@@ -106,6 +112,7 @@ export function DicteeConsultation({
 
     const r = new Classe();
     r.lang = locuteur === "ar" ? "ar-MA" : "fr-FR";
+    // La consultation entière dure plus longtemps qu'une dictée
     r.continuous = true;
     r.interimResults = true;
     r.onresult = (e) => {
@@ -134,7 +141,7 @@ export function DicteeConsultation({
     };
     // Le navigateur s'arrête après un silence : on relance tant que le médecin n'a pas terminé
     r.onend = () => {
-      if (actif.current && Date.now() - debut.current < DUREE_MAX * 1000) {
+      if (actif.current && Date.now() - debut.current < dureeMax() * 1000) {
         r.start();
         return;
       }
@@ -145,10 +152,12 @@ export function DicteeConsultation({
     r.start();
     afficher();
     minuteur.current = setInterval(() => {
-      if (Date.now() - debut.current >= DUREE_MAX * 1000) arreter();
+      if (Date.now() - debut.current >= dureeMax() * 1000) arreter();
       else afficher();
     }, 500);
   }
+
+  const dureeMax = () => (locuteur === "consultation" ? DUREE_MAX_CONSULTATION : DUREE_MAX);
 
   function arreter() {
     actif.current = false;
@@ -162,18 +171,21 @@ export function DicteeConsultation({
       setEtape({ nom: "erreur", message: "Aucune parole reconnue. Parlez plus près du micro et recommencez." });
       return;
     }
-    if (locuteur !== "medecin") return void rapporterPatient(brut);
+    if (locuteur !== "medecin") return void rapporterParole(brut);
     setEtape({ nom: "relecture", brut, correction: corrigerLocalement(brut, appris.current), parClaude: false });
   }
 
   // Parole du patient : Claude la rapporte en français dans les rubriques ; le médecin relit avant insertion
-  async function rapporterPatient(brut: string, superieur = false) {
+  async function rapporterParole(brut: string, superieur = false) {
     setEtape({ nom: "traduction" });
     try {
-      const reponse = await fetch("/api/dictee/patient", {
+      const entiere = locuteur === "consultation";
+      const reponse = await fetch(entiere ? "/api/dictee/consultation" : "/api/dictee/patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texte: brut, langue: locuteur === "ar" ? "ar" : "fr", superieur }),
+        body: JSON.stringify(
+          entiere ? { texte: brut, patient: patientId ?? null, accord, superieur } : { texte: brut, langue: locuteur === "ar" ? "ar" : "fr", superieur },
+        ),
       });
       const corps = (await reponse.json().catch(() => ({}))) as Correction & { erreur?: string };
       if (!reponse.ok) throw new Error(corps.erreur ?? "Erreur inattendue.");
@@ -189,9 +201,14 @@ export function DicteeConsultation({
     <section className="rounded-xl border border-red-100 bg-red-50/40 p-4" aria-live="polite">
       {etape.nom === "pret" && (
         <div className="flex flex-wrap items-center gap-3">
-          <button type="button" onClick={commencer} className={`${bouton} bg-red-600 text-white hover:bg-red-700`}>
+          <button
+            type="button"
+            onClick={commencer}
+            disabled={locuteur === "consultation" && !accord}
+            className={`${bouton} bg-red-600 text-white hover:bg-red-700 disabled:opacity-50`}
+          >
             <Mic className="h-4 w-4" aria-hidden />
-            {locuteur === "medecin" ? "Dicter la consultation" : "Écouter le patient"}
+            {locuteur === "medecin" ? "Dicter la consultation" : locuteur === "consultation" ? "Écouter la consultation" : "Écouter le patient"}
           </button>
           {claude && (
             <label className="inline-flex items-center gap-2 text-xs text-slate-700">
@@ -202,6 +219,7 @@ export function DicteeConsultation({
                 className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
               >
                 <option value="medecin">Le médecin (français)</option>
+                <option value="consultation">Toute la consultation (médecin et patient)</option>
                 <option value="ar">Le patient — arabe</option>
                 <option value="fr">Le patient — français</option>
               </select>
@@ -219,8 +237,20 @@ export function DicteeConsultation({
           <span className="text-xs text-slate-600">
             {locuteur === "medecin"
               ? "Dites par exemple « motif : contrôle… à la ligne… conclusion : … ». 5 minutes au plus. Vous relirez avant l'insertion."
-              : "La parole du patient est transcrite puis rapportée en français dans « Motif » et « Autres » : vous relirez avant l'insertion."}
+              : locuteur === "consultation"
+                ? "La conversation est transcrite (une heure au plus), puis rangée par rubriques : vous relirez avant l'insertion. Le son n'est jamais conservé."
+                : "La parole du patient est transcrite puis rapportée en français dans « Motif » et « Autres » : vous relirez avant l'insertion."}
           </span>
+          {locuteur === "consultation" && (
+            <label className="flex basis-full items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+              <input type="checkbox" checked={accord} onChange={(e) => setAccord(e.target.checked)} className="mt-0.5 accent-red-600" />
+              <span>
+                Le patient a été informé que la consultation est écoutée pour rédiger sa note, et il est d&apos;accord. Le son
+                n&apos;est ni enregistré ni conservé ; seul le texte transcrit est envoyé à Claude (sans son nom). L&apos;accord est
+                inscrit au journal.
+              </span>
+            </label>
+          )}
         </div>
       )}
 

@@ -353,6 +353,21 @@ conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y é
   préparation : allergies, alertes du dossier (INR, FC, TA, DFG, FEVG), dernière consultation (motif, conclusion, conduite),
   examens depuis, résultats à relire, suivis dus et traitements en cours. La secrétaire voit les rendez-vous et les dossiers.
 
+## Consultation écoutée (médecins)
+
+Dans la dictée d'une consultation, **Qui parle ? → Toute la consultation (médecin et patient)** écoute la conversation (une heure
+au plus), puis range ce qui a été dit dans les rubriques du rapport : ce que dit le patient dans « Motif », les constats et
+décisions du médecin dans les autres rubriques. Le modèle (Sonnet, puis Opus si la note ne passe pas son contrôle) **n'ajoute
+rien** et signale ce qu'il ne peut pas attribuer (« [passage non attribué] »). Vous relisez avant toute insertion.
+
+- **Accord du patient obligatoire** : une case à cocher (« le patient a été informé et il est d'accord ») conditionne le départ ;
+  l'accord est inscrit au journal. Affichez l'information dans la salle d'attente.
+- **Le son n'est jamais enregistré ni conservé.** La reconnaissance se fait dans le navigateur (gratuite) ; seul le texte transcrit
+  part chez Claude, sans le nom du patient ni sa date de naissance.
+- **Limite honnête** : la reconnaissance du navigateur ne distingue pas les voix et gère une seule langue à la fois. Un mélange
+  français-arabe dans la même conversation est mal reconnu ; essayez avec de vraies consultations avant de vous y fier. Si la
+  qualité ne suffit pas, le moteur de reconnaissance se remplace (`app/voix/moteur.ts`) sans toucher aux écrans.
+
 ## La voix partout (médecins)
 
 - **Micro sur chaque champ de texte** : cliquer dans un champ (antécédents, notes, conclusions, remarques, question à

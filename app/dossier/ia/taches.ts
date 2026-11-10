@@ -69,6 +69,13 @@ export const taches = {
     controle: "réponse illisible ou vide",
     escalade: "opus",
   },
+  scribe: {
+    libelle: "Consultation écoutée : note à relire",
+    niveau: "sonnet",
+    effort: "medium",
+    controle: "réponse illisible, vide ou valeur hors bornes",
+    escalade: "opus",
+  },
   reprise_word: {
     libelle: "Reprise d'un ancien compte rendu Word",
     niveau: "haiku",

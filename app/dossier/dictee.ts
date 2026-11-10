@@ -66,7 +66,7 @@ function utilisable(texte: string) {
 }
 
 async function demander(
-  tache: "dictee" | "traduction_patient",
+  tache: "dictee" | "traduction_patient" | "scribe",
   consignes: string,
   contenu: string,
   superieur: boolean,
@@ -139,4 +139,31 @@ function verifier(c: Correction): Correction {
     valeurs,
     incertains: (c.incertains ?? []).filter((i) => i.entendu && i.propose && i.entendu !== i.propose).slice(0, 20),
   };
+}
+
+// Consultation écoutée en entier : le médecin et le patient parlent, la transcription du navigateur ne distingue pas les
+// voix. Le modèle range ce qui est dit dans les rubriques du rapport, sans rien ajouter, et signale ce qu'il ne peut
+// pas attribuer. Le nom du patient est masqué avant l'envoi ([PATIENT]) ; le médecin relit avant toute insertion.
+const CONSIGNES_CONSULTATION = `Tu reçois la transcription automatique d'une consultation de cardiologie au Maroc : le cardiologue et le patient parlent, en français (parfois mêlé de mots arabes), sans ponctuation, sans indication de qui parle, avec des erreurs de reconnaissance. Le nom du patient est remplacé par [PATIENT].
+
+Rédige les rubriques du rapport de consultation, en français, style de compte rendu (phrases courtes).
+
+Règles :
+1. N'ajoute JAMAIS ce qui n'a pas été dit : aucun diagnostic, examen, traitement, posologie, valeur ni conduite qui ne soit pas dit par le cardiologue. Ce que dit le patient (symptômes, histoire, traitements pris) va dans « motif », rapporté comme tel (« Dit avoir… », « Se plaint de… »).
+2. Les constats et décisions du cardiologue (examen, ECG, résultats commentés, conclusion, traitement, rendez-vous) vont dans « examen », « ecg », « autres », « conclusion » et « conduite ». Ne mets en « conclusion » ou « conduite » que ce que le cardiologue énonce clairement ; une hypothèse émise à voix haute reste une hypothèse (« À discuter : … »).
+3. Quand tu ne peux pas savoir qui a dit quoi, ou quand un passage est inaudible ou incohérent, ne devine pas : écris « [passage non attribué] » ou « [passage non compris] » et signale-le dans « incertains » (entendu = le passage tel que transcrit, propose = ta meilleure lecture).
+4. Valeurs chiffrées : recopie dans « valeurs » uniquement celles énoncées clairement avec leur unité (taSys et taDia en mmHg, fc en bpm, spo2 en %, poids en kg, taille en cm, inr, fevg en %, ldl en g/L, creatinine en mg/L, hba1c en %, ntprobnp en pg/mL). Sinon null.
+5. Écarte les échanges sans contenu médical (salutations, organisation pratique, bavardage). Corrige l'orthographe des sigles et des médicaments d'après le glossaire.
+
+Glossaire :
+${glossaire}`;
+
+export async function rapporterConsultation(transcription: string, superieur = false) {
+  return demander(
+    "scribe",
+    CONSIGNES_CONSULTATION,
+    `Transcription de la consultation :\n${transcription}`,
+    superieur,
+    "La note de consultation a été refusée",
+  );
 }
