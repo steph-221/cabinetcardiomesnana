@@ -51,8 +51,6 @@ export type ContenuMedical = {
   paquetsAnnees: number | null;
   alcoolVerres: number | null; // verres par semaine
   // Valeurs de référence : repris par les calculs à défaut d'une mesure plus récente (consultation, ETT)
-  fevgBase: number | null; // %
-  creatinineBase: number | null; // mg/L
 };
 
 
@@ -103,8 +101,6 @@ const versPatient = (l: Ligne): Patient => ({
   tabac: ((l.tabac_statut as string | undefined) ?? "") as StatutTabac,
   paquetsAnnees: l.tabac_paquets_annees === null || l.tabac_paquets_annees === undefined ? null : Number(l.tabac_paquets_annees),
   alcoolVerres: l.alcool_verres === null || l.alcool_verres === undefined ? null : Number(l.alcool_verres),
-  fevgBase: l.fevg_base === null || l.fevg_base === undefined ? null : Number(l.fevg_base),
-  creatinineBase: l.creatinine_base === null || l.creatinine_base === undefined ? null : Number(l.creatinine_base),
   driveDossier: (l.drive_dossier as string | null | undefined) ?? null,
   creeLe: l.cree_le as Date,
   creePar: l.cree_par as string,
@@ -198,16 +194,16 @@ export async function doublonsPossibles(identite: Identite, saufId?: number): Pr
 
 export async function creerPatient(identite: Identite, medical: ContenuMedical | null, par: string) {
   const sql = await base();
-  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null, poids: null, taille: null, tabac: "" as StatutTabac, paquetsAnnees: null, alcoolVerres: null, fevgBase: null, creatinineBase: null };
+  const m = medical ?? { facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null, poids: null, taille: null, tabac: "" as StatutTabac, paquetsAnnees: null, alcoolVerres: null };
   const [{ id }] = await sql`
     INSERT INTO patients (nom, prenom, sexe, naissance, telephone, email, cin, adresse, couverture, medecin_traitant, langue,
                           facteurs_risque, antecedents, allergies, notes, inr_min, inr_max, poids, taille, tabac_statut,
-                          tabac_paquets_annees, alcool_verres, fevg_base, creatinine_base, cree_par, modifie_par)
+                          tabac_paquets_annees, alcool_verres, cree_par, modifie_par)
     VALUES (${identite.nom}, ${identite.prenom}, ${identite.sexe}, ${identite.naissance}, ${identite.telephone},
             ${identite.email}, ${identite.cin}, ${identite.adresse}, ${identite.couverture}, ${identite.medecinTraitant},
             ${identite.langue},
             ${m.facteursRisque}, ${m.antecedents}, ${m.allergies}, ${m.notes}, ${m.inrMin}, ${m.inrMax}, ${m.poids},
-            ${m.taille}, ${m.tabac}, ${m.paquetsAnnees}, ${m.alcoolVerres}, ${m.fevgBase}, ${m.creatinineBase},
+            ${m.taille}, ${m.tabac}, ${m.paquetsAnnees}, ${m.alcoolVerres},
             ${par}, ${par})
     RETURNING id`;
   return id as number;
@@ -229,8 +225,7 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
         allergies = ${medical.allergies}, notes = ${medical.notes}, inr_min = ${medical.inrMin},
         inr_max = ${medical.inrMax}, poids = ${medical.poids}, taille = ${medical.taille},
         tabac_statut = ${medical.tabac}, tabac_paquets_annees = ${medical.paquetsAnnees},
-        alcool_verres = ${medical.alcoolVerres}, fevg_base = ${medical.fevgBase},
-        creatinine_base = ${medical.creatinineBase}
+        alcool_verres = ${medical.alcoolVerres}
       WHERE id = ${id}`;
   }
 }

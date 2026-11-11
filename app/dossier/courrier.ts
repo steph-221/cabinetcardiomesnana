@@ -13,6 +13,7 @@ export type DonneesCourrier = {
   traitements: string[];
   examen: string;
   ecg: string;
+  echo?: string;
   autres: string;
   conclusion: string;
   conduite: string;
@@ -45,6 +46,7 @@ export function texteCourrier(d: DonneesCourrier): string {
     d.constantes && `À l'examen : ${d.constantes}.${d.examen ? ` ${propre(d.examen)}` : ""}`,
     !d.constantes && d.examen && `À l'examen : ${propre(d.examen)}`,
     d.ecg && `ECG : ${propre(d.ecg)}`,
+    d.echo && `Échographie cardiaque : ${propre(d.echo)}`,
     d.autres && `Examens complémentaires : ${propre(d.autres)}`,
     d.conclusion && `En conclusion : ${propre(d.conclusion)}`,
     d.conduite && `Conduite à tenir : ${propre(d.conduite)}`,

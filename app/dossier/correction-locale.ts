@@ -5,7 +5,7 @@
 import { bornes } from "./mesures";
 import { medicaments, sigles } from "./vocabulaire";
 
-export const rubriques = ["motif", "examen", "ecg", "autres", "conclusion", "conduite"] as const;
+export const rubriques = ["motif", "examen", "ecg", "echo", "autres", "conclusion", "conduite"] as const;
 export type Rubrique = (typeof rubriques)[number];
 
 export type Correction = {
@@ -179,6 +179,7 @@ const ANNONCES: { rubrique: Rubrique; forte?: string; faible?: string }[] = [
   { rubrique: "motif", forte: "motifs? de (?:la )?consultation|motifs?" },
   { rubrique: "examen", forte: "examen clinique|examen physique", faible: "examen" },
   { rubrique: "ecg", forte: "électrocardiogramme", faible: "ECG" },
+  { rubrique: "echo", forte: "échographie cardiaque|échocardiographie|échographie|écho cardiaque|ETT", faible: "écho" },
   { rubrique: "autres", faible: "autres résultats|autres examens|autres" },
   { rubrique: "conclusion", forte: "en conclusion|conclusion|au total" },
   { rubrique: "conduite", forte: "conduite à tenir", faible: "CAT|traitement" },

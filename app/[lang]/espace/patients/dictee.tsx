@@ -12,6 +12,7 @@ const libelles: Record<Rubrique, string> = {
   motif: "Motif",
   examen: "Examen clinique",
   ecg: "ECG",
+  echo: "Échographie",
   autres: "Autres",
   conclusion: "Conclusion",
   conduite: "Conduite à tenir",

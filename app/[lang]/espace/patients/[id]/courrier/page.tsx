@@ -76,6 +76,7 @@ async function Contenu({
     traitements,
     examen: consultation.examen,
     ecg: consultation.ecg,
+    echo: consultation.echo,
     autres: consultation.autres,
     conclusion: consultation.conclusion,
     conduite: consultation.conduite,

@@ -114,6 +114,7 @@ export async function validerImport(
       motif: texte(formData, `v${i}_motif`, 2000),
       examen: texte(formData, `v${i}_examen`, 5000),
       ecg: texte(formData, `v${i}_ecg`, 2000),
+      echo: "",
       autres: texte(formData, `v${i}_autres`, 5000),
       conclusion: texte(formData, `v${i}_conclusion`, 5000),
       conduite: texte(formData, `v${i}_conduite`, 5000),
@@ -207,8 +208,6 @@ export async function validerImport(
     tabac: "" as const,
     paquetsAnnees: null,
     alcoolVerres: null,
-    fevgBase: null,
-    creatinineBase: null,
   };
   if ((medical.inrMin === null) !== (medical.inrMax === null) || (medical.inrMin ?? 0) > (medical.inrMax ?? 0)) {
     return echec("Zone cible d'INR : indiquez le minimum et le maximum.", formData);
@@ -265,8 +264,6 @@ export async function validerImport(
           tabac: existant.tabac,
           paquetsAnnees: existant.paquetsAnnees,
           alcoolVerres: existant.alcoolVerres,
-          fevgBase: existant.fevgBase,
-          creatinineBase: existant.creatinineBase,
         },
         utilisateur.identifiant,
       );

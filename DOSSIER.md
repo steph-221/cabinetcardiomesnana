@@ -105,6 +105,20 @@ La fiche du patient affiche ensuite :
 
 Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
 
+## Prescription d'analyses et certificats (médecins)
+
+- **Prescription** (bouton à côté de **Ordonnance**) : cases à cocher groupées (hématologie, lipides, rénal, hépatique,
+  hémostase, marqueurs cardiaques…), bilans habituels en un clic (HTA initial, avant statine, suivi AVK…) et case libre
+  « Autres analyses ». Génère une ordonnance PDF A5 « Prescription d'analyses biologiques ». La liste des analyses se
+  modifie dans `app/dossier/analyses-biologie.ts`.
+- **Certificat** (bouton **Certificat**) : 17 modèles (arrêt de travail, reprise, bonne santé, aptitude, ALD, concours,
+  présence, sport, EPS, enfant malade, non-contagion, voyage, grossesse, TAP, pré-opératoire, coups et blessures/ITT,
+  libre). En-tête légal et formule finale automatiques, dates de fin calculées, texte modifiable avant enregistrement,
+  impression A5 ou A4. Les modèles sont dans `app/dossier/certificats-modeles.ts`.
+- **Consultation** : rubrique **Échographie cardiaque** sous l'ECG, puis bloc **Biologie** (INR, LDL, créatinine, HbA1c,
+  hémoglobine, NT-proBNP) et grande case « Autres résultats biologiques ». Les « valeurs de base » (FEVG, créatinine)
+  ne figurent plus dans la fiche : les calculs utilisent les mesures de consultation et d'échographie.
+
 ## Ordonnances et comptes rendus en PDF (médecins)
 
 Tous les documents portent l'en-tête du cabinet (nom du médecin, « Cardiologue », adresse, téléphones) et un

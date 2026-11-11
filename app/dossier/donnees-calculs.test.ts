@@ -9,8 +9,6 @@ const patient = {
   taille: 165,
   tabac: "ancien",
   alcoolVerres: 2,
-  fevgBase: 58,
-  creatinineBase: 9,
   facteursRisque: ["HTA"],
 } as unknown as Patient;
 
@@ -42,8 +40,7 @@ describe("donneesPourCalculs", () => {
     expect(d.fevgOrigine).toBe("échographie du dossier");
     expect(d.creatinine).toBe(12);
     const base = donneesPourCalculs({ patient, age: 70, consultations: [], fevgEchos: [] });
-    expect([base.fevg, base.creatinine]).toEqual([58, 9]);
-    expect(base.fevgOrigine).toBe("FEVG de base de la fiche");
+    expect([base.fevg, base.creatinine]).toEqual([null, null]);
   });
 
   it("pendant une consultation, ses propres mesures passent en premier", () => {

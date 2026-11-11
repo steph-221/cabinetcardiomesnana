@@ -6,6 +6,8 @@ import {
   CalendarClock,
   ExternalLink,
   FilePlus2,
+  FlaskConical,
+  Stamp,
   FileText,
   MessageCircle,
   Phone,
@@ -28,6 +30,9 @@ import { lienWhatsApp, type Patient, type Traitement } from "../../../../dossier
 import { couleurStatut } from "../../comptabilite/commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerOrdonnance } from "../documents";
+import { BoutonSupprimerCertificat } from "../certificats";
+import { titreCertificat } from "../../../../dossier/certificats-modeles";
+import type { Certificat } from "../../../../dossier/certificats";
 import { BoutonsTraitement, FormulaireTraitement } from "../formulaires";
 import { LigneSuivi } from "../liste-suivis";
 import { FormulaireSuivi } from "../suivis";
@@ -102,14 +107,14 @@ export function Coordonnees({ patient }: { patient: Patient }) {
   );
 }
 
-// Poids, taille, mode de vie et valeurs de base : à jour dans la fiche, ils sont repris par les calculs
+// Poids, taille et mode de vie : à jour dans la fiche, ils sont repris par les calculs
 export function ModeDeVie({ langue, patient }: { langue: string; patient: Patient }) {
   const valeur = (v: string | null) => v ?? <span className="text-slate-400">non renseigné</span>;
   const fr = (n: number | null, unite: string) => (n === null ? null : `${n.toLocaleString("fr-FR")} ${unite}`);
   return (
     <section className="rounded-2xl border border-slate-200 p-6 text-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-slate-900">Mode de vie et valeurs de base</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Mode de vie</h2>
         <Link
           href={`/${langue}/espace/patients/${patient.id}/modifier`}
           className="text-xs text-slate-600 underline hover:text-slate-900"
@@ -123,8 +128,6 @@ export function ModeDeVie({ langue, patient }: { langue: string; patient: Patien
           ["Taille", fr(patient.taille, "cm")],
           ["Tabagisme", libelleTabac(patient.tabac, patient.paquetsAnnees) || null],
           ["Alcool", patient.alcoolVerres === null ? null : `${patient.alcoolVerres} verres par semaine`],
-          ["FEVG de base", fr(patient.fevgBase, "%")],
-          ["Créatinine de base", fr(patient.creatinineBase, "mg/L")],
         ].map(([titre, v]) => (
           <div key={titre}>
             <dt className="text-slate-500">{titre}</dt>
@@ -442,25 +445,39 @@ export function Ordonnances({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
           <ScrollText className="h-5 w-5 text-red-600" aria-hidden />
-          Ordonnances
+          Ordonnances et prescriptions
         </h2>
-        <Link
-          href={`/${langue}/espace/patients/${patientId}/ordonnance`}
-          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-        >
-          <FilePlus2 className="h-4 w-4" aria-hidden />
-          Nouvelle ordonnance
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/${langue}/espace/patients/${patientId}/prescription`}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <FlaskConical className="h-4 w-4" aria-hidden />
+            Prescription d&apos;analyses
+          </Link>
+          <Link
+            href={`/${langue}/espace/patients/${patientId}/ordonnance`}
+            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            <FilePlus2 className="h-4 w-4" aria-hidden />
+            Nouvelle ordonnance
+          </Link>
+        </div>
       </div>
       {ordonnances.length === 0 ? (
-        <p className="text-slate-500">Aucune ordonnance.</p>
+        <p className="text-slate-500">Aucune ordonnance ni prescription d&apos;analyses.</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {ordonnances.map((o) => (
             <li key={o.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div>
                 <span className="font-mono text-slate-600">{date(o.date)}</span>
-                <span className="ms-3 text-slate-900">{o.lignes.map((l) => l.medicament).join(" · ")}</span>
+                {o.type === "biologie" && (
+                  <span className="ms-3 rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800">Analyses</span>
+                )}
+                <span className="ms-3 text-slate-900">
+                  {[...o.lignes.map((l) => l.medicament), ...(o.type === "biologie" && o.remarque ? [o.remarque] : [])].join(" · ")}
+                </span>
                 <span className="ms-2 text-xs text-slate-400">{o.creePar}</span>
                 <LienConsultation
                   langue={langue}
@@ -554,6 +571,72 @@ export function FacturesPatient({
                   <Printer className="h-3 w-3" aria-hidden />
                   PDF
                 </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export function Certificats({
+  langue,
+  patientId,
+  certificats,
+  consultations,
+}: {
+  langue: string;
+  patientId: number;
+  certificats: Certificat[];
+  consultations: Consultation[];
+}) {
+  return (
+    <section id="certificats" className="scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+          <Stamp className="h-5 w-5 text-red-600" aria-hidden />
+          Certificats
+        </h2>
+        <Link
+          href={`/${langue}/espace/patients/${patientId}/certificat`}
+          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+        >
+          <FilePlus2 className="h-4 w-4" aria-hidden />
+          Nouveau certificat
+        </Link>
+      </div>
+      {certificats.length === 0 ? (
+        <p className="text-slate-500">Aucun certificat.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {certificats.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div>
+                <span className="font-mono text-slate-600">{date(c.date)}</span>
+                <span className="ms-3 text-slate-900">{titreCertificat(c.modele)}</span>
+                <span className="ms-2 text-xs text-slate-400">{c.creePar}</span>
+                <LienConsultation
+                  langue={langue}
+                  patientId={patientId}
+                  consultationId={c.consultationId}
+                  consultations={consultations}
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                {(["A5", "A4"] as const).map((format) => (
+                  <a
+                    key={format}
+                    href={`/api/certificats/${c.id}/pdf?format=${format}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                  >
+                    <Printer className="h-3 w-3" aria-hidden />
+                    Imprimer {format}
+                  </a>
+                ))}
+                <BoutonSupprimerCertificat langue={langue} patientId={patientId} id={c.id} />
               </div>
             </li>
           ))}

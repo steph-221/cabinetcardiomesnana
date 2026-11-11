@@ -43,7 +43,7 @@ export async function rattacherElementsDuJour(patientId: number, date: string, c
   const sql = await base();
   const [{ n }] = await sql`SELECT count(*)::int AS n FROM consultations WHERE patient_id = ${patientId} AND date = ${date}`;
   if (n !== 1) return;
-  for (const table of Object.values(tables)) {
+  for (const table of [...Object.values(tables), "certificats"]) {
     await sql.query(
       `UPDATE ${table} SET consultation_id = $1 WHERE patient_id = $2 AND date = $3 AND consultation_id IS NULL`,
       [consultationId, patientId, date],
