@@ -18,6 +18,7 @@ export const champs2D: Champ[] = [
   { cle: "ao", libelle: "Diamètre aorte", unite: "mm", min: 10, max: 80 },
   { cle: "ogDiam", libelle: "Diamètre oreillette gauche", unite: "mm", min: 15, max: 90 },
   { cle: "ogSurf", libelle: "Surface OG", unite: "cm²", min: 5, max: 80 },
+  { cle: "ogVolume", libelle: "Volume OG indexé", unite: "mL/m²", min: 5, max: 150 },
   { cle: "odSurf", libelle: "Surface OD", unite: "cm²", min: 5, max: 80 },
   { cle: "siv", libelle: "Épaisseur septum interventriculaire", unite: "mm", min: 3, max: 40 },
   { cle: "pp", libelle: "Épaisseur paroi postérieure", unite: "mm", min: 3, max: 40 },
@@ -117,16 +118,38 @@ export function propositionsETT(d: Pick<DonneesETT, "poids" | "taille" | "valeur
     ajouter(`Hypertrophie ventriculaire gauche ${type} (masse VG ${Math.round(c.masseVGi)} g/m²).`, "ASE/EACVI 2015");
   }
 
+  // OG : le volume indexé est la méthode recommandée (ASE/EACVI 2015) ; la surface ne sert que sans volume
   const og = nombre(v, "ogSurf");
+  const ogVolume = nombre(v, "ogVolume");
   const od = nombre(v, "odSurf");
-  if (og !== null && og > 20 && od !== null && od > 18) {
-    ajouter(`Dilatation des deux oreillettes (OG ${fr(og)} cm², OD ${fr(od)} cm²).`, "ASE/EACVI 2015");
-  } else if (og !== null && og > 20) ajouter(`Dilatation de l'oreillette gauche (${fr(og)} cm²).`, "ASE/EACVI 2015");
-  else if (od !== null && od > 18) ajouter(`Dilatation de l'oreillette droite (${fr(od)} cm²).`, "ASE/EACVI 2015");
+  const ogDilatee = ogVolume !== null ? ogVolume > 34 : og !== null && og > 20;
+  const odDilatee = od !== null && od > 18;
+  const detailOg = ogVolume !== null ? `volume indexé ${fr(ogVolume)} mL/m²` : `${fr(og ?? 0)} cm²`;
+  const sourceOg = ogVolume !== null ? "ASE/EACVI 2015" : "ASE 2005 (surface, à confirmer)";
+  if (ogDilatee && odDilatee) ajouter(`Dilatation des deux oreillettes (OG ${detailOg}, OD ${fr(od ?? 0)} cm²).`, sourceOg);
+  else if (ogDilatee) ajouter(`Dilatation de l'oreillette gauche (${detailOg}).`, sourceOg);
+  else if (odDilatee) ajouter(`Dilatation de l'oreillette droite (${fr(od ?? 0)} cm²).`, "ASE 2005 (surface, à confirmer)");
 
+  // Pressions de remplissage (ASE/EACVI 2016) : élevées si plus de la moitié des critères disponibles sont remplis
+  // (E/e' moyen > 14, volume OG indexé > 34 mL/m², Vmax IT > 2,8 m/s) ; E/e' seul : un argument, à confirmer
   const eSurE = nombre(v, "eSurEPrime");
   if (eSurE !== null && eSurE > 14) {
-    ajouter(`Pressions de remplissage VG élevées (E/E' ${fr(eSurE)}).`, "ASE/EACVI 2016 fonction diastolique");
+    const vIt = nombre(v, "vmaxIt");
+    const criteres = [{ nom: `E/e' ${fr(eSurE)}`, rempli: true }];
+    if (ogVolume !== null) criteres.push({ nom: `volume OG ${fr(ogVolume)} mL/m²`, rempli: ogVolume > 34 });
+    if (vIt !== null) criteres.push({ nom: `Vmax IT ${fr(vIt, 2)} m/s`, rempli: vIt > 2.8 });
+    const remplis = criteres.filter((c) => c.rempli);
+    if (criteres.length >= 2 && remplis.length > criteres.length / 2) {
+      ajouter(
+        `Pressions de remplissage VG élevées (${remplis.length} critères sur ${criteres.length} : ${remplis.map((c) => c.nom).join(", ")}).`,
+        "ASE/EACVI 2016 fonction diastolique",
+      );
+    } else {
+      ajouter(
+        `E/e' à ${fr(eSurE)} (> 14) : argument en faveur de pressions de remplissage VG élevées, à confirmer par le volume OG indexé et la Vmax IT.`,
+        "ASE/EACVI 2016 fonction diastolique",
+      );
+    }
   }
 
   const tapse = nombre(v, "tapse");
