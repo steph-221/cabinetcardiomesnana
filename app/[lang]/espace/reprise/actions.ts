@@ -17,6 +17,7 @@ import {
   importExistant,
   lierPatient,
   lireImport,
+  nettoyerProposition,
   propositionVide,
   rouvrirImport,
   supprimerImport,
@@ -61,6 +62,53 @@ export async function analyserFichier(
   const id = await enregistrerImport({ nomFichier: nom, texte: brut, identite, proposition }, utilisateur.identifiant);
   await journaliser(utilisateur.identifiant, "compte rendu Word lu", null, nom);
   return { id, deja: false };
+}
+
+// Fichier d'extraction préparé hors de l'app (liste d'objets { nomFichier, texte, identite, proposition }) : chaque
+// élément entre dans la file « à valider » exactement comme un Word lu par Claude. Rien n'entre dans les dossiers.
+export async function importerExtractions(
+  langue: string,
+  contenu: string,
+): Promise<{ ajoutes: number; deja: number; ignores: number } | { erreur: string }> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  let liste: unknown;
+  try {
+    liste = JSON.parse(String(contenu ?? ""));
+  } catch {
+    return { erreur: "Ce fichier n'est pas un fichier d'extraction valide." };
+  }
+  if (!Array.isArray(liste) || liste.length > 200) return { erreur: "Fichier d'extraction invalide (200 éléments au plus)." };
+  let ajoutes = 0;
+  let deja = 0;
+  let ignores = 0;
+  for (const e of liste as Record<string, unknown>[]) {
+    const nom = String(e?.nomFichier ?? "").slice(0, 200);
+    const brut = String(e?.texte ?? "").slice(0, 200_000);
+    const i = (e?.identite ?? {}) as Record<string, unknown>;
+    if (!nom || brut.trim().length < 30 || typeof e?.proposition !== "object" || e.proposition === null) {
+      ignores++;
+      continue;
+    }
+    if (await importExistant(nom, brut)) {
+      deja++;
+      continue;
+    }
+    const jourOuRien = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const identite = {
+      nom: String(i.nom ?? "").slice(0, 100),
+      prenom: String(i.prenom ?? "").slice(0, 100),
+      naissance: jourOuRien(i.naissance),
+      age: typeof i.age === "number" && i.age >= 0 && i.age < 130 ? i.age : null,
+      dateDocument: jourOuRien(i.dateDocument),
+    };
+    const proposition = nettoyerProposition(e.proposition as Record<string, unknown>);
+    proposition.aVerifier = ["Extraction préparée hors de l'app : relire attentivement.", ...proposition.aVerifier];
+    await enregistrerImport({ nomFichier: nom, texte: brut, identite, proposition }, utilisateur.identifiant);
+    ajoutes++;
+  }
+  await journaliser(utilisateur.identifiant, "fichier d'extraction importé", null, `${ajoutes} ajoutés`);
+  refresh();
+  return { ajoutes, deja, ignores };
 }
 
 export async function ignorerImport(langue: string, id: number) {
