@@ -151,10 +151,14 @@ function Ligne({ libelle, children }: { libelle: string; children: React.ReactNo
 
 // --- Ordonnance ---
 
-export function pdfOrdonnance(o: { date: string; lignes: LigneOrdonnance[]; remarque: string }, patient: Patient) {
+export function pdfOrdonnance(
+  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; type?: "medicaments" | "biologie" },
+  patient: Patient,
+) {
+  const biologie = o.type === "biologie";
   const ans = age(patient.naissance, o.date);
   return renderToBuffer(
-    <Document title={`Ordonnance ${libellePatient(patient)} ${jour(o.date)}`} author={cabinet.medecin}>
+    <Document title={`${biologie ? "Prescription d'analyses" : "Ordonnance"} ${libellePatient(patient)} ${jour(o.date)}`} author={cabinet.medecin}>
       <Page size="A5" style={s.petitePage}>
         <Entete compact />
         <Text style={{ textAlign: "right" }}>
@@ -164,8 +168,15 @@ export function pdfOrdonnance(o: { date: string; lignes: LigneOrdonnance[]; rema
           <Text style={s.gras}>{propre(libellePatient(patient))}</Text>
           {ans !== null ? `  —  ${ans} ans` : ""}
         </Text>
-        <Text style={s.titre}>ORDONNANCE</Text>
-        {o.lignes.map((l, i) => (
+        <Text style={s.titre}>{biologie ? "PRESCRIPTION D'ANALYSES BIOLOGIQUES" : "ORDONNANCE"}</Text>
+        {biologie && <Text style={{ marginBottom: 6 }}>Prière de bien vouloir effectuer les analyses suivantes :</Text>}
+        {o.lignes.map((l, i) =>
+          biologie ? (
+            <Text key={i} style={{ marginBottom: 3, marginLeft: 8 }}>
+              {"-  "}
+              {propre(l.medicament)}
+            </Text>
+          ) : (
           <View key={i} style={{ marginBottom: 9 }} wrap={false}>
             <Text style={s.gras}>
               {i + 1}. {propre(l.medicament)}
@@ -176,12 +187,47 @@ export function pdfOrdonnance(o: { date: string; lignes: LigneOrdonnance[]; rema
               </Text>
             )}
           </View>
-        ))}
+          ),
+        )}
         {o.remarque && (
           <View style={{ marginTop: 6 }}>
             <Paragraphes texte={o.remarque} />
           </View>
         )}
+        <Text style={s.signature}>Signature et cachet</Text>
+        <Pied />
+      </Page>
+    </Document>,
+  );
+}
+
+// --- Certificat médical ---
+
+export function pdfCertificat(c: { date: string; modele: string; texte: string }, patient: Patient, format: "A5" | "A4" = "A5") {
+  const petit = format === "A5";
+  // Un paragraphe par bloc séparé d'une ligne vide ; les retours à la ligne simples sont conservés (liste de lésions)
+  const blocs = propre(c.texte)
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  const dernier = blocs.length - 1;
+  return renderToBuffer(
+    <Document title={`Certificat ${libellePatient(patient)} ${jour(c.date)}`} author={cabinet.medecin}>
+      <Page size={format} style={petit ? s.petitePage : s.page}>
+        <Entete compact={petit} />
+        <Text style={{ textAlign: "right" }}>
+          {propre(cabinet.adresse.ville)}, le {jourLong(c.date)}
+        </Text>
+        <Text style={s.titre}>CERTIFICAT MÉDICAL</Text>
+        {blocs.map((b, i) => (
+          <View key={i} style={{ marginBottom: 8 }} wrap={i !== dernier}>
+            {b.split("\n").map((l, j) => (
+              <Text key={j} style={{ lineHeight: 1.1 }}>
+                {l}
+              </Text>
+            ))}
+          </View>
+        ))}
         <Text style={s.signature}>Signature et cachet</Text>
         <Pied />
       </Page>
@@ -290,8 +336,13 @@ export function pdfConsultation(
             <Paragraphes texte={c.ecg} />
           </Ligne>
         )}
+        {c.echo && (
+          <Ligne libelle="Échographie cardiaque">
+            <Paragraphes texte={c.echo} />
+          </Ligne>
+        )}
         {(valeurs.length > 0 || c.autres) && (
-          <Ligne libelle="Autres">
+          <Ligne libelle="Biologie et autres résultats">
             {valeurs.length > 0 && <Text>{propre(valeurs.join("   "))}</Text>}
             {c.autres && <Paragraphes texte={c.autres} />}
           </Ligne>

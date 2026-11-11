@@ -27,7 +27,10 @@ import { trouverModele } from "../../../dossier/comptes-rendus";
 import { referencesCitees } from "../../../dossier/comptes-rendus/references";
 import { trouverSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { lireReferences } from "../../../dossier/verification-seuils";
-import { pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
+import { pdfCertificat, pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
+import { analysesValides } from "../../../dossier/analyses-biologie";
+import { trouverModeleCertificat } from "../../../dossier/certificats-modeles";
+import { creerCertificat, rangerCertificat, supprimerCertificat } from "../../../dossier/certificats";
 import { nomFichier } from "../../../dossier/reponse-pdf";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
 
@@ -86,7 +89,7 @@ export async function aidePrescription(patientId: number, consultationId: number
     taSys: consultation?.taSys ?? null,
     taDia: consultation?.taDia ?? null,
     fc: consultation?.fc ?? null,
-    fevg: consultation?.mesures.fevg ?? patient.fevgBase ?? null,
+    fevg: consultation?.mesures.fevg ?? null,
     ldl: consultation?.mesures.ldl ?? null,
     allergies: patient.allergies,
     traitements,
@@ -156,6 +159,94 @@ export async function retirerOrdonnance(langue: string, patientId: number, id: n
   const fichier = await supprimerOrdonnance(patientId, id);
   if (fichier) await mettreALaCorbeille(fichier).catch(console.error);
   await journaliser(utilisateur.identifiant, "ordonnance supprimée", patientId);
+  refresh();
+}
+
+// --- Prescription d'analyses biologiques (ordonnance de type « biologie ») ---
+
+export async function nouvellePrescriptionBiologie(
+  langue: string,
+  patientId: number,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const patient = await lirePatient(patientId);
+  if (!patient) return echec("Dossier introuvable.", formData);
+  const analyses = analysesValides(formData.getAll("analyse").map(String));
+  const autres = texte(formData, "remarque", 2000);
+  if (!analyses.length && !autres) return echec("Cochez au moins une analyse ou notez-en une dans « Autres analyses ».", formData);
+  const prescription = {
+    date: jourLocal(new Date()),
+    lignes: analyses.map((medicament) => ({ medicament, posologie: "", duree: "" })),
+    remarque: autres,
+    consultationId: lireChoixConsultation(formData.get("consultationId")),
+    type: "biologie" as const,
+  };
+  try {
+    const id = await creerOrdonnance(patientId, prescription, utilisateur.identifiant);
+    await journaliser(utilisateur.identifiant, "prescription d'analyses rédigée", patientId, `${analyses.length} analyse(s)`);
+    const copie = await archiver(
+      patient,
+      nomFichier("Prescription analyses", patient, prescription.date),
+      await pdfOrdonnance(prescription, patient),
+    );
+    if (copie) await rangerOrdonnance(id, copie.drive);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("La prescription n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
+  }
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=documents`);
+}
+
+// --- Certificat médical ---
+
+export async function nouveauCertificat(
+  langue: string,
+  patientId: number,
+  _: EtatFormulaire,
+  formData: FormData,
+): Promise<EtatFormulaire> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const patient = await lirePatient(patientId);
+  if (!patient) return echec("Dossier introuvable.", formData);
+  const modele = trouverModeleCertificat(String(formData.get("modele") ?? ""));
+  if (!modele) return echec("Choisissez un modèle de certificat.", formData);
+  // Le texte validé est celui que le médecin a relu (et éventuellement retouché) à l'écran
+  const contenu = texte(formData, "texte", 5000);
+  if (contenu.length < 20) return echec("Le texte du certificat est vide.", formData);
+  const champsSaisis = Object.fromEntries(
+    modele.champs.map((c) => [c.cle, texte(formData, `champ_${c.cle}`, 1000)]),
+  );
+  const certificat = {
+    date: jourLocal(new Date()),
+    modele: modele.cle,
+    champs: champsSaisis,
+    texte: contenu,
+    consultationId: lireChoixConsultation(formData.get("consultationId")),
+  };
+  try {
+    const id = await creerCertificat(patientId, certificat, utilisateur.identifiant);
+    await journaliser(utilisateur.identifiant, "certificat rédigé", patientId, modele.libelle);
+    const format = formData.get("format") === "A4" ? "A4" : "A5";
+    const copie = await archiver(
+      patient,
+      nomFichier("Certificat", patient, certificat.date),
+      await pdfCertificat(certificat, patient, format),
+    );
+    if (copie) await rangerCertificat(id, copie.drive);
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Le certificat n'a pas pu être enregistré. Réessayez dans un instant.", formData);
+  }
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=documents`);
+}
+
+export async function retirerCertificat(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const fichier = await supprimerCertificat(patientId, id);
+  if (fichier) await mettreALaCorbeille(fichier).catch(console.error);
+  await journaliser(utilisateur.identifiant, "certificat supprimé", patientId);
   refresh();
 }
 

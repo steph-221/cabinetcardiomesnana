@@ -209,14 +209,12 @@ export async function resumeClinique(patientId: number, complet = false) {
     if (elements.length) lignes.push("", `${titre} :`, ...elements);
   };
 
-  // Mode de vie et valeurs de référence saisies dans la fiche
+  // Mode de vie saisi dans la fiche
   const vie = [
     libelleTabac(patient.tabac, patient.paquetsAnnees),
     patient.alcoolVerres !== null ? `alcool ${nombre(patient.alcoolVerres)} verre(s)/semaine` : "",
-    patient.fevgBase !== null ? `FEVG de référence ${nombre(patient.fevgBase)} %` : "",
-    patient.creatinineBase !== null ? `créatinine de référence ${nombre(patient.creatinineBase)} mg/L` : "",
   ].filter(Boolean);
-  if (vie.length) lignes.push(`Mode de vie et références : ${vie.join(" ; ")}`);
+  if (vie.length) lignes.push(`Mode de vie : ${vie.join(" ; ")}`);
   if (patient.notes.trim()) lignes.push(`Notes du dossier : ${court(patient.notes, 600)}`);
 
   section(
@@ -251,6 +249,7 @@ export async function resumeClinique(patientId: number, complet = false) {
         ["Valeurs", constantes.join(", ")],
         ["Examen", c.examen],
         ["ECG", c.ecg],
+        ["Échographie cardiaque", c.echo],
         ["Autres", c.autres],
         ["Conclusion", c.conclusion],
         ["Conduite à tenir", c.conduite],

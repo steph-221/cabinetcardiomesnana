@@ -190,21 +190,43 @@ export function FormulaireConsultation({
         </label>
 
         <fieldset className="rounded-xl border border-slate-200 p-4">
+          <legend className="px-1 text-sm font-semibold text-slate-900">Échographie cardiaque</legend>
+          <label className={`${etiquette} block`}>
+            Compte rendu
+            <textarea
+              name="echo"
+              rows={3}
+              maxLength={3000}
+              placeholder="VG non dilaté, cinétique normale, valves fines…"
+              defaultValue={v("echo", consultation?.echo)}
+              className={champ}
+            />
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {definitions
+              .filter((m) => m.cle === "fevg")
+              .map((m) => nombre(m.cle, m.libelle, consultation?.mesures[m.cle as keyof Consultation["mesures"]], m.unite))}
+          </div>
+        </fieldset>
+
+        <fieldset className="rounded-xl border border-slate-200 p-4">
           <legend className="px-1 text-sm font-semibold text-slate-900">
-            Valeurs <span className="font-normal text-slate-500">(biologie, échographie : alimentent les courbes)</span>
+            Biologie <span className="font-normal text-slate-500">(alimente les courbes)</span>
           </legend>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {definitions.map((m) =>
-              nombre(m.cle, m.libelle, consultation?.mesures[m.cle as keyof Consultation["mesures"]], m.unite),
-            )}
+            {definitions
+              .filter((m) => m.cle !== "fevg")
+              .map((m) =>
+                nombre(m.cle, m.libelle, consultation?.mesures[m.cle as keyof Consultation["mesures"]], m.unite),
+              )}
           </div>
           <label className={`${etiquette} mt-3 block`}>
-            Autres
+            Autres résultats biologiques
             <textarea
               name="autres"
-              rows={2}
-              maxLength={2000}
-              placeholder="Autres résultats, ETT du jour…"
+              rows={5}
+              maxLength={5000}
+              placeholder="NFS, CRP, TSH, ionogramme, autres résultats…"
               defaultValue={v("autres", consultation?.autres)}
               className={champ}
             />

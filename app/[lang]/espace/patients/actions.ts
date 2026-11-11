@@ -107,25 +107,17 @@ export async function enregistrerPatient(
     }
   }
 
-  // Mode de vie et valeurs de référence : facultatifs, mais plausibles s'ils sont saisis
+  // Mode de vie : facultatif, mais plausibles s'ils sont saisis
   const tabacBrut = String(formData.get("tabac") ?? "");
   const tabac = (statutsTabac.some((s) => s.valeur === tabacBrut) ? tabacBrut : "") as StatutTabac;
   const paquetsAnnees = decimalSaisi(formData, "paquetsAnnees");
   const alcoolBrut = decimalSaisi(formData, "alcoolVerres");
-  const fevgBase = decimalSaisi(formData, "fevgBase");
-  const creatinineBase = decimalSaisi(formData, "creatinineBase");
   if (accesMedical(utilisateur)) {
     if (paquetsAnnees === undefined || (paquetsAnnees !== null && (paquetsAnnees < 0 || paquetsAnnees > 300))) {
       return echecPatient("Tabac : indiquez un nombre de paquets-années entre 0 et 300.", formData);
     }
     if (alcoolBrut === undefined || (alcoolBrut !== null && (alcoolBrut < 0 || alcoolBrut > 200))) {
       return echecPatient("Alcool : indiquez un nombre de verres par semaine entre 0 et 200.", formData);
-    }
-    if (fevgBase === undefined || (fevgBase !== null && (fevgBase < 5 || fevgBase > 90))) {
-      return echecPatient("FEVG de base : indiquez un pourcentage entre 5 et 90.", formData);
-    }
-    if (creatinineBase === undefined || (creatinineBase !== null && (creatinineBase < 1 || creatinineBase > 200))) {
-      return echecPatient("Créatinine de base : indiquez une valeur en mg/L, entre 1 et 200.", formData);
     }
   }
 
@@ -146,8 +138,6 @@ export async function enregistrerPatient(
         tabac,
         paquetsAnnees: paquetsAnnees ?? null,
         alcoolVerres: alcoolBrut === null || alcoolBrut === undefined ? null : Math.round(alcoolBrut),
-        fevgBase: fevgBase ?? null,
-        creatinineBase: creatinineBase ?? null,
       }
     : null;
 
@@ -287,6 +277,7 @@ export async function enregistrerConsultationPatient(
         motif: texte(formData, "motif", 1000),
         examen: texte(formData, "examen", 5000),
         ecg: texte(formData, "ecg", 2000),
+        echo: texte(formData, "echo", 3000),
         mesures: valeurs,
         autres: texte(formData, "autres", 2000),
         conclusion: texte(formData, "conclusion", 5000),

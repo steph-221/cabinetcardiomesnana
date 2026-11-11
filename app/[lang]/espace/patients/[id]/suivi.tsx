@@ -244,6 +244,7 @@ export function ListeConsultations({
                 </p>
                 {c.examen && <Rubrique titre="Examen" texte={c.examen} />}
                 {c.ecg && <Rubrique titre="ECG" texte={c.ecg} />}
+                {c.echo && <Rubrique titre="Échographie cardiaque" texte={c.echo} />}
                 {c.autres && <Rubrique titre="Autres" texte={c.autres} />}
                 {c.conclusion && <Rubrique titre="Conclusion" texte={c.conclusion} />}
                 {c.conduite && <Rubrique titre="Conduite" texte={c.conduite} />}

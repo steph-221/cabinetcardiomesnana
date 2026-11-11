@@ -228,7 +228,7 @@ export function FormulairePatient({
           </div>
           <div className="sm:col-span-2 rounded-xl bg-slate-50 p-4">
             <p className={etiquette}>
-              Mode de vie et valeurs de base{" "}
+              Mode de vie{" "}
               <span className="font-normal text-slate-400">(reprises dans les calculs, à vérifier à chaque fois)</span>
             </p>
             <div className="mt-2 flex flex-wrap gap-4">
@@ -263,32 +263,7 @@ export function FormulairePatient({
                   className={`${champ} w-28`}
                 />
               </label>
-              <label className={etiquette}>
-                FEVG de base
-                <span className="ms-2 font-normal text-slate-400">%</span>
-                <input
-                  name="fevgBase"
-                  inputMode="decimal"
-                  placeholder="60"
-                  defaultValue={v("fevgBase", decimalFr(patient?.fevgBase))}
-                  className={`${champ} w-28`}
-                />
-              </label>
-              <label className={etiquette}>
-                Créatinine de base
-                <span className="ms-2 font-normal text-slate-400">mg/L</span>
-                <input
-                  name="creatinineBase"
-                  inputMode="decimal"
-                  placeholder="9"
-                  defaultValue={v("creatinineBase", decimalFr(patient?.creatinineBase))}
-                  className={`${champ} w-28`}
-                />
-              </label>
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              FEVG et créatinine de base ne servent qu&apos;à défaut d&apos;une mesure plus récente en consultation ou en échographie.
-            </p>
           </div>
           <label className={etiquette}>
             Antécédents

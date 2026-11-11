@@ -13,7 +13,9 @@ import {
   Pencil,
   Phone,
   Receipt,
+  FlaskConical,
   ScrollText,
+  Stamp,
   TriangleAlert,
 } from "lucide-react";
 import { estLangue } from "../../../../cabinet";
@@ -26,6 +28,7 @@ import { listerExamens } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
 import { listerFactures } from "../../../../dossier/compta";
 import { listerOrdonnances } from "../../../../dossier/ordonnances";
+import { listerCertificats } from "../../../../dossier/certificats";
 import { ongletValide } from "../../../../dossier/onglets-patient";
 import { consultationDemandee } from "../../../../dossier/choix-consultation";
 import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
@@ -38,7 +41,7 @@ import { ScoresDossier, ValeursCalculees } from "../scores-dossier";
 import { BoutonSupprimerPatient } from "../formulaires";
 import { Apercu } from "./apercu";
 import { NavOnglets } from "./onglets";
-import { Coordonnees, ContenuMedical, Examens, FacturesPatient, Ordonnances } from "./sections";
+import { Coordonnees, ContenuMedical, Examens, Certificats, FacturesPatient, Ordonnances } from "./sections";
 import { Alertes, CourbesEvolution, ListeConsultations } from "./suivi";
 
 export const metadata: Metadata = {
@@ -81,13 +84,14 @@ async function Dossier({
   // Section demandée dans l'adresse (?onglet=…) ; l'aperçu par défaut
   const demande = await searchParams;
   const onglet = ongletValide(demande.onglet, medical);
-  const [traitements, consultations, examens, drive, suivis, ordonnances, factures] = await Promise.all([
+  const [traitements, consultations, examens, drive, suivis, ordonnances, certificats, factures] = await Promise.all([
     medical ? listerTraitements(id) : [],
     medical ? listerConsultations(id) : [],
     listerExamens(id),
     onglet === "examens" ? compteDrive().catch(() => null) : null,
     listerSuivisPatient(id),
     medical ? listerOrdonnances(id) : [],
+    medical ? listerCertificats(id) : [],
     // Un souci de lecture des factures ne doit pas empêcher d'ouvrir le dossier
     listerFactures({ patientId: id, limite: 100 }).catch((erreur) => {
       console.error(erreur);
@@ -167,6 +171,18 @@ async function Dossier({
             <Link href={`${base}/ordonnance`} className={bouton}>
               <ScrollText className="h-4 w-4" aria-hidden />
               Ordonnance
+            </Link>
+          )}
+          {medical && (
+            <Link href={`${base}/prescription`} className={bouton}>
+              <FlaskConical className="h-4 w-4" aria-hidden />
+              Prescription
+            </Link>
+          )}
+          {medical && (
+            <Link href={`${base}/certificat`} className={bouton}>
+              <Stamp className="h-4 w-4" aria-hidden />
+              Certificat
             </Link>
           )}
           <Link href={`/${langue}/espace/comptabilite/factures/nouvelle?patient=${id}`} className={bouton}>
@@ -280,6 +296,9 @@ async function Dossier({
         <div className="mt-6 space-y-6">
           {medical && (
             <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} consultations={consultations} />
+          )}
+          {medical && (
+            <Certificats langue={langue} patientId={id} certificats={certificats} consultations={consultations} />
           )}
           {factures && (
             <FacturesPatient langue={langue} patientId={id} factures={factures} consultations={consultations} />

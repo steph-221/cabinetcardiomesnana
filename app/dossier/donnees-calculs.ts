@@ -42,7 +42,7 @@ export function donneesPourCalculs({
   const origine = (ici: number | null, fiche: number | null) =>
     ici !== null ? ICI : fiche !== null ? "fiche patient" : DERNIERE;
 
-  // FEVG et créatinine : mesure de la consultation, sinon la plus récente (consultation ou ETT), sinon valeur de base
+  // FEVG et créatinine : mesure de la consultation, sinon la plus récente (consultation ou ETT), sinon rien (plus de valeurs de base dans la fiche)
   const fevgIci = consultation?.mesures.fevg ?? null;
   const dernierFevg = [
     ...consultations.flatMap((c) =>
@@ -61,11 +61,10 @@ export function donneesPourCalculs({
     taille,
     tailleOrigine: origine(tailleIci, patient.taille),
     fc: consultation?.fc ?? derniere((c) => c.fc),
-    creatinine: creatinineIci ?? creatinineRecente ?? patient.creatinineBase,
-    creatinineOrigine:
-      creatinineIci !== null ? ICI : creatinineRecente !== null ? DERNIERE : "créatinine de base de la fiche",
-    fevg: fevgIci ?? dernierFevg?.valeur ?? patient.fevgBase,
-    fevgOrigine: fevgIci !== null ? ICI : dernierFevg ? dernierFevg.origine : "FEVG de base de la fiche",
+    creatinine: creatinineIci ?? creatinineRecente,
+    creatinineOrigine: creatinineIci !== null ? ICI : DERNIERE,
+    fevg: fevgIci ?? dernierFevg?.valeur ?? null,
+    fevgOrigine: fevgIci !== null ? ICI : (dernierFevg?.origine ?? DERNIERE),
     tabac: patient.tabac,
     alcoolVerres: patient.alcoolVerres,
     facteurs: patient.facteursRisque,
