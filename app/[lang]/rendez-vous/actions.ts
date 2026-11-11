@@ -2,6 +2,7 @@
 
 import { chevauche, creneauxDuJour, estJour, jourLocal, joursReservables } from "../../agenda/creneaux";
 import { adresseIp, jetonValide, tropDeDemandes } from "../../agenda/antirobot";
+import { compter } from "../../agenda/limite";
 import { verifierTurnstile } from "../../agenda/turnstile";
 import { agendaConfigure, creerRendezvous, periodesOccupees } from "../../agenda/google";
 
@@ -10,6 +11,9 @@ export async function creneauxLibres(jour: string): Promise<string[] | null> {
   if (!agendaConfigure() || !estJour(jour) || !joursReservables().includes(jour)) return [];
   const creneaux = creneauxDuJour(jour);
   if (creneaux.length === 0) return [];
+  // Chaque appel interroge Google : 30 par minute et par adresse suffisent largement à un visiteur
+  const essais = await compter(`creneaux:${await adresseIp()}`, 60);
+  if (essais !== null && essais > 30) return null;
   try {
     const occupe = await periodesOccupees(creneaux[0].debut, creneaux[creneaux.length - 1].fin);
     return creneaux

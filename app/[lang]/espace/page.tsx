@@ -9,6 +9,7 @@ import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/c
 import { paramsPrefill } from "../../agenda/identite";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
 import { listerMedecins, utilisateurConnecte } from "../../agenda/session";
+import { evaluerCompteAdmin } from "../../agenda/mot-de-passe-admin";
 import { baseConfiguree } from "../../dossier/base";
 import { correspondances, type Correspondance } from "../../dossier/rendez-vous";
 import {
@@ -112,6 +113,14 @@ async function Tableau({
       <p className="mt-1 text-sm text-slate-500">
         Connecté·e : <strong>{utilisateur.identifiant}</strong>
       </p>
+
+      {utilisateur.admin && !evaluerCompteAdmin(process.env.COMPTE_ADMIN).ok && (
+        <p role="alert" className="mt-6 rounded-lg bg-amber-50 p-4 text-sm text-amber-900">
+          <strong>Sécurité :</strong> {evaluerCompteAdmin(process.env.COMPTE_ADMIN).probleme} Sur Vercel, Settings →
+          Environment Variables → <code>COMPTE_ADMIN</code> : choisissez un mot de passe d&apos;au moins 12 caractères
+          (une phrase), puis redéployez.
+        </p>
+      )}
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Ajouter un rendez-vous</h2>

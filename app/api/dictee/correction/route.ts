@@ -2,6 +2,7 @@
 // Seul le texte dicté est transmis (ni nom ni identité du patient).
 
 import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
+import { budgetIaEpuise, MESSAGE_IA_EPUISEE } from "../../../agenda/budget-ia";
 import { claudeConfigure, corriger } from "../../../dossier/dictee";
 import { journaliser } from "../../../dossier/journal";
 import { lireLexique } from "../../../dossier/lexique";
@@ -10,6 +11,9 @@ export async function POST(request: Request) {
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) return Response.json({ erreur: "Session expirée : reconnectez-vous." }, { status: 401 });
   if (!accesMedical(utilisateur)) return Response.json({ erreur: "Réservé aux médecins." }, { status: 403 });
+  if (await budgetIaEpuise(utilisateur.identifiant)) {
+    return Response.json({ erreur: MESSAGE_IA_EPUISEE }, { status: 429 });
+  }
   if (!claudeConfigure()) {
     return Response.json({ erreur: "Claude n'est pas configuré (voir DOSSIER.md)." }, { status: 503 });
   }

@@ -3,6 +3,7 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { estJour } from "../../agenda/creneaux";
+import { compter, lire } from "../../agenda/limite";
 import { baseConfiguree } from "../../dossier/base";
 import { typesFichier, TAILLE_MAX } from "../../dossier/examens";
 import { recevoirResultat } from "../../dossier/resultats";
@@ -18,9 +19,35 @@ function secretValide(request: Request) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Essais de secret ratés tolérés par adresse et par quart d'heure
+const ECHECS_MAX = 10;
+const FENETRE_ECHECS = 15 * 60;
+// Un envoi plus vieux que ça est refusé (un envoi capturé ne peut pas être rejoué plus tard)
+const AGE_MAX_S = 300;
+
+const adresse = (request: Request) =>
+  (request.headers.get("x-forwarded-for")?.split(",")[0] ?? request.headers.get("x-real-ip") ?? "inconnue").trim();
+
 export async function POST(request: Request) {
   if (!process.env.RESULTATS_SECRET) return erreur("Réception des résultats non activée.", 503);
-  if (!secretValide(request)) return erreur("Accès refusé.", 401);
+
+  // Adresse déjà bloquée pour avoir deviné des secrets à la chaîne : on ne regarde même plus le secret
+  const cle = `resultats:echecs:${adresse(request)}`;
+  if ((await lire(cle)) >= ECHECS_MAX) return erreur("Trop d'essais. Réessayez plus tard.", 429);
+  if (!secretValide(request)) {
+    const echecs = await compter(cle, FENETRE_ECHECS);
+    return echecs !== null && echecs > ECHECS_MAX ? erreur("Trop d'essais. Réessayez plus tard.", 429) : erreur("Accès refusé.", 401);
+  }
+
+  // Horodatage (secondes) envoyé par le script du cabinet. Facultatif tant que le script n'est pas mis à jour ;
+  // obligatoire avec RESULTATS_HORODATAGE_OBLIGATOIRE=1 (voir RESULTATS.md).
+  const horodatage = request.headers.get("x-horodatage");
+  if (horodatage !== null || process.env.RESULTATS_HORODATAGE_OBLIGATOIRE === "1") {
+    const secondes = Number(horodatage);
+    if (!horodatage || !Number.isFinite(secondes) || Math.abs(Date.now() / 1000 - secondes) > AGE_MAX_S) {
+      return erreur("Envoi trop ancien ou horodatage manquant.", 400);
+    }
+  }
   if (!baseConfiguree()) return erreur("Base de données non configurée.", 503);
 
   const f = await request.formData().catch(() => null);
