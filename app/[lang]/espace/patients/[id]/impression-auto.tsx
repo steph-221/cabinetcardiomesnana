@@ -14,6 +14,7 @@ export function ImpressionAuto({ message, adresse }: { message: string; adresse:
     const adresseCourante = new URL(window.location.href);
     adresseCourante.searchParams.delete("imprimer");
     adresseCourante.searchParams.delete("format");
+    adresseCourante.searchParams.delete("entete");
     window.history.replaceState(null, "", adresseCourante);
   }, []);
 

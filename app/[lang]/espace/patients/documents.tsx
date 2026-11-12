@@ -21,7 +21,7 @@ import { lireOrdonnanceDictee } from "../../../dossier/ordonnance-dictee";
 import { verifierOrdonnance } from "../../../dossier/securite-prescription";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
-import { BoutonsEnregistrer } from "./boutons-document";
+import { BoutonsEnregistrer, ChoixImpression } from "./boutons-document";
 import { BoutonDictee } from "./bouton-dictee";
 import { libelleConsultation, type OptionConsultation } from "../../../dossier/choix-consultation";
 
@@ -450,6 +450,7 @@ export function FormulaireOrdonnance({
           <li className="text-xs text-slate-500">Aide à la vigilance : l&apos;absence d&apos;alerte ne prouve rien, vous gardez la décision.</li>
         </ul>
       )}
+      <ChoixImpression />
       <Erreur etat={etat} />
       <BoutonsEnregistrer document="seulement" />
     </form>
