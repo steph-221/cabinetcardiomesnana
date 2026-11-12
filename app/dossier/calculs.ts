@@ -110,9 +110,14 @@ export function alertes({
 
   const ta = releves.find((r) => r.taSys !== null && r.taDia !== null);
   if (ta && (ta.taSys! >= 140 || ta.taDia! >= 90)) {
+    // On dit quelle valeur dépasse : 122/94 n'est pas « au-dessus de 140 », c'est la diastolique qui est élevée
+    const sys = ta.taSys! >= 140;
+    const dia = ta.taDia! >= 90;
     liste.push({
       niveau: ta.taSys! >= 180 || ta.taDia! >= 110 ? "critique" : "attention",
-      texte: `TA ${ta.taSys}/${ta.taDia} mmHg le ${jour(ta.date)} : au-dessus de 140/90`,
+      texte: `TA ${ta.taSys}/${ta.taDia} mmHg le ${jour(ta.date)} : ${
+        sys && dia ? "systolique ≥ 140 et diastolique ≥ 90" : sys ? "systolique ≥ 140" : "diastolique ≥ 90"
+      }`,
     });
   }
 

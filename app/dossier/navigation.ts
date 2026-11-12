@@ -13,6 +13,8 @@ export type Page = {
   exact?: boolean;
   // Page ouverte par ce chemin pour la secrétaire, quand il diffère
   cheminSecretaire?: string;
+  // Page qui s'ouvre depuis ailleurs (dossier patient) sans figurer dans la barre
+  masquee?: boolean;
 };
 
 export type Espace = { cle: string; libelle: string; icone: string; pages: Page[] };
@@ -39,26 +41,20 @@ export const espaces: Espace[] = [
     pages: [
       { cle: "patients", libelle: "Patients", chemin: "/patients", acces: "tous" },
       { cle: "population", libelle: "Population", chemin: "/population", acces: "medical" },
+      // Ouvert depuis le dossier du patient ; pas d'entrée dans la barre
+      { cle: "assistant", libelle: "Assistant", chemin: "/assistant", acces: "medical", masquee: true },
     ],
   },
   { cle: "agenda", libelle: "Agenda", icone: "agenda", pages: [{ cle: "agenda", libelle: "Agenda", chemin: "", acces: "tous", exact: true }] },
-  {
-    cle: "savoir",
-    libelle: "Savoir",
-    icone: "livre",
-    pages: [
-      { cle: "assistant", libelle: "Assistant", chemin: "/assistant", acces: "medical" },
-      { cle: "bibliotheque", libelle: "Bibliothèque", chemin: "/bibliotheque", acces: "medical" },
-      { cle: "calculateurs", libelle: "Calculateurs", chemin: "/calculateurs", acces: "medical" },
-      { cle: "lexique", libelle: "Lexique", chemin: "/lexique", acces: "medical" },
-    ],
-  },
   {
     cle: "cabinet",
     libelle: "Cabinet",
     icone: "cabinet",
     pages: [
       { cle: "comptabilite", libelle: "Comptabilité", chemin: "/comptabilite", acces: "tous", cheminSecretaire: "/comptabilite/factures" },
+      { cle: "bibliotheque", libelle: "Bibliothèque", chemin: "/bibliotheque", acces: "medical" },
+      { cle: "calculateurs", libelle: "Calculateurs", chemin: "/calculateurs", acces: "medical" },
+      { cle: "lexique", libelle: "Lexique", chemin: "/lexique", acces: "medical" },
       { cle: "reprise", libelle: "Reprise Word", chemin: "/reprise", acces: "medical" },
       { cle: "modeles-ia", libelle: "Modèles IA", chemin: "/modeles-ia", acces: "admin" },
       { cle: "drive", libelle: "Drive", chemin: "/drive", acces: "admin" },

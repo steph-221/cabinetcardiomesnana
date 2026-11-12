@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { Plus, Save, Square, Trash2 } from "lucide-react";
+import { Pencil, Plus, Save, Square, Trash2 } from "lucide-react";
 import { statutsTabac } from "../../../dossier/mode-de-vie";
 import { languesPatient } from "../../../dossier/langues-patient";
 import type { Patient } from "../../../dossier/patients";
@@ -11,8 +11,10 @@ import {
   arreter,
   effacerTraitement,
   enregistrerPatient,
+  mettreAJourMesures,
   nouveauTraitement,
   supprimer,
+  type EtatMesures,
   type EtatPatient,
 } from "./actions";
 
@@ -54,7 +56,10 @@ export function FormulairePatient({
   couvertures,
   aujourdhui,
   prefill = {},
+  retourFiche = false,
 }: {
+  // Modification depuis l'onglet Fiche du dossier : après l'enregistrement, on reste sur la fiche
+  retourFiche?: boolean;
   // Informations déjà données par le patient avec son rendez-vous (création seulement) ; `rdv` : événement à rattacher
   prefill?: Partial<Record<"nom" | "prenom" | "telephone" | "naissance" | "email" | "rdv", string>>;
   langue: string;
@@ -76,6 +81,7 @@ export function FormulairePatient({
   return (
     <form action={envoyer} className="space-y-8">
       {prefill.rdv && <input type="hidden" name="rdv" value={prefill.rdv} />}
+      {retourFiche && <input type="hidden" name="retour" value="fiche" />}
       {!patient && prefill.rdv && (
         <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
           Informations reprises du rendez-vous : vérifiez-les, corrigez ou complétez, puis enregistrez. Le rendez-vous
@@ -335,6 +341,86 @@ export function FormulairePatient({
         <Save className="h-4 w-4" aria-hidden />
         {patient ? "Enregistrer les modifications" : "Créer le dossier"}
       </Envoyer>
+    </form>
+  );
+}
+
+// Poids, taille et mode de vie : se mettent à jour sur place (aperçu et fiche), sans quitter le dossier
+export function ModifierMesures({ langue, patient, libelle = "Mettre à jour" }: { langue: string; patient: Patient; libelle?: string }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [etat, envoyer] = useActionState<EtatMesures, FormData>(async (precedent, formData) => {
+    const suite = await mettreAJourMesures(langue, patient.id, precedent, formData);
+    if (suite && "ok" in suite) setOuvert(false);
+    return suite;
+  }, null);
+  const erreur = etat && "erreur" in etat ? etat : null;
+  const v = (nom: string, initial: string) => (erreur ? (erreur.valeurs[nom] ?? "") : initial);
+  if (!ouvert) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOuvert(true)}
+        className="inline-flex items-center gap-1 text-xs text-slate-600 underline hover:text-slate-900"
+      >
+        <Pencil className="h-3 w-3" aria-hidden />
+        {libelle}
+      </button>
+    );
+  }
+  return (
+    <form action={envoyer} className="basis-full space-y-3 rounded-xl border border-slate-300 bg-slate-50 p-4 text-left">
+      <div className="flex flex-wrap gap-3">
+        <label className={etiquette}>
+          Poids <span className="font-normal text-slate-400">kg</span>
+          <input name="poids" inputMode="decimal" defaultValue={v("poids", decimalFr(patient.poids))} className={`${champ} w-24`} />
+        </label>
+        <label className={etiquette}>
+          Taille <span className="font-normal text-slate-400">cm</span>
+          <input name="taille" inputMode="decimal" defaultValue={v("taille", decimalFr(patient.taille))} className={`${champ} w-24`} />
+        </label>
+        <label className={etiquette}>
+          Tabagisme
+          <select name="tabac" defaultValue={v("tabac", patient.tabac)} className={`${champ} w-44`}>
+            {statutsTabac.map((s) => (
+              <option key={s.valeur} value={s.valeur}>
+                {s.libelle}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={etiquette}>
+          Paquets-années
+          <input
+            name="paquetsAnnees"
+            inputMode="decimal"
+            defaultValue={v("paquetsAnnees", decimalFr(patient.paquetsAnnees))}
+            className={`${champ} w-28`}
+          />
+        </label>
+        <label className={etiquette}>
+          Alcool <span className="font-normal text-slate-400">verres/sem.</span>
+          <input
+            name="alcoolVerres"
+            inputMode="numeric"
+            defaultValue={v("alcoolVerres", decimalFr(patient.alcoolVerres))}
+            className={`${champ} w-28`}
+          />
+        </label>
+      </div>
+      {erreur && (
+        <p role="alert" className="text-sm text-red-800">
+          {erreur.erreur}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Envoyer className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-700">
+          <Save className="h-3 w-3" aria-hidden />
+          Enregistrer
+        </Envoyer>
+        <button type="button" onClick={() => setOuvert(false)} className="rounded-full px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-100">
+          Annuler
+        </button>
+      </div>
     </form>
   );
 }

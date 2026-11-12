@@ -230,6 +230,18 @@ export async function modifierPatient(id: number, identite: Identite, medical: C
   }
 }
 
+// Poids, taille et mode de vie seulement : mise à jour rapide depuis l'aperçu, sans repasser par tout le formulaire
+export type Mesures = Pick<ContenuMedical, "poids" | "taille" | "tabac" | "paquetsAnnees" | "alcoolVerres">;
+
+export async function modifierMesures(id: number, m: Mesures, par: string) {
+  const sql = await base();
+  await sql`
+    UPDATE patients SET poids = ${m.poids}, taille = ${m.taille}, tabac_statut = ${m.tabac},
+      tabac_paquets_annees = ${m.paquetsAnnees}, alcool_verres = ${m.alcoolVerres},
+      modifie_le = now(), modifie_par = ${par}
+    WHERE id = ${id}`;
+}
+
 // Ajoute une ligne datée aux notes du dossier (note vocale), sans toucher au reste. Faux si la place manque.
 export async function ajouterNote(id: number, ligne: string, par: string) {
   const sql = await base();

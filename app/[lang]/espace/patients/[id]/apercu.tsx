@@ -1,6 +1,7 @@
 // Aperçu du dossier : ce que le médecin veut voir en premier quand le patient est là.
 // Valeurs clés, dernière consultation, traitements en cours, facteurs de risque, suivi à prévoir.
 
+import { ModifierMesures } from "../formulaires";
 import Link from "next/link";
 import { ClipboardPlus, Pill, Printer, Stethoscope } from "lucide-react";
 import { dfg, imc, surfaceCorporelle } from "../../../../dossier/calculs";
@@ -60,12 +61,7 @@ function ValeursCles({ langue, patient, donnees, consultations }: {
     <section className="rounded-2xl border border-slate-200 p-6 text-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-slate-900">Valeurs clés</h2>
-        <Link
-          href={`/${langue}/espace/patients/${patient.id}/modifier`}
-          className="text-xs text-slate-600 underline hover:text-slate-900"
-        >
-          Mettre à jour poids, taille…
-        </Link>
+        <ModifierMesures langue={langue} patient={patient} libelle="Mettre à jour poids, taille…" />
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
         {affichees.map((v) => (
@@ -164,7 +160,7 @@ function ResteAPayer({ langue, patientId, factures }: { langue: string; patientI
   return (
     <p className="rounded-lg bg-red-50 p-4 text-sm text-red-800">
       Reste à payer : <strong>{mad(reste)}</strong>.{" "}
-      <Link href={`/${langue}/espace/patients/${patientId}?onglet=documents`} className="underline">
+      <Link href={`/${langue}/espace/patients/${patientId}?onglet=factures`} className="underline">
         Voir les factures
       </Link>
     </p>

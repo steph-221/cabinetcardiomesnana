@@ -91,8 +91,8 @@ async function Fiche({
       <style>{`
         @page { size: A4; margin: 12mm; }
         @media print {
-          header, footer, nav[aria-label="Espace cabinet"], .sans-impression { display: none !important; }
-          div:has(> nav[aria-label="Espace cabinet"]) { display: none !important; }
+          header, footer, nav[aria-label="Espaces du cabinet"], .sans-impression { display: none !important; }
+          div:has(> nav[aria-label="Espaces du cabinet"]) { display: none !important; }
           body { background: white; }
           .fiche { padding: 0 !important; max-width: none !important; }
         }

@@ -1,29 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { FlaskConical } from "lucide-react";
 import { bilans, catalogue } from "../../../dossier/analyses-biologie";
 import type { OptionConsultation } from "../../../dossier/choix-consultation";
 import { nouvellePrescriptionBiologie } from "./actions-documents";
 import { ChoixConsultation } from "./choix-consultation";
+import { BoutonsEnregistrer } from "./boutons-document";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
-
-function Envoyer({ children }: { children: React.ReactNode }) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-    >
-      <FlaskConical className="h-4 w-4" aria-hidden />
-      {children}
-    </button>
-  );
-}
 
 export function FormulairePrescriptionBiologie({
   langue,
@@ -113,7 +98,7 @@ export function FormulairePrescriptionBiologie({
           {etat.erreur}
         </p>
       )}
-      <Envoyer>Enregistrer la prescription</Envoyer>
+      <BoutonsEnregistrer document="seulement" />
     </form>
   );
 }

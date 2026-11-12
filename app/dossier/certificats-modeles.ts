@@ -340,4 +340,30 @@ export function composerCertificat(m: ModeleCertificat, valeurs: Valeurs, c: Con
   return [enTete(c), corps, piedDePage(c)].join("\n\n");
 }
 
-export const titreCertificat = (cle: string) => trouverModeleCertificat(cle)?.libelle ?? "Certificat";
+// --- Modèles personnels du médecin (enregistrés en base, voir modeles-certificats-perso.ts) ---
+
+export type ModelePerso = { id: number; libelle: string; texte: string };
+
+export const PREFIXE_PERSO = "perso:";
+export const GROUPE_PERSO = "Mes modèles";
+// Nom du modèle personnel conservé avec le certificat : l'historique garde son titre même si le modèle est supprimé
+export const CHAMP_LIBELLE_PERSO = "_libelle";
+
+// Un modèle personnel est un texte à compléter, comme le certificat « libre » : l'en-tête légal et la formule finale
+// restent ajoutés automatiquement
+export function modeleDepuisPerso(m: ModelePerso): ModeleCertificat {
+  return {
+    cle: `${PREFIXE_PERSO}${m.id}`,
+    libelle: m.libelle,
+    groupe: GROUPE_PERSO,
+    champs: [{ cle: "texte", libelle: "Texte du modèle", type: "long", defaut: m.texte }],
+    corps: (v) => v("texte"),
+  };
+}
+
+export const idModelePerso = (cle: string) => (cle.startsWith(PREFIXE_PERSO) ? Number(cle.slice(PREFIXE_PERSO.length)) || null : null);
+
+export const titreCertificat = (cle: string, champs?: Record<string, string>) =>
+  cle.startsWith(PREFIXE_PERSO)
+    ? (champs?.[CHAMP_LIBELLE_PERSO] || "Certificat personnalisé")
+    : (trouverModeleCertificat(cle)?.libelle ?? "Certificat");

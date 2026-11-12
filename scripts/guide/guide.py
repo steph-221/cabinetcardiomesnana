@@ -28,8 +28,7 @@ partie("2. S'y retrouver", f"""
 <tr><td><b>Aujourd'hui</b></td><td>Ma journée, À valider, Messages, Rappels, Liste d'attente, Suivis, Résultats</td></tr>
 <tr><td><b>Patients</b></td><td>Dossiers, nouvelle consultation, ordonnance, facture, courrier ; Population</td></tr>
 <tr><td><b>Agenda</b></td><td>Rendez-vous des 14 prochains jours, ajout, modification, fermeture de créneaux</td></tr>
-<tr><td><b>Savoir</b></td><td>Assistant à références, Bibliothèque, Calculateurs, Lexique de la dictée</td></tr>
-<tr><td><b>Cabinet</b></td><td>Comptabilité, Reprise Word ; pour l'administrateur : Modèles IA, Drive, Journal, Comptes</td></tr></table>
+<tr><td><b>Cabinet</b></td><td>Comptabilité, Bibliothèque, Calculateurs, Lexique de la dictée, Reprise Word ; pour l'administrateur : Modèles IA, Drive, Journal, Comptes</td></tr></table>
 {fig("02-ma-journee", "« Ma journée » : les rendez-vous du jour, et pour chaque patient connu ce qui a changé depuis sa dernière visite. À gauche de l'écran, les cinq espaces ; dessous, les pages d'Aujourd'hui.")}
 <h3>Les trois rôles</h3>
 {points("<b>Administrateur</b> (vous) : tout, y compris comptes, journal, Drive et réglages des modèles IA.",
@@ -123,7 +122,7 @@ partie("4. Les outils, un par un", f"""
 {fig("09-resultats", "Résultats reçus : à classer, à relire, et déjà traités.")}
 <h3>4.10 Suivis</h3>
 {fig("08-suivis", "Suivis classés en retard, dans les 7 jours et dans le mois. « Message WhatsApp » ouvre un rappel déjà rédigé.")}
-<h3>4.11 Savoir : assistant, bibliothèque, calculateurs</h3>
+<h3>4.11 Assistant (bouton du dossier), bibliothèque, calculateurs (Cabinet)</h3>
 {points("<b>Assistant</b> : posez une question (médicament, dose, seuil, conduite à tenir) ; la réponse ne vient <b>que de la bibliothèque</b>, chaque affirmation porte un numéro qui renvoie au passage cité (source, année, page). Depuis un dossier, un résumé <b>sans nom ni coordonnées</b> est joint : il s'affiche avant l'envoi. Notez chaque réponse <b>Juste</b> ou <b>À revoir</b> ; une réponse juste peut devenir une <b>fiche validée</b>.",
 "<b>Bibliothèque</b> : recommandations (ESC…), RCP, protocoles du cabinet, fiches validées, classées <b>par thème</b> (fibrillation atriale, insuffisance cardiaque, coronaires, HTA…). Ajoutez un PDF (le DOI est lu et les champs se remplissent seuls) ou plusieurs à la fois ; quand une nouvelle recommandation paraît, marquez l'ancienne <b>remplacée</b> : elle n'est plus citée.",
 "<b>Sites et revues</b> : le site suit les pages de recommandations et les flux de revues ; les nouveautés sont signalées. <b>À lire</b> épingle une publication, <b>Écarter</b> la masque.",
@@ -190,8 +189,8 @@ partie("7. Aide-mémoire", f"""
 <tr><td>Faire l'ordonnance, la facture, le courrier</td><td>Bandeau « Fin de consultation » de la consultation</td></tr>
 <tr><td>Fermer l'agenda pour un congé</td><td>Agenda → Fermer des créneaux</td></tr>
 <tr><td>Trouver les patients à rappeler, les INR hors cible</td><td>Patients → Population</td></tr>
-<tr><td>Poser une question avec sources</td><td>Savoir → Assistant</td></tr>
-<tr><td>Ajouter une recommandation</td><td>Savoir → Bibliothèque → Ajouter une source</td></tr>
+<tr><td>Poser une question avec sources</td><td>Dossier du patient → Assistant</td></tr>
+<tr><td>Ajouter une recommandation</td><td>Cabinet → Bibliothèque → Ajouter une source</td></tr>
 <tr><td>Voir qui a ouvert un dossier</td><td>Cabinet → Journal (administrateur)</td></tr>
 <tr><td>Donner ou retirer un accès</td><td>Cabinet → Comptes (administrateur)</td></tr></table>
 """)

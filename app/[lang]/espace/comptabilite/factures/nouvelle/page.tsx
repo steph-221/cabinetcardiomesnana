@@ -98,6 +98,12 @@ async function Contenu({
   }
 
   const [praticiens, actes] = await Promise.all([listerPraticiens(), listerActes()]);
+  // Facture lancée depuis un dossier : un lien ramène directement à ce dossier
+  const retourDossier = patient ? (
+    <p className="mb-4">
+      <Retour href={`/${langue}/espace/patients/${patient.id}?onglet=factures`}>Retour au dossier de {libellePatient(patient)}</Retour>
+    </p>
+  ) : null;
   const actesActifs = actes.filter((a) => !a.archive);
   const actifs = praticiens.filter((p) => p.actif);
   if (actifs.length === 0) return <p className="text-sm text-slate-500">Aucun médecin actif : voir Réglages.</p>;
@@ -113,6 +119,7 @@ async function Contenu({
 
   return (
     <>
+      {retourDossier}
       {patient && (
         <p className="mb-6 rounded-lg bg-slate-50 p-3 text-sm">
           Patient : <strong>{libellePatient(patient)}</strong> ·{" "}

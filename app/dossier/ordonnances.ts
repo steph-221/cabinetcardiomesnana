@@ -16,6 +16,8 @@ export type Ordonnance = {
   date: string; // "AAAA-MM-JJ"
   lignes: LigneOrdonnance[];
   remarque: string;
+  // Demande d'examens en texte libre (radio, coronarographie, épreuve d'effort…), imprimée sur la même feuille
+  examens: string;
   fichierDrive: string | null;
   consultationId: number | null;
   creePar: string;
@@ -28,6 +30,7 @@ const versOrdonnance = (l: Record<string, unknown>): Ordonnance => ({
   date: l.date as string,
   lignes: l.lignes as LigneOrdonnance[],
   remarque: l.remarque as string,
+  examens: (l.examens as string | null | undefined) ?? "",
   fichierDrive: (l.fichier_drive as string | null) ?? null,
   consultationId: (l.consultation_id as number | null | undefined) ?? null,
   creePar: l.cree_par as string,
@@ -48,14 +51,14 @@ export async function lireOrdonnance(id: number) {
 export async function creerOrdonnance(
   patientId: number,
   // Consultation concernée ; à défaut, celle du même jour si elle est unique
-  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; consultationId?: number | null; type?: TypeOrdonnance },
+  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; examens?: string; consultationId?: number | null; type?: TypeOrdonnance },
   par: string,
 ) {
   const sql = await base();
   const consultation = o.consultationId !== undefined ? o.consultationId : await consultationDuJour(patientId, o.date);
   const [[{ id }]] = await sql.transaction([
-    sql`INSERT INTO ordonnances (patient_id, date, lignes, remarque, type, consultation_id, cree_par)
-        VALUES (${patientId}, ${o.date}, ${JSON.stringify(o.lignes)}::jsonb, ${o.remarque}, ${o.type ?? "medicaments"},
+    sql`INSERT INTO ordonnances (patient_id, date, lignes, remarque, examens, type, consultation_id, cree_par)
+        VALUES (${patientId}, ${o.date}, ${JSON.stringify(o.lignes)}::jsonb, ${o.remarque}, ${o.examens ?? ""}, ${o.type ?? "medicaments"},
                 (SELECT id FROM consultations WHERE id = ${consultation}::int AND patient_id = ${patientId}), ${par})
         RETURNING id`,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,

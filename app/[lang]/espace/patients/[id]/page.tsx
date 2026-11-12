@@ -7,10 +7,7 @@ import { lang as langueRacine } from "next/root-params";
 import {
   Calculator,
   ClipboardPlus,
-  FilePen,
-  History,
   MessagesSquare,
-  Pencil,
   Phone,
   Receipt,
   FlaskConical,
@@ -34,14 +31,22 @@ import { consultationDemandee } from "../../../../dossier/choix-consultation";
 import { catalogueScores, listerScoresPatient } from "../../../../dossier/scores-patients";
 import { donneesPourCalculs, fevgDesExamens } from "../../../../dossier/donnees-calculs";
 import { listerSuivisPatient } from "../../../../dossier/suivis";
-import { age, libellePatient, listerTraitements, lirePatient } from "../../../../dossier/patients";
+import {
+  age,
+  couvertures,
+  facteursRisque,
+  libellePatient,
+  listerTraitements,
+  lirePatient,
+} from "../../../../dossier/patients";
 import { Retour } from "../commun";
 import { FormulaireScore } from "../scores-formulaire";
 import { ScoresDossier, ValeursCalculees } from "../scores-dossier";
-import { BoutonSupprimerPatient } from "../formulaires";
+import { BoutonSupprimerPatient, FormulairePatient } from "../formulaires";
 import { Apercu } from "./apercu";
 import { NavOnglets } from "./onglets";
-import { Coordonnees, ContenuMedical, Examens, Certificats, FacturesPatient, Ordonnances } from "./sections";
+import { ImpressionAuto } from "./impression-auto";
+import { Examens, Certificats, FacturesPatient, Ordonnances, Traitements } from "./sections";
 import { Alertes, CourbesEvolution, ListeConsultations } from "./suivi";
 
 export const metadata: Metadata = {
@@ -125,6 +130,23 @@ async function Dossier({
   const liens = { scores, examens, ordonnances, factures: factures ?? [] };
   const aPayer = (factures ?? []).some((f) => !f.annulee && f.totalCts > f.payeCts);
   const base = `/${langue}/espace/patients/${id}`;
+  // « Enregistrer et imprimer » : le document créé s'imprime sans quitter le dossier
+  const impression = (() => {
+    const brut = Number(Array.isArray(demande.imprimer) ? demande.imprimer[0] : demande.imprimer);
+    if (!medical || !Number.isInteger(brut) || brut <= 0) return null;
+    if (onglet === "certificats" && certificats.some((c) => c.id === brut)) {
+      const format = demande.format === "A4" ? "A4" : "A5";
+      return { message: "Certificat enregistré.", adresse: `/api/certificats/${brut}/pdf?format=${format}` };
+    }
+    const o = ordonnances.find((x) => x.id === brut);
+    if (o && (onglet === "ordonnances" || onglet === "prescriptions")) {
+      return {
+        message: o.type === "biologie" ? "Prescription enregistrée." : "Ordonnance enregistrée.",
+        adresse: `/api/ordonnances/${brut}/pdf`,
+      };
+    }
+    return null;
+  })();
   const bouton =
     "inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50";
 
@@ -185,28 +207,16 @@ async function Dossier({
               Certificat
             </Link>
           )}
-          <Link href={`/${langue}/espace/comptabilite/factures/nouvelle?patient=${id}`} className={bouton}>
-            <Receipt className="h-4 w-4" aria-hidden />
-            Facturer
-          </Link>
+          {!medical && (
+            <Link href={`/${langue}/espace/comptabilite/factures/nouvelle?patient=${id}`} className={bouton}>
+              <Receipt className="h-4 w-4" aria-hidden />
+              Facturer
+            </Link>
+          )}
           {medical && (
             <Link href={`/${langue}/espace/assistant?patient=${id}`} className={bouton}>
               <MessagesSquare className="h-4 w-4" aria-hidden />
               Assistant
-            </Link>
-          )}
-          <Link href={`/${langue}/espace/patients/fiche?patient=${id}`} target="_blank" className={bouton}>
-            <FilePen className="h-4 w-4" aria-hidden />
-            Fiche papier
-          </Link>
-          <Link href={`${base}/modifier`} className={bouton}>
-            <Pencil className="h-4 w-4" aria-hidden />
-            Modifier
-          </Link>
-          {utilisateur.admin && (
-            <Link href={`/${langue}/espace/journal?patient=${id}`} className={bouton}>
-              <History className="h-4 w-4" aria-hidden />
-              Journal
             </Link>
           )}
         </div>
@@ -223,11 +233,19 @@ async function Dossier({
       )}
       <Alertes alertes={signaux} />
 
+      {impression && <ImpressionAuto message={impression.message} adresse={impression.adresse} />}
+
       <NavOnglets
         base={base}
         actif={onglet}
         medical={medical}
-        nombres={{ consultations: consultations.length, examens: examens.length }}
+        nombres={{
+          consultations: consultations.length,
+          ordonnances: ordonnances.filter((o) => o.type !== "biologie").length,
+          prescriptions: ordonnances.filter((o) => o.type === "biologie").length,
+          certificats: certificats.length,
+          examens: examens.length,
+        }}
         aPayer={aPayer}
       />
 
@@ -292,38 +310,66 @@ async function Dossier({
         </div>
       )}
 
-      {onglet === "documents" && (
-        <div className="mt-6 space-y-6">
-          {medical && (
-            <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} consultations={consultations} />
-          )}
-          {medical && (
-            <Certificats langue={langue} patientId={id} certificats={certificats} consultations={consultations} />
-          )}
-          {factures && (
-            <FacturesPatient langue={langue} patientId={id} factures={factures} consultations={consultations} />
-          )}
+      {onglet === "ordonnances" && (
+        <div className="mt-6">
+          <Ordonnances langue={langue} patientId={id} ordonnances={ordonnances} consultations={consultations} />
+        </div>
+      )}
+
+      {onglet === "prescriptions" && (
+        <div className="mt-6">
+          <Ordonnances
+            langue={langue}
+            patientId={id}
+            ordonnances={ordonnances}
+            consultations={consultations}
+            genre="biologie"
+          />
+        </div>
+      )}
+
+      {onglet === "certificats" && (
+        <div className="mt-6">
+          <Certificats langue={langue} patientId={id} certificats={certificats} consultations={consultations} />
+        </div>
+      )}
+
+      {onglet === "factures" && factures && (
+        <div className="mt-6">
+          <FacturesPatient langue={langue} patientId={id} factures={factures} consultations={consultations} />
         </div>
       )}
 
       {onglet === "fiche" && (
-        <>
-          <div className="mt-6 grid gap-6 lg:grid-cols-3">
-            <Coordonnees patient={patient} />
-            {medical ? (
-              <ContenuMedical langue={langue} patient={patient} traitements={traitements} />
-            ) : (
-              <p className="rounded-2xl border border-dashed border-slate-300 p-6 text-sm text-slate-500 lg:col-span-2">
-                Le contenu médical du dossier est réservé aux médecins.
-              </p>
-            )}
-          </div>
+        <div className="mt-6 space-y-6">
+          {demande.enregistre === "1" && (
+            <p role="status" className="rounded-lg bg-green-50 p-4 text-sm font-medium text-green-900">
+              Dossier enregistré.
+            </p>
+          )}
+          <section className="rounded-2xl border border-slate-200 p-6">
+            <FormulairePatient
+              langue={langue}
+              // La secrétaire ne reçoit jamais le contenu médical, même masqué
+              patient={
+                medical
+                  ? patient
+                  : { ...patient, facteursRisque: [], antecedents: "", allergies: "", notes: "", inrMin: null, inrMax: null, poids: null, taille: null, tabac: "", paquetsAnnees: null, alcoolVerres: null }
+              }
+              medical={medical}
+              facteurs={facteursRisque}
+              couvertures={couvertures}
+              aujourdhui={jourLocal(new Date())}
+              retourFiche
+            />
+          </section>
+          {medical && <Traitements langue={langue} patient={patient} traitements={traitements} />}
           {utilisateur.admin && (
             <div className="mt-12 border-t border-slate-200 pt-6">
               <BoutonSupprimerPatient langue={langue} id={id} nom={libellePatient(patient)} />
             </div>
           )}
-        </>
+        </div>
       )}
     </>
   );

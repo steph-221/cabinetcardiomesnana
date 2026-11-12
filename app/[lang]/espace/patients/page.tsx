@@ -7,6 +7,7 @@ import { estLangue } from "../../../cabinet";
 import { jourLocal } from "../../../agenda/creneaux";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
+import { derniersDossiers, type DossierRecent } from "../../../dossier/journal";
 import { age, libellePatient, rechercherPatients, type ResumePatient } from "../../../dossier/patients";
 import { BaseNonConfiguree, ErreurLecture } from "./commun";
 
@@ -56,13 +57,16 @@ async function Liste({
   searchParams: PageProps<"/[lang]/espace/patients">["searchParams"];
 }) {
   await connection();
-  await exigerUtilisateur(langue);
+  const utilisateur = await exigerUtilisateur(langue);
   const q = String((await searchParams).q ?? "").slice(0, 100);
 
   let patients: ResumePatient[] | null = null;
+  let recents: DossierRecent[] = [];
   if (baseConfiguree()) {
     try {
       patients = await rechercherPatients(q);
+      // Sans recherche : les dossiers que ce compte a ouverts en dernier, pour reprendre où l'on s'était arrêté
+      if (!q) recents = await derniersDossiers(utilisateur.identifiant, 8).catch(() => []);
     } catch (erreur) {
       console.error(erreur);
     }
@@ -93,6 +97,25 @@ async function Liste({
           Rechercher
         </button>
       </form>
+
+      {recents.length > 0 && (
+        <section aria-label="Dossiers ouverts récemment" className="mt-6">
+          <p className="text-sm text-slate-500">Dossiers ouverts récemment</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {recents.map((d) => (
+              <li key={d.id}>
+                <Link
+                  href={`/${langue}/espace/patients/${d.id}`}
+                  className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-800 hover:bg-slate-50"
+                >
+                  {libellePatient(d)}
+                  <span className="ms-2 text-xs text-slate-400">n° {d.id}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {!baseConfiguree() ? (
         <BaseNonConfiguree />

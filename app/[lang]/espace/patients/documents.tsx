@@ -21,6 +21,8 @@ import { lireOrdonnanceDictee } from "../../../dossier/ordonnance-dictee";
 import { verifierOrdonnance } from "../../../dossier/securite-prescription";
 import { LigneReference } from "./reference-seuil";
 import { ChoixConsultation } from "./choix-consultation";
+import { BoutonsEnregistrer } from "./boutons-document";
+import { BoutonDictee } from "./bouton-dictee";
 import { libelleConsultation, type OptionConsultation } from "../../../dossier/choix-consultation";
 
 const champ =
@@ -325,6 +327,8 @@ export function FormulaireOrdonnance({
     lignes.filter((l) => l.medicament.trim()).map((l) => ({ medicament: l.medicament, dci: l.fiche?.dci })),
     allergies,
   );
+  // Demande d'examens en texte libre (radio, coronarographie…), à dicter ou à écrire
+  const [examens, setExamens] = useState("");
   const modifier = (cle: number, nom: keyof Omit<Ligne, "cle">, valeur: string) =>
     setLignes((l) => l.map((x) => (x.cle === cle ? { ...x, [nom]: valeur } : x)));
 
@@ -389,6 +393,40 @@ export function FormulaireOrdonnance({
         Remarque <span className="font-normal text-slate-400">(facultatif : régime, contrôle biologique…)</span>
         <textarea name="remarque" rows={3} maxLength={2000} defaultValue={etat?.valeurs.remarque} className={champ} />
       </label>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label htmlFor="examens-demandes" className={etiquette}>
+            Demande d&apos;examens{" "}
+            <span className="font-normal text-slate-400">(radio, coronarographie, épreuve d&apos;effort… facultatif)</span>
+          </label>
+          <BoutonDictee ajouter={(t) => setExamens((x) => `${x} ${t}`.trim())} />
+        </div>
+        <textarea
+          id="examens-demandes"
+          name="examens"
+          rows={4}
+          maxLength={2000}
+          value={examens}
+          onChange={(e) => setExamens(e.target.value)}
+          placeholder="Merci de faire une coronarographie parce que…"
+          className={champ}
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          Imprimé sur la même feuille, sous les médicaments.
+          {lignes.some((l) => l.medicament.trim()) && examens.trim() && (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={() => setLignes([{ cle: compteur.current++, medicament: "", posologie: "", duree: "" }])}
+                className="underline"
+              >
+                Feuille d&apos;examen seul : retirer les médicaments
+              </button>
+            </>
+          )}
+        </p>
+      </div>
       <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="block" />
       <AidePrescription
         patientId={patientId}
@@ -413,7 +451,7 @@ export function FormulaireOrdonnance({
         </ul>
       )}
       <Erreur etat={etat} />
-      <Envoyer>Enregistrer l&apos;ordonnance</Envoyer>
+      <BoutonsEnregistrer document="seulement" />
     </form>
   );
 }

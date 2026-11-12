@@ -46,7 +46,7 @@ const erreurs = [];
   await cap("13-nouvelle-consultation", "/fr/espace/patients/1/consultation", { pleine: true, hauteur: 1500 });
   await cap("14-consultation-fin", "/fr/espace/patients/1/consultation/3", { pleine: true, hauteur: 1400 });
   // Micro dans un champ
-  await cap("15-micro-champ", "/fr/espace/patients/1/modifier", { avant: async () => {
+  await cap("15-micro-champ", "/fr/espace/patients/1?onglet=fiche", { avant: async () => {
     const zone = p.locator('textarea[name="antecedents"]'); await zone.scrollIntoViewIfNeeded(); await zone.click(); await p.waitForTimeout(600);
   } });
   // Note vocale
