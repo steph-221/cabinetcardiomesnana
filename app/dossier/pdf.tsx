@@ -12,6 +12,7 @@ import { lignesExamen, type DonneesExamen } from "./comptes-rendus/types";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
 import type { LigneOrdonnance, TypeOrdonnance } from "./ordonnances";
+import { impressionParDefaut, margeHautePapierEntete, type OptionsImpression } from "./impression";
 import type { ElementsRapport } from "./rapport-consultation";
 import { age, libellePatient, type Patient } from "./patients";
 
@@ -79,6 +80,12 @@ const s = StyleSheet.create({
     color: "#64748b",
   },
 });
+
+// Style de page selon le format ; sans en-tête, le haut reste libre pour le papier à en-tête et le pied n'est pas imprimé
+function stylePage(o: OptionsImpression) {
+  const base = o.format === "A5" ? s.petitePage : s.page;
+  return o.entete ? base : [base, { paddingTop: margeHautePapierEntete[o.format] }];
+}
 
 // Sur une ordonnance A5, l'adresse passe sous le nom faute de place
 function Entete({ compact = false }: { compact?: boolean }) {
@@ -154,13 +161,14 @@ function Ligne({ libelle, children }: { libelle: string; children: React.ReactNo
 export function pdfOrdonnance(
   o: { date: string; lignes: LigneOrdonnance[]; remarque: string; examens?: string; type?: TypeOrdonnance },
   patient: Patient,
+  options: OptionsImpression = impressionParDefaut,
 ) {
   const biologie = o.type === "biologie";
   const ans = age(patient.naissance, o.date);
   return renderToBuffer(
     <Document title={`${biologie ? "Prescription d'analyses" : "Ordonnance"} ${libellePatient(patient)} ${jour(o.date)}`} author={cabinet.medecin}>
-      <Page size="A5" style={s.petitePage}>
-        <Entete compact />
+      <Page size={options.format} style={stylePage(options)}>
+        {options.entete && <Entete compact={options.format === "A5"} />}
         <Text style={{ textAlign: "right" }}>
           {propre(cabinet.adresse.ville)}, le {jourLong(o.date)}
         </Text>
@@ -201,7 +209,7 @@ export function pdfOrdonnance(
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
+        {options.entete && <Pied />}
       </Page>
     </Document>,
   );
@@ -209,8 +217,11 @@ export function pdfOrdonnance(
 
 // --- Certificat médical ---
 
-export function pdfCertificat(c: { date: string; modele: string; texte: string }, patient: Patient, format: "A5" | "A4" = "A5") {
-  const petit = format === "A5";
+export function pdfCertificat(
+  c: { date: string; modele: string; texte: string },
+  patient: Patient,
+  options: OptionsImpression = impressionParDefaut,
+) {
   // Un paragraphe par bloc séparé d'une ligne vide ; les retours à la ligne simples sont conservés (liste de lésions)
   const blocs = propre(c.texte)
     .split(/\n{2,}/)
@@ -219,8 +230,8 @@ export function pdfCertificat(c: { date: string; modele: string; texte: string }
   const dernier = blocs.length - 1;
   return renderToBuffer(
     <Document title={`Certificat ${libellePatient(patient)} ${jour(c.date)}`} author={cabinet.medecin}>
-      <Page size={format} style={petit ? s.petitePage : s.page}>
-        <Entete compact={petit} />
+      <Page size={options.format} style={stylePage(options)}>
+        {options.entete && <Entete compact={options.format === "A5"} />}
         <Text style={{ textAlign: "right" }}>
           {propre(cabinet.adresse.ville)}, le {jourLong(c.date)}
         </Text>
@@ -235,7 +246,7 @@ export function pdfCertificat(c: { date: string; modele: string; texte: string }
           </View>
         ))}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
+        {options.entete && <Pied />}
       </Page>
     </Document>,
   );
