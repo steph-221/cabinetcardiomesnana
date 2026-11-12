@@ -9,7 +9,7 @@ import { baseConfiguree } from "../../../dossier/base";
 import { claudeConfigure } from "../../../dossier/dictee";
 import { libellePatient, lirePatient } from "../../../dossier/patients";
 import { listerQuestions, resumeClinique, type Question } from "../../../dossier/questions";
-import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
 import { FormulaireQuestion } from "./formulaires";
 
 export const metadata: Metadata = {
@@ -81,6 +81,11 @@ async function Contenu({
           <p role="alert" className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
             L&apos;assistant a besoin d&apos;une clé Anthropic : ajoutez la variable ANTHROPIC_API_KEY dans Vercel (voir
             DOSSIER.md).
+          </p>
+        )}
+        {patient && (
+          <p className="mb-3">
+            <Retour href={`/${langue}/espace/patients/${patient.id}`}>Retour au dossier de {libellePatient(patient)}</Retour>
           </p>
         )}
         {patient && contexte && (

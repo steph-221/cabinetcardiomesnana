@@ -10,7 +10,7 @@ l'agenda.
   facteurs de risque, antécédents, allergies (affichées en rouge), notes, traitements en cours et arrêtés.
 - **Doublons** : à la création, un dossier qui a le même téléphone, ou les mêmes nom, prénom et date de naissance,
   est signalé ; on peut l'ouvrir ou créer quand même un nouveau dossier.
-- **Journal** (administrateur seulement) : qui a ouvert, créé ou modifié chaque dossier, et quand.
+- **Journal** (administrateur seulement, dans **Cabinet → Journal**) : qui a ouvert, créé ou modifié chaque dossier, et quand.
 
 ## Rendez-vous et dossiers
 
@@ -25,7 +25,7 @@ l'agenda.
     modifiable) ; à l'enregistrement, le rendez-vous est rattaché au nouveau dossier.
 - En ajoutant un rendez-vous à la main, on peut **rechercher un dossier existant** : ses coordonnées remplissent le
   formulaire et le rendez-vous lui est rattaché.
-- **Fiche papier** (agenda, liste des patients, dossier) : page A4 à imprimer, à faire remplir par le patient. Vierge,
+- **Fiche papier** (agenda, liste des patients) : page A4 à imprimer, à faire remplir par le patient. Vierge,
   préremplie avec ce que le patient a déjà indiqué, ou avec l'identité de son dossier. Le contenu médical n'est
   jamais prérempli.
 
@@ -90,7 +90,7 @@ invraisemblable (FC à 500…) est refusée.
 
 La fiche du patient affiche ensuite :
 
-- **les courbes d'évolution** de chaque valeur, avec la zone cible de l'INR (à régler dans **Modifier**, rubrique
+- **les courbes d'évolution** de chaque valeur, avec la zone cible de l'INR (à régler dans l'onglet **Fiche**, rubrique
   « Zone cible de l'INR ») ; le survol d'un point donne sa date et sa valeur, et chaque courbe a son tableau ;
 - **les calculs** : surface corporelle, IMC, DFG estimé (CKD-EPI 2021, d'après la dernière créatinine, l'âge et le
   sexe) ;
@@ -105,6 +105,27 @@ La fiche du patient affiche ensuite :
 
 Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
 
+## Un dossier où l'on agit sur place (médecins)
+
+- **Boutons du dossier** : *Nouvelle consultation*, *Ordonnance*, *Prescription*, *Certificat*, *Assistant* (la secrétaire a
+  *Facturer*). Plus de boutons « Fiche papier », « Modifier » ni « Journal » dans le dossier.
+- **Modification sur place** : l'onglet **Fiche** contient directement le formulaire du dossier (identité, antécédents,
+  allergies, zone cible de l'INR…) ; on y reste après l'enregistrement. Dans l'**Aperçu**, « Mettre à jour poids,
+  taille… » ouvre un petit formulaire (poids, taille, tabac, alcool) sans quitter la page. L'ancienne adresse `/modifier`
+  renvoie vers l'onglet Fiche.
+- **Onglets** : Aperçu · Consultations · Ordonnances · Prescriptions · Certificats · Examens · Évolution et calculs ·
+  Factures · Fiche. Chaque historique est à un clic (la secrétaire voit Aperçu, Examens, Factures, Fiche).
+- **Impression directe** : sur l'ordonnance, la prescription d'analyses et le certificat, **Enregistrer et imprimer**
+  enregistre, revient sur l'onglet du document et ouvre l'impression. **Enregistrer** seul ne l'imprime pas. Un bandeau
+  permet de relancer l'impression ou d'ouvrir le PDF.
+- **Demande d'examens en texte libre** : sur l'ordonnance, la case « Demande d'examens » (avec bouton **Dicter**) reçoit
+  par exemple « Merci de faire une coronarographie parce que… ». Elle s'imprime sur la même feuille, sous les
+  médicaments ; une feuille sans médicament est possible.
+- **Revenir à un dossier** : la ligne **Derniers dossiers** (sous la barre du haut, sur toutes les pages) garde les 5
+  derniers dossiers ouverts par le compte ; la page **Patients** les rappelle aussi. L'Assistant et les factures lancés
+  depuis un dossier ont un lien « Retour au dossier ».
+- **Alerte de tension** : le texte précise la valeur qui dépasse (« diastolique ≥ 90 », « systolique ≥ 140 »).
+
 ## Prescription d'analyses et certificats (médecins)
 
 - **Prescription** (bouton à côté de **Ordonnance**) : cases à cocher groupées (hématologie, lipides, rénal, hépatique,
@@ -113,7 +134,8 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
   modifie dans `app/dossier/analyses-biologie.ts`.
 - **Certificat** (bouton **Certificat**) : 17 modèles (arrêt de travail, reprise, bonne santé, aptitude, ALD, concours,
   présence, sport, EPS, enfant malade, non-contagion, voyage, grossesse, TAP, pré-opératoire, coups et blessures/ITT,
-  libre). En-tête légal et formule finale automatiques, dates de fin calculées, texte modifiable avant enregistrement,
+  libre) et **vos propres modèles** : « Nouveau modèle » (ou « Enregistrer ce texte comme modèle ») crée un modèle sans
+  quitter la page ; « Gérer mes modèles » permet de les modifier ou supprimer. En-tête légal et formule finale automatiques, dates de fin calculées, texte modifiable avant enregistrement,
   impression A5 ou A4. Les modèles sont dans `app/dossier/certificats-modeles.ts`.
 - **Consultation** : rubrique **Échographie cardiaque** sous l'ECG, puis bloc **Biologie** (INR, LDL, créatinine, HbA1c,
   hémoglobine, NT-proBNP) et grande case « Autres résultats biologiques ». Les « valeurs de base » (FEVG, créatinine)
@@ -359,9 +381,9 @@ conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y é
 ## Navigation, « À valider » et « Ma journée »
 
 - **Cinq espaces** en haut de l'espace cabinet, avec leurs pages juste dessous : **Aujourd'hui** (Ma journée, À valider,
-  Suivis, Résultats), **Patients**, **Agenda**, **Savoir** (Assistant, Bibliothèque, Calculateurs, Lexique) et **Cabinet**
-  (Comptabilité, Reprise Word, puis pour l'administrateur Modèles IA, Drive, Journal, Comptes). Les adresses des pages ne
-  changent pas. La secrétaire ne voit pas Savoir ni la reprise Word.
+  Suivis, Résultats), **Patients**, **Agenda**, et **Cabinet**
+  (Comptabilité, Bibliothèque, Calculateurs, Lexique, Reprise Word, puis pour l'administrateur Modèles IA, Drive, Journal, Comptes). Les adresses des pages ne
+  changent pas. L'**Assistant** s'ouvre depuis le bouton du dossier patient. La secrétaire ne voit ni la bibliothèque, ni le lexique, ni la reprise Word.
 - **À valider** réunit au même endroit ce que le site a préparé : résultats d'analyses à classer ou à relire, suivis en
   retard, anciens comptes rendus Word, médicaments prescrits modifiés, seuils proposés par l'assistant. Une pastille rouge
   indique le nombre d'éléments en attente.

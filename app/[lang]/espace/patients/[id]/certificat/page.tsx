@@ -9,6 +9,7 @@ import { exigerUtilisateur } from "../../../../../agenda/session";
 import { consultationDemandee } from "../../../../../dossier/choix-consultation";
 import { consultationsPourChoix } from "../../../../../dossier/consultations";
 import { libellePatient, lirePatient } from "../../../../../dossier/patients";
+import { listerModelesPerso } from "../../../../../dossier/modeles-certificats-perso";
 import { Retour } from "../../commun";
 import { FormulaireCertificat } from "../../certificats";
 
@@ -44,14 +45,16 @@ async function Formulaire({
   const patient = Number.isInteger(id) && id > 0 ? await lirePatient(id) : null;
   if (!patient) notFound();
   const consultations = await consultationsPourChoix(id);
+  const modelesPerso = await listerModelesPerso();
   const recherche = await searchParams;
 
   return (
     <>
-      <Retour href={`/${langue}/espace/patients/${id}`}>{libellePatient(patient)}</Retour>
+      <Retour href={`/${langue}/espace/patients/${id}?onglet=certificats`}>{libellePatient(patient)}</Retour>
       <h1 className="mt-4 text-2xl font-bold text-slate-900">Nouveau certificat</h1>
       <p className="mt-1 mb-6 text-sm text-slate-500">
         Choisissez un modèle et remplissez les champs : le texte se compose sous vos yeux et reste modifiable.
+        Vous pouvez aussi créer vos propres modèles (« Nouveau modèle »).
         L&apos;en-tête et la formule finale sont ajoutés automatiquement.
       </p>
       <FormulaireCertificat
@@ -64,6 +67,7 @@ async function Formulaire({
           ville: cabinet.adresse.ville,
         }}
         consultations={consultations}
+        modelesPerso={modelesPerso}
         consultationDefaut={consultationDemandee(recherche.consultation, consultations)}
       />
     </>

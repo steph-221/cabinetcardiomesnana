@@ -8,6 +8,8 @@ import { groupesAValider, total } from "../../dossier/a-valider";
 import { espacesVisibles } from "../../dossier/navigation";
 import { deconnexion } from "./actions";
 import { lireLexique } from "../../dossier/lexique";
+import { derniersDossiers } from "../../dossier/journal";
+import { libellePatient } from "../../dossier/patients";
 import { Navigation } from "./navigation";
 import { Voix } from "./voix/voix";
 
@@ -34,7 +36,14 @@ async function Onglets({ langue }: { langue: string }) {
   // Éléments en attente : pastilles sur « À valider » et « Suivis »
   const pastilles: Record<string, number> = {};
   let lexique: { entendu: string; correct: string }[] = [];
+  // Derniers dossiers ouverts par ce compte : on y revient en un clic depuis n'importe quelle page
+  let recents: { id: number; libelle: string }[] = [];
   if (baseConfiguree()) {
+    try {
+      recents = (await derniersDossiers(utilisateur.identifiant, 5)).map((d) => ({ id: d.id, libelle: libellePatient(d) }));
+    } catch (erreur) {
+      console.error(erreur);
+    }
     try {
       const groupes = await groupesAValider(jourLocal(new Date()), medical);
       pastilles["a-valider"] = total(groupes);
@@ -60,6 +69,7 @@ async function Onglets({ langue }: { langue: string }) {
         espaces={espacesVisibles({ medical, admin: utilisateur.admin })}
         secretaire={!medical}
         pastilles={pastilles}
+        recents={recents}
         fin={
           <form action={deconnexion.bind(null, langue)}>
             <button

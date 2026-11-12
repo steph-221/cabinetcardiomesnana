@@ -47,10 +47,10 @@ async function Formulaire({
 
   return (
     <>
-      <Retour href={`/${langue}/espace/patients/${id}`}>{libellePatient(patient)}</Retour>
+      <Retour href={`/${langue}/espace/patients/${id}?onglet=prescriptions`}>{libellePatient(patient)}</Retour>
       <h1 className="mt-4 text-2xl font-bold text-slate-900">Prescription d&apos;analyses biologiques</h1>
       <p className="mt-1 mb-6 text-sm text-slate-500">
-        Cochez les analyses à demander : l&apos;ordonnance est générée avec la liste, prête à imprimer depuis le dossier.
+        Cochez les analyses à demander : l&apos;ordonnance est générée avec la liste. « Enregistrer et imprimer » lance l&apos;impression tout de suite.
       </p>
       <FormulairePrescriptionBiologie
         langue={langue}

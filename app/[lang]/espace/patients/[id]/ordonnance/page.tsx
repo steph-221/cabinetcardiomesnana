@@ -51,11 +51,12 @@ async function Formulaire({
 
   return (
     <>
-      <Retour href={`/${langue}/espace/patients/${id}`}>{libellePatient(patient)}</Retour>
+      <Retour href={`/${langue}/espace/patients/${id}?onglet=ordonnances`}>{libellePatient(patient)}</Retour>
       <h1 className="mt-4 text-2xl font-bold text-slate-900">Nouvelle ordonnance</h1>
       <p className="mt-1 mb-6 text-sm text-slate-500">
-        Les traitements en cours sont repris : retirez ou complétez les lignes, puis enregistrez. L&apos;ordonnance
-        s&apos;imprime depuis le dossier, avec l&apos;en-tête du cabinet.
+        Les traitements en cours sont repris : retirez ou complétez les lignes. Pour une radio, une coronarographie,
+        une épreuve d&apos;effort…, écrivez ou dictez simplement la demande dans la case « Demande d&apos;examens ».
+        « Enregistrer et imprimer » lance l&apos;impression tout de suite, avec l&apos;en-tête du cabinet.
       </p>
       {patient.allergies && (
         <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-800">

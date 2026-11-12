@@ -28,6 +28,7 @@ import {
   facteursRisque,
   libellePatient,
   lirePatient,
+  modifierMesures,
   modifierPatient,
   supprimerPatient,
   supprimerTraitement,
@@ -167,7 +168,55 @@ export async function enregistrerPatient(
     console.error(erreur);
     return echecPatient("Le dossier n'a pas pu être enregistré. Réessayez dans un instant.", formData);
   }
-  redirect(`/${langue}/espace/patients/${patientId}`);
+  // Modifié depuis l'onglet Fiche : on y reste (le formulaire s'y trouve), avec une confirmation
+  redirect(
+    id !== null && formData.get("retour") === "fiche"
+      ? `/${langue}/espace/patients/${patientId}?onglet=fiche&enregistre=1`
+      : `/${langue}/espace/patients/${patientId}`,
+  );
+}
+
+// Poids, taille et mode de vie, modifiés sur place depuis l'aperçu (médecins) : la page se rafraîchit, on n'en sort pas
+export type EtatMesures = (NonNullable<EtatFormulaire> | { ok: true }) | null;
+
+export async function mettreAJourMesures(
+  langue: string,
+  patientId: number,
+  _: EtatMesures,
+  formData: FormData,
+): Promise<EtatMesures> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const poids = decimalSaisi(formData, "poids");
+  const taille = decimalSaisi(formData, "taille");
+  const paquetsAnnees = decimalSaisi(formData, "paquetsAnnees");
+  const alcool = decimalSaisi(formData, "alcoolVerres");
+  if (poids === undefined || (poids !== null && (poids < 1 || poids > 300))) {
+    return echec("Poids : indiquez une valeur en kilos, entre 1 et 300.", formData);
+  }
+  if (taille === undefined || (taille !== null && (taille < 30 || taille > 250))) {
+    return echec("Taille : indiquez une valeur en centimètres, entre 30 et 250.", formData);
+  }
+  if (paquetsAnnees === undefined || (paquetsAnnees !== null && (paquetsAnnees < 0 || paquetsAnnees > 300))) {
+    return echec("Tabac : indiquez un nombre de paquets-années entre 0 et 300.", formData);
+  }
+  if (alcool === undefined || (alcool !== null && (alcool < 0 || alcool > 200))) {
+    return echec("Alcool : indiquez un nombre de verres par semaine entre 0 et 200.", formData);
+  }
+  const tabacBrut = String(formData.get("tabac") ?? "");
+  const tabac = (statutsTabac.some((s) => s.valeur === tabacBrut) ? tabacBrut : "") as StatutTabac;
+  try {
+    await modifierMesures(
+      patientId,
+      { poids, taille, tabac, paquetsAnnees, alcoolVerres: alcool === null ? null : Math.round(alcool) },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, "modification", patientId, "poids, taille, mode de vie");
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Les mesures n'ont pas pu être enregistrées. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return { ok: true };
 }
 
 export async function supprimer(langue: string, id: number) {

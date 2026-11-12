@@ -66,3 +66,20 @@ export async function lireJournal(f: Filtres, fuseau: string, limite = 200): Pro
   }));
   return (f.niveau ? entrees.filter((e) => niveauAction(e.action) === f.niveau) : entrees).slice(0, limite);
 }
+
+// Derniers dossiers ouverts par ce compte (du plus récent au plus ancien), pour y revenir en un clic
+export type DossierRecent = { id: number; nom: string; prenom: string };
+
+export async function derniersDossiers(qui: string, limite = 5): Promise<DossierRecent[]> {
+  const sql = await base();
+  const lignes = await sql`
+    SELECT p.id, p.nom, p.prenom
+    FROM (
+      SELECT patient_id, max(quand) AS dernier FROM journal
+      WHERE qui = ${qui} AND action = 'consultation du dossier' AND patient_id IS NOT NULL
+      GROUP BY patient_id ORDER BY dernier DESC LIMIT ${limite}
+    ) j
+    JOIN patients p ON p.id = j.patient_id
+    ORDER BY j.dernier DESC`;
+  return lignes.map((l) => ({ id: l.id as number, nom: l.nom as string, prenom: l.prenom as string }));
+}

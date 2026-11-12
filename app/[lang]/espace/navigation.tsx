@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Building2, CalendarDays, FolderOpen, Sun } from "lucide-react";
+import { Building2, CalendarDays, FolderOpen, History, Sun } from "lucide-react";
 import type { Espace, Page } from "../../dossier/navigation";
 import { pageDe } from "../../dossier/navigation";
 
-const icones: Record<string, typeof Sun> = { soleil: Sun, dossier: FolderOpen, agenda: CalendarDays, livre: BookOpen, cabinet: Building2 };
+const icones: Record<string, typeof Sun> = { soleil: Sun, dossier: FolderOpen, agenda: CalendarDays, cabinet: Building2 };
 
 const pastille = (n: number, etiquette: string) =>
   n > 0 && (
@@ -24,12 +24,15 @@ export function Navigation({
   espaces,
   secretaire,
   pastilles,
+  recents = [],
   fin,
 }: {
   langue: string;
   espaces: Espace[];
   secretaire: boolean;
   pastilles: Record<string, number>;
+  // Derniers dossiers ouverts par ce compte
+  recents?: { id: number; libelle: string }[];
   fin: React.ReactNode;
 }) {
   const chemin = usePathname();
@@ -37,6 +40,7 @@ export function Navigation({
   const base = `/${langue}/espace`;
   const lien = (p: Page) => `${base}${secretaire && p.cheminSecretaire ? p.cheminSecretaire : p.chemin}`;
   const courant = espaces.find((e) => e.cle === actif?.espace.cle);
+  const dossierOuvert = /\/espace\/patients\/(\d+)/.exec(chemin)?.[1];
   const sous = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     // Accolades : un effet ne doit rien retourner (scrollIntoView renvoie une promesse dans les Chrome récents)
@@ -65,9 +69,9 @@ export function Navigation({
         })}
         <div className="ms-auto shrink-0">{fin}</div>
       </nav>
-      {courant && courant.pages.length > 1 && (
+      {courant && courant.pages.filter((p) => !p.masquee).length > 1 && (
         <nav aria-label={`Pages : ${courant.libelle}`} className="mx-auto flex max-w-6xl items-center gap-1 overflow-x-auto px-4 pb-2 sm:px-6">
-          {courant.pages.map((p) => {
+          {courant.pages.filter((p) => !p.masquee).map((p) => {
             const estActive = p.cle === actif?.page.cle;
             return (
               <Link
@@ -81,6 +85,30 @@ export function Navigation({
               >
                 {p.libelle}
                 {pastille(pastilles[p.cle] ?? 0, "en attente")}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
+      {recents.length > 0 && (
+        <nav aria-label="Derniers dossiers ouverts" className="mx-auto flex max-w-6xl items-center gap-1.5 overflow-x-auto px-4 pb-2 sm:px-6">
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-500">
+            <History className="h-3 w-3" aria-hidden />
+            Derniers dossiers
+          </span>
+          {recents.map((d) => {
+            const ouvert = String(d.id) === dossierOuvert;
+            return (
+              <Link
+                key={d.id}
+                href={`${base}/patients/${d.id}`}
+                aria-current={ouvert ? "page" : undefined}
+                title={`Dossier n° ${d.id}`}
+                className={`shrink-0 rounded-full border px-3 py-0.5 text-xs ${
+                  ouvert ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {d.libelle}
               </Link>
             );
           })}

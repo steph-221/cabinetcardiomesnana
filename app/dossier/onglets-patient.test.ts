@@ -6,15 +6,18 @@ describe("onglets de la fiche patient", () => {
     expect(ongletsDisponibles(true).map((o) => o.cle)).toEqual([
       "apercu",
       "consultations",
-      "evolution",
+      "ordonnances",
+      "prescriptions",
+      "certificats",
       "examens",
-      "documents",
+      "evolution",
+      "factures",
       "fiche",
     ]);
   });
 
   it("la secrétaire n'a pas les onglets médicaux", () => {
-    expect(ongletsDisponibles(false).map((o) => o.cle)).toEqual(["apercu", "examens", "documents", "fiche"]);
+    expect(ongletsDisponibles(false).map((o) => o.cle)).toEqual(["apercu", "examens", "factures", "fiche"]);
   });
 
   it("un onglet inconnu ou interdit ramène à l'aperçu", () => {
@@ -23,5 +26,10 @@ describe("onglets de la fiche patient", () => {
     expect(ongletValide("n'importe quoi", true)).toBe("apercu");
     expect(ongletValide(undefined, true)).toBe("apercu");
     expect(ongletValide(["examens", "fiche"], true)).toBe("examens");
+  });
+
+  it("l'ancien onglet « documents » mène aux ordonnances (médecin) ou aux factures (secrétaire)", () => {
+    expect(ongletValide("documents", true)).toBe("ordonnances");
+    expect(ongletValide("documents", false)).toBe("factures");
   });
 });

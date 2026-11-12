@@ -29,7 +29,7 @@ Ordre de grandeur : ~330 fichiers suivis, 50 pages, 25 évolutions successives d
 | **Facturation / comptabilité** | Factures numérotées par mois, facture proposée d'après la consultation, paiements, charges récurrentes, statistiques, associés, export |
 | **Courrier** | Courrier au confrère par modèle fixe, modifiable, PDF |
 | **Voix** | Micro sur chaque champ (Ctrl+M), note vocale rangée en actions, ordonnance dictée, dictée de consultation, parole du patient en arabe/français, consultation écoutée (accord obligatoire), lexique qui apprend |
-| **Savoir** | Assistant qui ne répond qu'avec la bibliothèque et cite ses sources ; bibliothèque par thème ; DOI, import de plusieurs PDF, sites et revues suivis, nuit de veille ; calculateurs ; vérification des seuils |
+| **Savoir** (Bibliothèque, Calculateurs, Lexique sous « Cabinet » ; Assistant depuis le dossier patient) | Assistant qui ne répond qu'avec la bibliothèque et cite ses sources ; bibliothèque par thème ; DOI, import de plusieurs PDF, sites et revues suivis, nuit de veille ; calculateurs ; vérification des seuils |
 | **Secrétariat** | Rappels et confirmations, relances de suivi (WhatsApp préparé, e-mail automatique), liste d'attente, messages WhatsApp, boîte « À valider », « Ma journée » |
 | **Pilotage** | Population (INR hors cible, patients traités pas revus), page Modèles IA (modèle par tâche, coût), journal |
 | **IA par tâche** | Haiku pour les tâches simples, Sonnet pour la rédaction, Opus pour l'assistant ; seconde tentative sur un modèle plus fort quand le contrôle échoue |

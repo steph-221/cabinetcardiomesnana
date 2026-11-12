@@ -5,7 +5,10 @@ import {
   composerCertificat,
   enLettres,
   finDePeriode,
+  idModelePerso,
+  modeleDepuisPerso,
   modeles,
+  titreCertificat,
   trouverModeleCertificat,
   valeursInitiales,
   type ContexteCertificat,
@@ -84,5 +87,36 @@ describe("composerCertificat", () => {
   it("les clés des modèles sont uniques", () => {
     expect(new Set(modeles.map((m) => m.cle)).size).toBe(modeles.length);
     expect(modeles.length).toBe(17);
+  });
+});
+
+describe("modèles personnels", () => {
+  const perso = { id: 7, libelle: "Contre-indication au sport", texte: "Ne présente aucune contre-indication à …… ." };
+
+  it("devient un modèle « Mes modèles » avec le texte prérempli", () => {
+    const m = modeleDepuisPerso(perso);
+    expect(m.cle).toBe("perso:7");
+    expect(m.groupe).toBe("Mes modèles");
+    expect(valeursInitiales(m, "2026-11-11").texte).toBe(perso.texte);
+  });
+
+  it("garde l'en-tête légal et la formule finale automatiques", () => {
+    const m = modeleDepuisPerso(perso);
+    const texte = composerCertificat(m, valeursInitiales(m, ctx.date), ctx);
+    expect(texte).toContain("Je soussigné, Dr Taouab Zogarh Cursoux, certifie avoir examiné");
+    expect(texte).toContain("Ne présente aucune contre-indication");
+    expect(texte).toContain("Fait à Tanger");
+  });
+
+  it("reconnaît la clé d'un modèle personnel", () => {
+    expect(idModelePerso("perso:7")).toBe(7);
+    expect(idModelePerso("libre")).toBeNull();
+    expect(idModelePerso("perso:abc")).toBeNull();
+  });
+
+  it("le titre vient du nom enregistré avec le certificat, même si le modèle est supprimé", () => {
+    expect(titreCertificat("perso:7", { _libelle: "Contre-indication au sport" })).toBe("Contre-indication au sport");
+    expect(titreCertificat("perso:7", {})).toBe("Certificat personnalisé");
+    expect(titreCertificat("libre")).toBe("Certificat libre");
   });
 });

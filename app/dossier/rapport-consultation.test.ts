@@ -11,7 +11,7 @@ const score = (c: Partial<ScorePatient>): ScorePatient =>
 const examen = (c: Partial<Examen>): Examen =>
   ({ id: 1, type: "ECG", date: "2026-11-04", conclusion: "ACFA à 72/min", valeurs: {}, consultationId: 5, ...c }) as Examen;
 const ordonnance = (c: Partial<Ordonnance>): Ordonnance =>
-  ({ id: 1, patientId: 1, date: "2026-11-04", lignes: [{ medicament: "Bisoprolol 5 mg", posologie: "1 cp le matin", duree: "3 mois" }], remarque: "", fichierDrive: null, consultationId: 5, creePar: "dr", ...c }) as Ordonnance;
+  ({ id: 1, patientId: 1, date: "2026-11-04", lignes: [{ medicament: "Bisoprolol 5 mg", posologie: "1 cp le matin", duree: "3 mois" }], remarque: "", examens: "", fichierDrive: null, consultationId: 5, creePar: "dr", ...c }) as Ordonnance;
 
 const facture = (c: Partial<Facture>): Facture =>
   ({ id: 1, numero: "2026-11-0001", date: "2026-11-04", totalCts: 30000, payeCts: 30000, annulee: false, statut: "payee", consultationId: 5, ...c }) as Facture;

@@ -11,7 +11,7 @@ import { trouverModele } from "./comptes-rendus";
 import { lignesExamen, type DonneesExamen } from "./comptes-rendus/types";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
-import type { LigneOrdonnance } from "./ordonnances";
+import type { LigneOrdonnance, TypeOrdonnance } from "./ordonnances";
 import type { ElementsRapport } from "./rapport-consultation";
 import { age, libellePatient, type Patient } from "./patients";
 
@@ -152,7 +152,7 @@ function Ligne({ libelle, children }: { libelle: string; children: React.ReactNo
 // --- Ordonnance ---
 
 export function pdfOrdonnance(
-  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; type?: "medicaments" | "biologie" },
+  o: { date: string; lignes: LigneOrdonnance[]; remarque: string; examens?: string; type?: TypeOrdonnance },
   patient: Patient,
 ) {
   const biologie = o.type === "biologie";
@@ -192,6 +192,12 @@ export function pdfOrdonnance(
         {o.remarque && (
           <View style={{ marginTop: 6 }}>
             <Paragraphes texte={o.remarque} />
+          </View>
+        )}
+        {o.examens?.trim() && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={s.gras}>Examens demandés :</Text>
+            <Paragraphes texte={o.examens} />
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>

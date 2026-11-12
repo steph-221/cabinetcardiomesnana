@@ -38,6 +38,7 @@ export function elementsRapport(
       (l) => `- ${l.medicament}${l.posologie ? ` — ${l.posologie}` : ""}${l.duree ? ` (${l.duree})` : ""}`,
     ),
     ...(o.remarque.trim() ? [`Remarque : ${resume(o.remarque)}`] : []),
+    ...(o.examens.trim() ? [`Examens demandés : ${resume(o.examens)}`] : []),
   ]);
   // Une facture annulée n'a plus d'existence comptable : elle n'est pas rappelée
   const factures = ici(liens.factures)

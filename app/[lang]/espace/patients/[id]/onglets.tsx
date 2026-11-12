@@ -37,7 +37,7 @@ export function NavOnglets({
                 {nombre !== undefined && nombre > 0 && (
                   <span className="rounded-full bg-slate-100 px-2 text-xs text-slate-600">{nombre}</span>
                 )}
-                {o.cle === "documents" && aPayer && (
+                {o.cle === "factures" && aPayer && (
                   <span className="rounded-full bg-red-50 px-2 text-xs font-medium text-red-700">à payer</span>
                 )}
               </Link>

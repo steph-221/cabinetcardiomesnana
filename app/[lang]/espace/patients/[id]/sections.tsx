@@ -25,7 +25,6 @@ import { libelleStatut, mad } from "../../../../dossier/compta-calculs";
 import type { Ordonnance } from "../../../../dossier/ordonnances";
 import { delais, suivisCourants, type SuiviPatient } from "../../../../dossier/suivis";
 import type { Consultation } from "../../../../dossier/consultations";
-import { libelleTabac } from "../../../../dossier/mode-de-vie";
 import { lienWhatsApp, type Patient, type Traitement } from "../../../../dossier/patients";
 import { couleurStatut } from "../../comptabilite/commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
@@ -107,38 +106,6 @@ export function Coordonnees({ patient }: { patient: Patient }) {
   );
 }
 
-// Poids, taille et mode de vie : à jour dans la fiche, ils sont repris par les calculs
-export function ModeDeVie({ langue, patient }: { langue: string; patient: Patient }) {
-  const valeur = (v: string | null) => v ?? <span className="text-slate-400">non renseigné</span>;
-  const fr = (n: number | null, unite: string) => (n === null ? null : `${n.toLocaleString("fr-FR")} ${unite}`);
-  return (
-    <section className="rounded-2xl border border-slate-200 p-6 text-sm">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-slate-900">Mode de vie</h2>
-        <Link
-          href={`/${langue}/espace/patients/${patient.id}/modifier`}
-          className="text-xs text-slate-600 underline hover:text-slate-900"
-        >
-          Mettre à jour
-        </Link>
-      </div>
-      <dl className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Poids", fr(patient.poids, "kg")],
-          ["Taille", fr(patient.taille, "cm")],
-          ["Tabagisme", libelleTabac(patient.tabac, patient.paquetsAnnees) || null],
-          ["Alcool", patient.alcoolVerres === null ? null : `${patient.alcoolVerres} verres par semaine`],
-        ].map(([titre, v]) => (
-          <div key={titre}>
-            <dt className="text-slate-500">{titre}</dt>
-            <dd className="text-slate-900">{valeur(v)}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
 export function Ligne({ titre, valeur }: { titre: string; valeur: string }) {
   if (!valeur) return null;
   return (
@@ -149,7 +116,8 @@ export function Ligne({ titre, valeur }: { titre: string; valeur: string }) {
   );
 }
 
-export function ContenuMedical({
+// Traitements en cours et arrêtés : ajout, arrêt et suppression sur place (le reste de la fiche est le formulaire du dossier)
+export function Traitements({
   langue,
   patient,
   traitements,
@@ -162,31 +130,7 @@ export function ContenuMedical({
   const arretes = traitements.filter((t) => t.fin);
 
   return (
-    <div className="space-y-6 lg:col-span-2">
-      <section className="rounded-2xl border border-slate-200 p-6 text-sm">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Facteurs de risque et antécédents</h2>
-        {patient.facteursRisque.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {patient.facteursRisque.map((f) => (
-              <li key={f} className="rounded-full bg-red-50 px-3 py-1 text-red-800">
-                {f}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-slate-500">Aucun facteur de risque renseigné.</p>
-        )}
-        {patient.antecedents && <p className="mt-4 whitespace-pre-line text-slate-900">{patient.antecedents}</p>}
-        {patient.notes && (
-          <>
-            <h3 className="mt-4 font-medium text-slate-700">Notes</h3>
-            <p className="mt-1 whitespace-pre-line text-slate-900">{patient.notes}</p>
-          </>
-        )}
-      </section>
-
-      <ModeDeVie langue={langue} patient={patient} />
-
+    <div>
       <section className="rounded-2xl border border-slate-200 p-6 text-sm">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900">
           <Pill className="h-5 w-5 text-red-600" aria-hidden />
@@ -429,56 +373,56 @@ export function Suivis({ langue, patient, suivis }: { langue: string; patient: P
   );
 }
 
+// Ordonnances de médicaments (avec leur éventuelle demande d'examens) ou prescriptions d'analyses : un onglet chacune
 export function Ordonnances({
   langue,
   patientId,
   ordonnances,
   consultations,
+  genre = "medicaments",
 }: {
   langue: string;
   patientId: number;
   ordonnances: Ordonnance[];
   consultations: Consultation[];
+  genre?: "medicaments" | "biologie";
 }) {
+  const analyses = genre === "biologie";
+  const liste = ordonnances.filter((o) => (o.type === "biologie") === analyses);
+  const Icone = analyses ? FlaskConical : ScrollText;
   return (
-    <section id="ordonnances" className="scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
+    <section id={analyses ? "prescriptions" : "ordonnances"} className="scroll-mt-36 rounded-2xl border border-slate-200 p-6 text-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-          <ScrollText className="h-5 w-5 text-red-600" aria-hidden />
-          Ordonnances et prescriptions
+          <Icone className="h-5 w-5 text-red-600" aria-hidden />
+          {analyses ? "Prescriptions d'analyses" : "Ordonnances"}
         </h2>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/${langue}/espace/patients/${patientId}/prescription`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <FlaskConical className="h-4 w-4" aria-hidden />
-            Prescription d&apos;analyses
-          </Link>
-          <Link
-            href={`/${langue}/espace/patients/${patientId}/ordonnance`}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >
-            <FilePlus2 className="h-4 w-4" aria-hidden />
-            Nouvelle ordonnance
-          </Link>
-        </div>
+        <Link
+          href={`/${langue}/espace/patients/${patientId}/${analyses ? "prescription" : "ordonnance"}`}
+          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+        >
+          <FilePlus2 className="h-4 w-4" aria-hidden />
+          {analyses ? "Nouvelle prescription" : "Nouvelle ordonnance"}
+        </Link>
       </div>
-      {ordonnances.length === 0 ? (
-        <p className="text-slate-500">Aucune ordonnance ni prescription d&apos;analyses.</p>
+      {liste.length === 0 ? (
+        <p className="text-slate-500">{analyses ? "Aucune prescription d'analyses." : "Aucune ordonnance."}</p>
       ) : (
         <ul className="divide-y divide-slate-100">
-          {ordonnances.map((o) => (
+          {liste.map((o) => (
             <li key={o.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div>
                 <span className="font-mono text-slate-600">{date(o.date)}</span>
-                {o.type === "biologie" && (
-                  <span className="ms-3 rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800">Analyses</span>
-                )}
                 <span className="ms-3 text-slate-900">
-                  {[...o.lignes.map((l) => l.medicament), ...(o.type === "biologie" && o.remarque ? [o.remarque] : [])].join(" · ")}
+                  {[...o.lignes.map((l) => l.medicament), ...(analyses && o.remarque ? [o.remarque] : [])].join(" · ")}
                 </span>
                 <span className="ms-2 text-xs text-slate-400">{o.creePar}</span>
+                {o.examens && (
+                  <p className="mt-1 whitespace-pre-line text-slate-700">
+                    <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs text-sky-800">Examens demandés</span>{" "}
+                    {o.examens}
+                  </p>
+                )}
                 <LienConsultation
                   langue={langue}
                   patientId={patientId}
@@ -614,7 +558,7 @@ export function Certificats({
             <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div>
                 <span className="font-mono text-slate-600">{date(c.date)}</span>
-                <span className="ms-3 text-slate-900">{titreCertificat(c.modele)}</span>
+                <span className="ms-3 text-slate-900">{titreCertificat(c.modele, c.champs)}</span>
                 <span className="ms-2 text-xs text-slate-400">{c.creePar}</span>
                 <LienConsultation
                   langue={langue}
