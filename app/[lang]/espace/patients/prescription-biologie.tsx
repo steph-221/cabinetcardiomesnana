@@ -5,7 +5,7 @@ import { bilans, catalogue } from "../../../dossier/analyses-biologie";
 import type { OptionConsultation } from "../../../dossier/choix-consultation";
 import { nouvellePrescriptionBiologie } from "./actions-documents";
 import { ChoixConsultation } from "./choix-consultation";
-import { BoutonsEnregistrer } from "./boutons-document";
+import { BoutonsEnregistrer, ChoixImpression } from "./boutons-document";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -93,6 +93,7 @@ export function FormulairePrescriptionBiologie({
       <p className="text-sm text-slate-600" aria-live="polite">
         {cochees.size} analyse{cochees.size > 1 ? "s" : ""} cochée{cochees.size > 1 ? "s" : ""}
       </p>
+      <ChoixImpression />
       {etat && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
           {etat.erreur}

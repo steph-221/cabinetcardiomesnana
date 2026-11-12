@@ -27,6 +27,7 @@ import { trouverModele } from "../../../dossier/comptes-rendus";
 import { referencesCitees } from "../../../dossier/comptes-rendus/references";
 import { trouverSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { lireReferences } from "../../../dossier/verification-seuils";
+import { lireImpression, paramsImpression } from "../../../dossier/impression";
 import { pdfCertificat, pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
 import { analysesValides } from "../../../dossier/analyses-biologie";
 import {
@@ -120,8 +121,7 @@ export async function rechercherMedicaments(saisie: string): Promise<MedicamentM
 function retourDocument(langue: string, patientId: number, onglet: string, formData: FormData, id: number) {
   const base = `/${langue}/espace/patients/${patientId}?onglet=${onglet}`;
   if (formData.get("imprimer") !== "1") return base;
-  const format = onglet === "certificats" && formData.get("format") === "A4" ? "&format=A4" : "";
-  return `${base}&imprimer=${id}${format}`;
+  return `${base}&imprimer=${id}&${paramsImpression(lireImpression(formData.get("format"), formData.get("entete")))}`;
 }
 
 export async function nouvelleOrdonnance(
@@ -168,7 +168,7 @@ export async function nouvelleOrdonnance(
     const copie = await archiver(
       patient,
       nomFichier("Ordonnance", patient, ordonnance.date),
-      await pdfOrdonnance(ordonnance, patient),
+      await pdfOrdonnance(ordonnance, patient, { ...lireImpression(formData.get("format"), "1") }),
     );
     if (copie) await rangerOrdonnance(id, copie.drive);
   } catch (erreur) {
@@ -215,7 +215,7 @@ export async function nouvellePrescriptionBiologie(
     const copie = await archiver(
       patient,
       nomFichier("Prescription analyses", patient, prescription.date),
-      await pdfOrdonnance(prescription, patient),
+      await pdfOrdonnance(prescription, patient, { ...lireImpression(formData.get("format"), "1") }),
     );
     if (copie) await rangerOrdonnance(id, copie.drive);
   } catch (erreur) {
@@ -261,11 +261,10 @@ export async function nouveauCertificat(
     const id = await creerCertificat(patientId, certificat, utilisateur.identifiant);
     nouveau = id;
     await journaliser(utilisateur.identifiant, "certificat rédigé", patientId, modele.libelle);
-    const format = formData.get("format") === "A4" ? "A4" : "A5";
     const copie = await archiver(
       patient,
       nomFichier("Certificat", patient, certificat.date),
-      await pdfCertificat(certificat, patient, format),
+      await pdfCertificat(certificat, patient, lireImpression(formData.get("format"), "1")),
     );
     if (copie) await rangerCertificat(id, copie.drive);
   } catch (erreur) {
