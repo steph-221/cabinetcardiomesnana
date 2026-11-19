@@ -26,7 +26,7 @@ export async function poserQuestion(langue: string, _: EtatFormulaire, formData:
 
   let id: number;
   try {
-    const contexte = patientId ? await resumeClinique(patientId) : null;
+    const contexte = patientId ? await resumeClinique(patientId, true) : null;
     const reponse = await repondre(question, contexte);
     id = await enregistrerQuestion(question, patientId, reponse, utilisateur.identifiant);
     const cites = new Set(reponse.blocs.flatMap((b) => b.citations.map((c) => reponse.passages[c.passage]?.source.id)));

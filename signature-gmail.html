@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signature Gmail – Cabinet de cardiologie</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f3f4f6; margin: 0; padding: 24px; color: #1f2937; }
+  .carte { max-width: 640px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  ol { padding-left: 20px; line-height: 1.6; font-size: 14px; }
+  button { background: #0f3d5e; color: #fff; border: 0; border-radius: 6px; padding: 10px 18px; font-size: 14px; cursor: pointer; margin: 8px 0 16px; }
+  #zone { border: 1px dashed #9ca3af; padding: 16px; border-radius: 6px; }
+  #ok { color: #15803d; font-size: 14px; margin-left: 10px; }
+</style>
+</head>
+<body>
+<div class="carte">
+  <h1>Votre signature Gmail</h1>
+  <ol>
+    <li>Cliquez sur <b>Copier la signature</b>.</li>
+    <li>Gmail → ⚙ <b>Voir tous les paramètres</b> → section <b>Signature</b> → <b>Créer</b>.</li>
+    <li>Collez (Ctrl+V) dans la zone, puis <b>Enregistrer les modifications</b> en bas de page.</li>
+  </ol>
+  <button id="copier" type="button">Copier la signature</button><span id="ok"></span>
+
+  <div id="zone">
+<!-- ===== DÉBUT DE LA SIGNATURE ===== -->
+<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; line-height: 1.45;">
+  <tr>
+    <td style="padding-right: 14px; border-right: 3px solid #b91c1c; vertical-align: top;">
+      <a href="https://www.cabinetcardiomesnana.com"><img src="https://www.cabinetcardiomesnana.com/logo-signature.png" alt="Cardio Mesnana" width="56" height="56" style="display: block; border: 0;"></a>
+    </td>
+    <td style="padding-left: 14px; vertical-align: top;">
+      <div style="font-size: 16px; font-weight: bold; color: #0f3d5e;">Cabinet de cardiologie Mesnana</div>
+      <div style="font-size: 13px; color: #b91c1c; font-weight: bold; margin-bottom: 6px;">Cardiologie – Tanger</div>
+      <div>📍 Résidence Adam, 2<sup>e</sup> étage, appartement n° 5, Trémie Mesnana, 90000 Tanger, Maroc</div>
+      <div>☎️ <a href="tel:+212539318550" style="color: #1f2937; text-decoration: none;">05 39 31 85 50</a>
+        &nbsp;|&nbsp; 📱 <a href="tel:+212716744913" style="color: #1f2937; text-decoration: none;">07 16 74 49 13</a>
+        &nbsp;|&nbsp; <a href="https://wa.me/212716744913" style="color: #15803d; text-decoration: none;">WhatsApp</a></div>
+      <div>✉️ <a href="mailto:cabinetcardiomesnana@gmail.com" style="color: #0f3d5e; text-decoration: none;">cabinetcardiomesnana@gmail.com</a></div>
+      <div>🌐 <a href="https://www.cabinetcardiomesnana.com" style="color: #0f3d5e; text-decoration: none;">www.cabinetcardiomesnana.com</a>
+        &nbsp;|&nbsp; <a href="https://www.cabinetcardiomesnana.com/fr/rendez-vous" style="color: #0f3d5e; text-decoration: underline;">Prendre rendez-vous en ligne</a></div>
+      <div>🕘 Lun–Ven 9h–17h &nbsp;·&nbsp; Sam 9h30–14h &nbsp;·&nbsp; Dim fermé</div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding-top: 10px; font-size: 10px; color: #6b7280; line-height: 1.4;">
+      Ce message et ses pièces jointes sont confidentiels et couverts par le secret médical. S'il ne vous est pas destiné, merci de le signaler à l'expéditeur et de le supprimer. Pour une urgence, appelez le 15 ou le 141.
+    </td>
+  </tr>
+</table>
+<!-- ===== FIN DE LA SIGNATURE ===== -->
+  </div>
+</div>
+
+<script>
+  document.getElementById("copier").addEventListener("click", function () {
+    var zone = document.getElementById("zone");
+    var sel = window.getSelection();
+    var r = document.createRange();
+    r.selectNodeContents(zone);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    document.getElementById("ok").textContent = ok ? "Copiée ✔ – collez-la dans Gmail" : "Sélection faite : faites Ctrl+C";
+  });
+</script>
+</body>
+</html>

@@ -3,15 +3,23 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, CalendarDays, FolderOpen, Globe, Phone } from "lucide-react";
+import { Ban, CalendarDays, FilePen, FolderOpen, FolderPlus, Globe, Phone } from "lucide-react";
 import { estLangue } from "../../cabinet";
 import { ajouterJours, dateLocale, heureLocale, jourLocal } from "../../agenda/creneaux";
+import { paramsPrefill } from "../../agenda/identite";
 import { agendaConfigure, listerRendezvous, type Rendezvous } from "../../agenda/google";
-import { utilisateurConnecte } from "../../agenda/session";
+import { listerMedecins, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
-import { finTelephone } from "../../dossier/patients";
-import { patientsParTelephone } from "../../dossier/suivis";
-import { BoutonAnnuler, BoutonRouvrir, FormulaireAjout, FormulaireFermeture } from "./boutons";
+import { correspondances, type Correspondance } from "../../dossier/rendez-vous";
+import {
+  BoutonAnnuler,
+  BoutonRattacher,
+  BoutonRouvrir,
+  FormulaireAjout,
+  FormulaireFermeture,
+  ModifierRendezvous,
+  SelecteurMedecin,
+} from "./boutons";
 
 export const metadata: Metadata = {
   title: "Espace cabinet",
@@ -20,26 +28,40 @@ export const metadata: Metadata = {
 
 const JOURS_AFFICHES = 14;
 
-export default async function Espace({ params }: PageProps<"/[lang]/espace">) {
+export default async function Espace({ params, searchParams }: PageProps<"/[lang]/espace">) {
   const { lang } = await params;
   if (!estLangue(lang)) return null;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <Suspense fallback={<p className="text-slate-500">Chargement de l&apos;agenda…</p>}>
-        <Tableau langue={lang} />
+        <Tableau langue={lang} recherche={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Tableau({ langue }: { langue: string }) {
+async function Tableau({
+  langue,
+  recherche,
+}: {
+  langue: string;
+  recherche: PageProps<"/[lang]/espace">["searchParams"];
+}) {
   // Agenda en direct : jamais préchargé ni mis en cache
   await connection();
+  const { medecin } = await recherche;
+  const filtre = typeof medecin === "string" ? medecin : "";
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) redirect(`/${langue}/espace/connexion`);
 
   const aujourdhui = jourLocal(new Date());
+  let medecins: string[] = [];
+  try {
+    medecins = await listerMedecins();
+  } catch (erreur) {
+    console.error(erreur);
+  }
   let rendezvous: Rendezvous[] | null = null;
   if (agendaConfigure()) {
     try {
@@ -52,13 +74,18 @@ async function Tableau({ langue }: { langue: string }) {
     }
   }
 
-  // Rendez-vous reliés aux dossiers par le téléphone
-  let dossiers = new Map<string, number>();
+  // Onglets par médecin : « Tous », chaque médecin, et les rendez-vous sans médecin
+  const medecinsAgenda = [...new Set([...medecins, ...(rendezvous ?? []).flatMap((r) => (r.medecin ? [r.medecin] : []))])];
+  const visibles = (rendezvous ?? []).filter((r) =>
+    filtre === "" ? true : filtre === "aucun" ? !r.medecin : r.medecin === filtre,
+  );
+
+  // Rendez-vous reliés aux dossiers : par le numéro de dossier noté dans l'événement, sinon dossier probable
+  // (même téléphone, ou même nom, prénom et date de naissance) à confirmer par la secrétaire
+  let dossiers = new Map<string, Correspondance>();
   if (baseConfiguree()) {
     try {
-      dossiers = await patientsParTelephone([
-        ...new Set((rendezvous ?? []).flatMap((r) => (r.telephone ? [finTelephone(r.telephone)] : []))),
-      ]);
+      dossiers = await correspondances((rendezvous ?? []).filter((r) => !r.fermeture));
     } catch (erreur) {
       console.error(erreur);
     }
@@ -66,7 +93,7 @@ async function Tableau({ langue }: { langue: string }) {
 
   // Regroupe par jour (les événements « journée entière » n'ont qu'une date)
   const parJour = new Map<string, Rendezvous[]>();
-  for (const r of rendezvous ?? []) {
+  for (const r of visibles) {
     const jour = r.debut.length === 10 ? r.debut : jourLocal(new Date(r.debut));
     parJour.set(jour, [...(parJour.get(jour) ?? []), r]);
   }
@@ -88,7 +115,7 @@ async function Tableau({ langue }: { langue: string }) {
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Ajouter un rendez-vous</h2>
-        <FormulaireAjout langue={langue} aujourdhui={aujourdhui} />
+        <FormulaireAjout langue={langue} aujourdhui={aujourdhui} medecins={medecins} />
       </section>
 
       <section className="mt-8 rounded-2xl border border-slate-200 p-6">
@@ -111,6 +138,29 @@ async function Tableau({ langue }: { langue: string }) {
         <p className="mt-1 text-sm text-slate-500">
           Tout événement ajouté directement dans Google Agenda bloque aussi les créneaux correspondants.
         </p>
+
+        {medecinsAgenda.length > 0 && (
+          <nav aria-label="Filtrer par médecin" className="mt-4 flex flex-wrap gap-1.5">
+            {[
+              { valeur: "", libelle: "Tous" },
+              ...medecinsAgenda.map((m) => ({ valeur: m, libelle: `Dr ${m}` })),
+              { valeur: "aucun", libelle: "Non attribué" },
+            ].map(({ valeur, libelle }) => (
+              <Link
+                key={valeur}
+                href={valeur ? `/${langue}/espace?medecin=${encodeURIComponent(valeur)}` : `/${langue}/espace`}
+                aria-current={filtre === valeur ? "page" : undefined}
+                className={`rounded-full border px-3 py-1 text-sm ${
+                  filtre === valeur
+                    ? "border-red-600 bg-red-600 font-medium text-white"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {libelle}
+              </Link>
+            ))}
+          </nav>
+        )}
 
         {rendezvous === null ? (
           <p role="alert" className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-800">
@@ -145,6 +195,11 @@ async function Tableau({ langue }: { langue: string }) {
                                 fermé
                               </span>
                             )}
+                            {r.medecin && (
+                              <span className="ms-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-normal text-slate-700">
+                                Dr {r.medecin}
+                              </span>
+                            )}
                             {r.controle && (
                               <span className="ms-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-800">
                                 contrôle
@@ -166,18 +221,13 @@ async function Tableau({ langue }: { langue: string }) {
                               {r.telephone}
                             </a>
                           )}
-                          {r.telephone && !r.fermeture && (
-                            <Link
-                              href={
-                                dossiers.has(finTelephone(r.telephone))
-                                  ? `/${langue}/espace/patients/${dossiers.get(finTelephone(r.telephone))}`
-                                  : `/${langue}/espace/patients?q=${encodeURIComponent(r.telephone)}`
-                              }
-                              className="ms-3 inline-flex items-center gap-1 text-slate-600 hover:text-red-700"
-                            >
-                              <FolderOpen className="h-3 w-3" aria-hidden />
-                              Dossier
-                            </Link>
+                          {!r.fermeture && (
+                            <Dossier
+                              langue={langue}
+                              r={r}
+                              correspondance={dossiers.get(r.id)}
+                              baseActive={baseConfiguree()}
+                            />
                           )}
                           {(r.dateNaissance || r.email) && (
                             <p className="mt-1 text-slate-500">
@@ -190,12 +240,37 @@ async function Tableau({ langue }: { langue: string }) {
                               )}
                             </p>
                           )}
+                          {r.annulable && (
+                            <SelecteurMedecin langue={langue} id={r.id} medecin={r.medecin} medecins={medecins} />
+                          )}
                           {r.motif && !r.fermeture && <p className="mt-1 text-slate-500">{r.motif}</p>}
                         </div>
                       </div>
                       {/* Rendez-vous patients et fermetures se gèrent ici ; le reste dans Google Agenda */}
                       {r.annulable && <BoutonAnnuler langue={langue} id={r.id} nom={r.titre} />}
                       {r.fermeture && <BoutonRouvrir langue={langue} id={r.id} />}
+                      {/* Tous les rendez-vous se modifient ici, y compris ceux ajoutés directement dans Google Agenda */}
+                      {!r.fermeture && r.debut.length > 10 && (
+                        <ModifierRendezvous
+                          langue={langue}
+                          aujourdhui={aujourdhui}
+                          medecins={medecins}
+                          rdv={{
+                            id: r.id,
+                            annulable: r.annulable,
+                            titre: r.titre,
+                            prenom: r.prenom,
+                            nom: r.nom,
+                            jour: jourLocal(new Date(r.debut)),
+                            heure: heureLocale(new Date(r.debut)),
+                            duree: Math.round((new Date(r.fin).getTime() - new Date(r.debut).getTime()) / 60_000),
+                            telephone: r.telephone ?? "",
+                            email: r.email ?? "",
+                            motif: r.motif ?? "",
+                            medecin: r.medecin ?? "",
+                          }}
+                        />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -205,5 +280,85 @@ async function Tableau({ langue }: { langue: string }) {
         )}
       </section>
     </>
+  );
+}
+
+// Lien vers le dossier du patient, ou proposition pour la secrétaire quand le rendez-vous n'est pas encore rattaché
+function Dossier({
+  langue,
+  r,
+  correspondance,
+  baseActive,
+}: {
+  langue: string;
+  r: Rendezvous;
+  correspondance: Correspondance | undefined;
+  baseActive: boolean;
+}) {
+  if (!baseActive) return null;
+  const lien = "inline-flex items-center gap-1 text-slate-600 hover:text-red-700";
+  const prefill = paramsPrefill(r);
+  const nom = (d: { nom: string; prenom: string }) => `${d.nom.toUpperCase()} ${d.prenom}`.trim();
+
+  if (correspondance?.lien === "lie") {
+    const d = correspondance.patient;
+    return (
+      <Link href={`/${langue}/espace/patients/${d.id}`} className={`mt-1 ms-3 ${lien}`}>
+        <FolderOpen className="h-3 w-3" aria-hidden />
+        Dossier de {nom(d)} · n° {d.id}
+      </Link>
+    );
+  }
+
+  if (correspondance) {
+    const d = correspondance.patient;
+    return (
+      <div className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+        <p>
+          {correspondance.lien === "telephone" ? "Même téléphone que le dossier de " : "Même nom, prénom et date de naissance que le dossier de "}
+          <Link href={`/${langue}/espace/patients/${d.id}`} className="font-medium underline">
+            {nom(d)}
+          </Link>{" "}
+          (n° {d.id}).
+        </p>
+        <p className="mt-1 flex flex-wrap items-center gap-2">
+          <BoutonRattacher
+            langue={langue}
+            rdvId={r.id}
+            patientId={d.id}
+            apport={{ naissance: r.dateNaissance, email: r.email, telephone: r.telephone }}
+            libelle="C'est le même patient"
+          />
+          <Link
+            href={`/${langue}/espace/patients/nouveau?${new URLSearchParams([...paramsPrefill(r), ["rdv", r.id]])}`}
+            className="text-amber-900 underline"
+          >
+            Non, créer un nouveau dossier
+          </Link>
+        </p>
+        {((!d.naissance && r.dateNaissance) || (!d.email && r.email)) && (
+          <p className="mt-1">
+            Le patient a indiqué {[!d.naissance && r.dateNaissance && "sa date de naissance", !d.email && r.email && "son e-mail"].filter(Boolean).join(" et ")} : ajouté au dossier si vous rattachez.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <span className="mt-1 ms-3 inline-flex flex-wrap items-center gap-3">
+      <Link
+        href={`/${langue}/espace/patients/nouveau?${new URLSearchParams([...prefill, ["rdv", r.id]])}`}
+        className={lien}
+        title="Aucun dossier ne correspond : créer le dossier avec ce que le patient a déjà indiqué"
+      >
+        <FolderPlus className="h-3 w-3" aria-hidden />
+        Créer le dossier
+      </Link>
+      <Link href={`/${langue}/espace/patients/fiche?${prefill}`} className={lien} target="_blank">
+        <FilePen className="h-3 w-3" aria-hidden />
+        Fiche papier
+      </Link>
+    </span>
   );
 }

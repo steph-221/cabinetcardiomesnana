@@ -114,6 +114,7 @@ export async function validerImport(
       motif: texte(formData, `v${i}_motif`, 2000),
       examen: texte(formData, `v${i}_examen`, 5000),
       ecg: texte(formData, `v${i}_ecg`, 2000),
+      echo: "",
       autres: texte(formData, `v${i}_autres`, 5000),
       conclusion: texte(formData, `v${i}_conclusion`, 5000),
       conduite: texte(formData, `v${i}_conduite`, 5000),
@@ -201,6 +202,12 @@ export async function validerImport(
     notes: "",
     inrMin: nombre(formData, "inrMin") ?? null,
     inrMax: nombre(formData, "inrMax") ?? null,
+    // Poids et taille arrivent par les visites importées, pas par ce formulaire
+    poids: null,
+    taille: null,
+    tabac: "" as const,
+    paquetsAnnees: null,
+    alcoolVerres: null,
   };
   if ((medical.inrMin === null) !== (medical.inrMax === null) || (medical.inrMin ?? 0) > (medical.inrMax ?? 0)) {
     return echec("Zone cible d'INR : indiquez le minimum et le maximum.", formData);
@@ -220,6 +227,7 @@ export async function validerImport(
     adresse: "",
     couverture: "",
     medecinTraitant: "",
+    langue: "" as const,
   };
   if (!existant && (!identite.nom || !identite.prenom)) return echec("Indiquez le nom et le prénom.", formData);
   if (identite.naissance && !dateValide(identite.naissance) && identite.naissance > "1900-01-01") {
@@ -251,6 +259,11 @@ export async function validerImport(
           notes: existant.notes,
           inrMin: existant.inrMin ?? medical.inrMin,
           inrMax: existant.inrMax ?? medical.inrMax,
+          poids: existant.poids,
+          taille: existant.taille,
+          tabac: existant.tabac,
+          paquetsAnnees: existant.paquetsAnnees,
+          alcoolVerres: existant.alcoolVerres,
         },
         utilisateur.identifiant,
       );

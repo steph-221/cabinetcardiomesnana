@@ -48,6 +48,16 @@ Projet Vercel → **Settings → Environment Variables** :
 | `COMPTE_ADMIN` | le compte administrateur, sous la forme `identifiant:motdepasse` (ex. `taouab:UnMotDePasseLong`) |
 | `SESSION_SECRET` | une longue chaîne aléatoire d'au moins 32 caractères (par exemple générée par un gestionnaire de mots de passe) |
 
+Variables de sécurité facultatives (recommandées) :
+
+| Variable | Valeur |
+| --- | --- |
+| `TOTP_ADMIN` | secret (base32) d'une application d'authentification (Google Authenticator, Authy, 1Password…). Une fois renseignée, la connexion de l'administrateur demande aussi le code à 6 chiffres. À créer d'abord dans l'application (« saisir une clé de configuration »), puis à recopier ici. |
+| `TURNSTILE_SECRET_KEY` et `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | clés d'un widget Cloudflare Turnstile (gratuit) : vérification anti-robot supplémentaire sur la réservation en ligne, en plus de la protection décrite plus bas |
+
+La connexion est limitée à 10 essais ratés par adresse et 20 par identifiant toutes les 15 minutes (compteurs dans
+Upstash), et chaque connexion, réussie ou ratée, apparaît dans le journal. Le mot de passe de `COMPTE_ADMIN` devrait avoir au moins 12 caractères.
+
 Puis **redéployer** le site pour que les variables soient prises en compte. Tant que les variables Google ne sont
 pas renseignées, la page de rendez-vous affiche simplement le numéro du secrétariat.
 
@@ -96,8 +106,95 @@ Les créneaux fermés ne sont plus proposés aux patients ; les rendez-vous déj
 **Rouvrir**, dans la liste des prochains jours, annule une fermeture. Les fermetures apparaissent aussi dans Google
 Agenda (« Fermé — motif »).
 
+## 7. Modifier un rendez-vous et prévenir le patient
+
+Dans la liste des prochains jours, le bouton **Modifier** (secrétaire, médecin, administrateur) s'affiche sur **tous** les
+rendez-vous, y compris ceux ajoutés directement dans Google Agenda : date, heure, durée, nom, médecin, téléphone, e-mail,
+motif. La modification est écrite dans l'agenda Google et enregistrée au journal.
+
+Si la **date ou l'heure change**, le patient peut être prévenu (cases « Par e-mail » / « Par WhatsApp », cochées par
+défaut) : « votre rendez-vous du … est annulé et remplacé par … ». Sans réglage supplémentaire, l'application prépare le
+message : un lien ouvre l'e-mail ou WhatsApp avec le texte déjà rédigé, il reste à l'envoyer. Pour un **envoi
+automatique**, ajouter ces variables sur Vercel (puis redéployer) :
+
+| Variable | Valeur |
+| --- | --- |
+| `RESEND_API_KEY` | clé API d'un compte <https://resend.com> (e-mail automatique) |
+| `EMAIL_EXPEDITEUR` | adresse d'envoi vérifiée sur Resend, ex. `Cabinet <rdv@cabinetcardiomesnana.com>` |
+| `EMAIL_REPONSE` | (facultatif) adresse qui reçoit les réponses des patients |
+| `WHATSAPP_TOKEN` | jeton d'accès de l'API WhatsApp Business (Meta) |
+| `WHATSAPP_NUMERO_ID` | identifiant du numéro WhatsApp Business |
+| `WHATSAPP_MODELE` | nom du modèle de message approuvé par Meta (corps avec 3 variables : `{{1}}` nom du patient, `{{2}}` ancien rendez-vous, `{{3}}` nouveau rendez-vous) |
+| `WHATSAPP_LANGUE` | (facultatif) langue du modèle, `fr` par défaut |
+
+Chaque canal est indépendant : e-mail automatique et WhatsApp par lien sont possibles ensemble. WhatsApp impose un modèle
+de message approuvé par Meta pour écrire en premier à un patient ; modèle conseillé : « Bonjour {{1}}, votre rendez-vous du
+{{2}} au cabinet est annulé et remplacé par un nouveau rendez-vous : {{3}}. En cas de problème, appelez le 05 39 31 85 50. »
+Si l'envoi automatique échoue, le lien à envoyer à la main est proposé.
+
+## 8. Rappels, confirmation par le patient et relances automatiques
+
+- Page **Rappels** (Aujourd'hui → Rappels) : rendez-vous des 3 prochains jours avec leur état (pas encore rappelé, rappel
+  envoyé sans réponse, **confirmé**). **Envoyer le rappel** envoie l'e-mail si Resend est configuré, sinon prépare l'e-mail
+  et le message WhatsApp à envoyer d'un clic. Chaque rappel contient un **lien personnel** : le patient y **confirme sa venue**
+  ou **annule** (le créneau est libéré aussitôt, l'événement Google supprimé, l'action inscrite au journal). Le lien est
+  signé avec `SESSION_SECRET` (32 caractères au moins) ; sans lui, le rappel invite à téléphoner.
+- Une modification de date ou d'heure efface la confirmation et le rappel de l'ancien horaire.
+- **Tâche automatique** (`vercel.json`, chaque jour à 15 h UTC, soit 16 h au Maroc hors ramadan) : rappelle les rendez-vous
+  du lendemain pas encore confirmés ni rappelés, et **relance par e-mail** les suivis dus des patients qui ont une adresse
+  (le suivi passe en « relancé » ; les autres restent pour la secrétaire, avec le lien WhatsApp). Elle demande la variable
+  `CRON_SECRET` (16 caractères au moins) et, pour partir toute seule, `RESEND_API_KEY` et `EMAIL_EXPEDITEUR`.
+- WhatsApp automatique pour les rappels : modèle distinct de celui des changements, à faire approuver par Meta, et variable
+  `WHATSAPP_MODELE_RAPPEL` (corps à 3 variables : `{{1}}` nom, `{{2}}` date et heure, `{{3}}` lien de confirmation ou
+  téléphone). Modèle conseillé : « Bonjour {{1}}, rappel de votre rendez-vous au cabinet : {{2}}. Pour confirmer ou annuler :
+  {{3}} ». Sans cette variable, le lien WhatsApp est simplement préparé.
+
+## 9. Messages WhatsApp des patients et assistant
+
+Les messages écrits au numéro WhatsApp Business du cabinet arrivent dans **Aujourd'hui → Messages** (pastille rouge pour
+ceux à traiter, rappel dans « À valider »). Un patient retrouvé par son téléphone a un lien vers son dossier.
+
+1. Dans Meta (WhatsApp Business → configuration du webhook), déclarer l'adresse `https://www.cabinetcardiomesnana.com/api/whatsapp`
+   et le champ `messages`.
+2. Variables sur Vercel (puis redéployer) :
+
+   | Variable | Valeur |
+   | --- | --- |
+   | `WHATSAPP_VERIFY_TOKEN` | texte secret de 16 caractères au moins, le même que dans Meta (vérification de l'adresse) |
+   | `WHATSAPP_APP_SECRET` | « secret de l'application » Meta : chaque message reçu est vérifié par sa signature, sinon refusé |
+   | `WHATSAPP_TOKEN`, `WHATSAPP_NUMERO_ID` | déjà utilisés pour l'envoi automatique (section 7) |
+   | `WHATSAPP_ASSISTANT` | `1` pour activer les réponses automatiques ; sans elle, les messages sont seulement rangés |
+
+**Ce que l'assistant fait, et seulement cela** (règles fixes dans `app/agenda/assistant-whatsapp.ts`, sans IA) : donner les
+horaires, l'adresse et le moyen de prendre rendez-vous, saluer, et pour tout le reste accuser réception (une seule fois par
+conversation et par demi-journée) en laissant le message au secrétariat. Il répond dans la langue du message (français ou
+arabe). **Il ne donne jamais d'avis médical.**
+
+**Urgences** : un message qui évoque une douleur thoracique, un essoufflement brutal, un malaise, etc. reçoit le rappel d'appeler
+le 141 ou le 15, est marqué **Urgence possible** en rouge en tête de la boîte, et inscrit au journal. Le site **n'envoie pas de
+notification** au médecin : quelqu'un doit consulter la boîte (la pastille rouge est visible sur toutes les pages). Les mots
+détectés sont une liste de départ : à compléter selon ce que écrivent vos patients, sans jamais s'y fier seul.
+
+Données de santé : ces messages peuvent contenir des informations médicales ; ils transitent par Meta et sont gardés dans la
+base du cabinet. À inclure dans la demande d'autorisation CNDP (voir DOSSIER.md) avant d'activer l'assistant.
+
+## 10. Liste d'attente
+
+**Aujourd'hui → Liste d'attente** : le secrétariat y inscrit les patients qui veulent un créneau plus tôt (nom, téléphone ou e-mail,
+souhait). Quand un rendez-vous est **annulé** (par le patient avec son lien, ou depuis l'agenda), son créneau apparaît dans
+**Créneaux libérés**. **Prévenir** prépare pour le patient le message « un créneau s'est libéré » avec les prochains créneaux libérés
+(lien WhatsApp ou e-mail à envoyer d'un clic) et note la date ; **Placé** ou **Retirer** sort le patient de la liste. Rien ne part
+tout seul. Un créneau reste proposé jusqu'à ce qu'on clique **Pris ou ignoré**, ou que sa date passe.
+
 ## Données personnelles
 
 Le formulaire collecte le nom et le téléphone du patient, et facultativement sa date de naissance, son e-mail et le motif de consultation, avec son accord explicite. Les
 mentions légales ont été mises à jour en conséquence (loi 09-08). Selon l'usage, une déclaration auprès de la
 CNDP (<https://www.cndp.ma>) peut être nécessaire : à vérifier par le cabinet.
+
+## Protection contre les robots
+
+Le formulaire public est protégé par : un champ piège invisible, un jeton signé (avec `SESSION_SECRET`) qui impose
+quelques secondes de remplissage, et des limites de fréquence enregistrées dans Upstash : 5 demandes/heure par
+adresse IP, 3/jour par numéro de téléphone, 60/heure au total (`app/agenda/antirobot.ts`). Sans Upstash, seules les
+deux premières protections s'appliquent.

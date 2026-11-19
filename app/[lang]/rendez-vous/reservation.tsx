@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { CalendarCheck, CircleCheck } from "lucide-react";
 import type { Langue } from "../../cabinet";
 import type { Dictionnaire } from "../dictionaries";
+import type { JourLibre } from "../../agenda/disponibilites";
 import { creneauxLibres, reserver, type EtatReservation } from "./actions";
 
 // "2026-10-27" → "mardi 27 octobre" dans la langue du visiteur
@@ -14,21 +15,72 @@ function formaterJour(jour: string, langue: Langue, options: Intl.DateTimeFormat
   );
 }
 
+// Vérification anti-robot Cloudflare Turnstile (active si NEXT_PUBLIC_TURNSTILE_SITE_KEY est renseignée).
+// Le widget ajoute lui-même le champ « cf-turnstile-response » au formulaire ; le jeton ne sert qu'une fois,
+// d'où la remise à zéro après chaque envoi.
+type Turnstile = {
+  render: (element: HTMLElement, options: { sitekey: string }) => string;
+  reset: (id?: string) => void;
+  remove: (id?: string) => void;
+};
+const CLE_TURNSTILE = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+function VerificationRobot({ etat }: { etat: EtatReservation }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const widget = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!CLE_TURNSTILE || !ref.current) return;
+    const element = ref.current;
+    const afficher = () => {
+      const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+      if (ts && !widget.current) widget.current = ts.render(element, { sitekey: CLE_TURNSTILE });
+    };
+    let script = document.querySelector<HTMLScriptElement>("script[data-turnstile]");
+    if (!script) {
+      script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.dataset.turnstile = "1";
+      document.head.appendChild(script);
+    }
+    if ((window as unknown as { turnstile?: Turnstile }).turnstile) afficher();
+    else script.addEventListener("load", afficher);
+    return () => {
+      script.removeEventListener("load", afficher);
+      const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+      if (widget.current) ts?.remove(widget.current);
+      widget.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const ts = (window as unknown as { turnstile?: Turnstile }).turnstile;
+    if (etat.statut === "erreur" && widget.current) ts?.reset(widget.current);
+  }, [etat]);
+
+  return CLE_TURNSTILE ? <div ref={ref} /> : null;
+}
+
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 
 export function Reservation({
   langue,
   t,
-  jours,
+  dispos,
+  jeton,
 }: {
   langue: Langue;
   t: Dictionnaire["reservation"];
-  jours: string[];
+  dispos: JourLibre[] | null;
+  jeton: string;
 }) {
-  const [jour, setJour] = useState<string | null>(null);
+  // Premier jour avec un horaire libre : aujourd'hui s'il reste de la place, sinon le suivant
+  const premier = dispos?.find((d) => d.creneaux.length > 0);
+  const [jour, setJour] = useState<string | null>(premier?.jour ?? null);
   const [heure, setHeure] = useState<string | null>(null);
-  const [creneaux, setCreneaux] = useState<string[] | null>([]);
+  const [creneaux, setCreneaux] = useState<string[] | null>(premier?.creneaux ?? []);
   const [chargement, demarrer] = useTransition();
   const [etat, envoyer, envoi] = useActionState<EtatReservation, FormData>(reserver, { statut: "attente" });
 
@@ -67,23 +119,28 @@ export function Reservation({
       <fieldset>
         <legend className="text-lg font-semibold text-slate-900">1. {t.choisirJour}</legend>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {jours.map((j) => (
-            <button
-              key={j}
-              type="button"
-              onClick={() => choisirJour(j)}
-              aria-pressed={j === jour}
-              className={`rounded-lg border px-2 py-2 text-sm ${
-                j === jour
-                  ? "border-red-600 bg-red-600 text-white"
-                  : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
-              }`}
-            >
-              <span className="block capitalize">{formaterJour(j, langue, { weekday: "short" })}</span>
-              <span className="block font-semibold">{formaterJour(j, langue, { day: "numeric", month: "short" })}</span>
-            </button>
-          ))}
+          {/* Seuls les jours avec au moins un horaire libre sont affichés */}
+          {(dispos ?? [])
+            .filter(({ creneaux: libres }) => libres.length > 0)
+            .map(({ jour: j }) => (
+              <button
+                key={j}
+                type="button"
+                onClick={() => choisirJour(j)}
+                aria-pressed={j === jour}
+                className={`rounded-lg border px-2 py-2 text-sm ${
+                  j === jour
+                    ? "border-red-600 bg-red-600 text-white"
+                    : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
+                }`}
+              >
+                <span className="block capitalize">{formaterJour(j, langue, { weekday: "short" })}</span>
+                <span className="block font-semibold">{formaterJour(j, langue, { day: "numeric", month: "short" })}</span>
+              </button>
+            ))}
         </div>
+        {dispos === null && <p className="mt-3 text-sm text-red-700">{t.erreurs.technique}</p>}
+        {dispos && !premier && <p className="mt-3 text-sm text-slate-500">{t.aucunJour}</p>}
       </fieldset>
 
       {jour && (
@@ -122,20 +179,35 @@ export function Reservation({
           <legend className="text-lg font-semibold text-slate-900">3. {t.vosCoordonnees}</legend>
           <input type="hidden" name="jour" value={jour} />
           <input type="hidden" name="heure" value={heure} />
+          <input type="hidden" name="jeton" value={jeton} />
           {/* Piège à robots, invisible pour les visiteurs */}
           <input type="text" name="site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
-          <label className="block text-sm font-medium text-slate-700">
-            {t.nom}
-            <input
-              name="nom"
-              required
-              minLength={2}
-              maxLength={100}
-              autoComplete="name"
-              defaultValue={saisi?.nom}
-              className={champ}
-            />
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-medium text-slate-700">
+              {t.prenom}
+              <input
+                name="prenom"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="given-name"
+                defaultValue={saisi?.prenom}
+                className={champ}
+              />
+            </label>
+            <label className="block text-sm font-medium text-slate-700">
+              {t.nom}
+              <input
+                name="nom"
+                required
+                minLength={2}
+                maxLength={100}
+                autoComplete="family-name"
+                defaultValue={saisi?.nom}
+                className={champ}
+              />
+            </label>
+          </div>
           <label className="block text-sm font-medium text-slate-700">
             {t.telephone}
             <input
@@ -178,6 +250,7 @@ export function Reservation({
             {t.motif} <span className="font-normal text-slate-400">({t.facultatif})</span>
             <textarea name="motif" rows={3} maxLength={300} defaultValue={saisi?.motif} className={champ} />
           </label>
+          <VerificationRobot etat={etat} />
           <label className="flex items-start gap-2 text-sm text-slate-600">
             <input type="checkbox" name="consentement" required className="mt-1" />
             <span>{t.consentement}</span>

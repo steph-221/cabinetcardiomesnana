@@ -5,7 +5,14 @@ import { connection } from "next/server";
 import { cabinet, estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
-import { lireJournal, type Entree } from "../../../dossier/journal";
+import {
+  lireJournal,
+  niveauAction,
+  NIVEAUX,
+  utilisateursJournal,
+  type Entree,
+  type Filtres,
+} from "../../../dossier/journal";
 import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
 
 export const metadata: Metadata = {
@@ -21,7 +28,7 @@ export default async function Journal({ params, searchParams }: PageProps<"/[lan
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6" lang="fr" dir="ltr">
       <h1 className="text-2xl font-bold text-slate-900">Journal des accès aux dossiers</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Qui a ouvert, créé ou modifié un dossier, et quand. Les 200 dernières entrées.
+        Qui a ouvert, créé ou modifié un dossier, et quand. Filtrez par niveau de criticité, utilisateur, période, dossier ou mot-clé. Les 200 dernières entrées.
       </p>
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Liste langue={lang} searchParams={searchParams} />
@@ -40,12 +47,28 @@ async function Liste({
   await connection();
   await exigerUtilisateur(langue, "admin");
   if (!baseConfiguree()) return <BaseNonConfiguree />;
-  const patient = Number((await searchParams).patient);
-  const patientId = Number.isInteger(patient) && patient > 0 ? patient : null;
+  const params = await searchParams;
+  const un = (cle: string) => {
+    const v = params[cle];
+    return (Array.isArray(v) ? v[0] : v)?.trim().slice(0, 100) ?? "";
+  };
+  const date = (cle: string) => (/^\d{4}-\d{2}-\d{2}$/.test(un(cle)) ? un(cle) : "");
+  const patient = Number(un("patient"));
+  const niveau = NIVEAUX.find((n) => n.id === un("niveau"))?.id ?? null;
+  const filtres: Filtres = {
+    patientId: Number.isInteger(patient) && patient > 0 ? patient : null,
+    qui: un("qui"),
+    texte: un("q"),
+    du: date("du"),
+    au: date("au"),
+    niveau,
+  };
+  const filtre = Object.values(filtres).some((v) => v !== null && v !== "");
 
   let entrees: Entree[] | null = null;
+  let utilisateurs: string[] = [];
   try {
-    entrees = await lireJournal(patientId);
+    [entrees, utilisateurs] = await Promise.all([lireJournal(filtres, cabinet.fuseau), utilisateursJournal()]);
   } catch (erreur) {
     console.error(erreur);
   }
@@ -55,14 +78,60 @@ async function Liste({
 
   return (
     <>
-      {patientId && (
-        <p className="mt-6 text-sm">
-          Dossier n° {patientId} seulement ·{" "}
-          <Link href={`/${langue}/espace/journal`} className="text-red-700 underline">
-            tout afficher
-          </Link>
-        </p>
-      )}
+      <form method="get" className="mt-6 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <label className="grid gap-1 text-slate-600">
+          Niveau
+          <select name="niveau" defaultValue={filtres.niveau ?? ""} className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900">
+            <option value="">Tous</option>
+            {NIVEAUX.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.libelle}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-slate-600">
+          Utilisateur
+          <select name="qui" defaultValue={filtres.qui} className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900">
+            <option value="">Tous</option>
+            {utilisateurs.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-slate-600">
+          Du
+          <input type="date" name="du" defaultValue={filtres.du} className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900" />
+        </label>
+        <label className="grid gap-1 text-slate-600">
+          Au
+          <input type="date" name="au" defaultValue={filtres.au} className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900" />
+        </label>
+        <label className="grid gap-1 text-slate-600">
+          Dossier n°
+          <input type="number" min={1} name="patient" defaultValue={filtres.patientId ?? ""} className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900" />
+        </label>
+        <label className="grid gap-1 text-slate-600 sm:col-span-2">
+          Action ou détail contient
+          <input type="search" name="q" defaultValue={filtres.texte} placeholder="ex. facture, suppression, ordonnance…" className="rounded-lg border border-slate-300 bg-white p-2 text-slate-900" />
+        </label>
+        <div className="flex items-end gap-3">
+          <button type="submit" className="rounded-lg bg-red-700 px-4 py-2 font-medium text-white hover:bg-red-800">
+            Filtrer
+          </button>
+          {filtre && (
+            <Link href={`/${langue}/espace/journal`} className="py-2 text-red-700 underline">
+              Réinitialiser
+            </Link>
+          )}
+        </div>
+      </form>
+      <p className="mt-3 text-sm text-slate-500">
+        {entrees.length} entrée{entrees.length > 1 ? "s" : ""}
+        {filtre ? " correspondant aux filtres" : ""}
+      </p>
       {entrees.length === 0 ? (
         <p className="mt-8 text-slate-500">Aucune entrée.</p>
       ) : (
@@ -72,6 +141,7 @@ async function Liste({
               <tr>
                 <th className="p-3 font-medium">Quand</th>
                 <th className="p-3 font-medium">Qui</th>
+                <th className="p-3 font-medium">Niveau</th>
                 <th className="p-3 font-medium">Action</th>
                 <th className="p-3 font-medium">Dossier</th>
               </tr>
@@ -81,6 +151,9 @@ async function Liste({
                 <tr key={i}>
                   <td className="whitespace-nowrap p-3 text-slate-600">{quand(e.quand)}</td>
                   <td className="p-3 text-slate-900">{e.qui}</td>
+                  <td className="p-3">
+                    <Badge niveau={niveauAction(e.action)} />
+                  </td>
                   <td className="p-3 text-slate-900">
                     {e.action}
                     {e.detail && <span className="ms-2 text-slate-500">{e.detail}</span>}
@@ -100,4 +173,9 @@ async function Liste({
       )}
     </>
   );
+}
+
+function Badge({ niveau }: { niveau: (typeof NIVEAUX)[number]["id"] }) {
+  const n = NIVEAUX.find((x) => x.id === niveau)!;
+  return <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${n.classe}`}>{n.libelle}</span>;
 }

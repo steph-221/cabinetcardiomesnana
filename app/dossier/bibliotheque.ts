@@ -6,6 +6,7 @@
 
 import { base } from "./base";
 import { decouper, requeteRecherche } from "./decoupage";
+import { themesDe } from "./themes";
 import type { TypeSource } from "./sources";
 
 export { estTypeSource, libelleSource, lienPage, typesSource, type TypeSource } from "./sources";
@@ -23,6 +24,7 @@ export type Source = {
   complete: boolean;
   passages: number;
   copieId: number | null;
+  doi: string;
   creeLe: Date;
   creePar: string;
 };
@@ -30,6 +32,7 @@ export type Source = {
 export type NouvelleSource = Pick<Source, "titre" | "organisme" | "annee" | "type" | "langue" | "url"> & {
   publicationId: number | null;
   copieId?: number | null;
+  doi?: string;
 };
 
 export type Passage = {
@@ -59,6 +62,7 @@ export async function listerSources(): Promise<Source[]> {
     complete: l.complete as boolean,
     passages: l.nb as number,
     copieId: (l.copie_id as number | null) ?? null,
+    doi: (l.doi as string) ?? "",
     creeLe: l.cree_le as Date,
     creePar: l.cree_par as string,
   }));
@@ -67,9 +71,9 @@ export async function listerSources(): Promise<Source[]> {
 export async function creerSource(s: NouvelleSource, par: string) {
   const sql = await base();
   const [ligne] = await sql`
-    INSERT INTO sources (titre, organisme, annee, type, langue, url, publication_id, copie_id, cree_par)
+    INSERT INTO sources (titre, organisme, annee, type, langue, url, publication_id, copie_id, doi, cree_par)
     VALUES (${s.titre}, ${s.organisme}, ${s.annee}, ${s.type}, ${s.langue}, ${s.url},
-      (SELECT id FROM publications WHERE id = ${s.publicationId}), ${s.copieId ?? null}, ${par})
+      (SELECT id FROM publications WHERE id = ${s.publicationId}), ${s.copieId ?? null}, ${s.doi ?? ""}, ${par})
     RETURNING id`;
   return ligne.id as number;
 }
@@ -166,4 +170,69 @@ export async function remplacerSourceCopie(
   // Par lots, pour ne pas envoyer en une fois le texte d'une recommandation entière
   for (let i = 0; i < pages.length; i += 40) await ajouterPages(id, pages.slice(i, i + 40));
   if (!(await terminerSource(id, pages.length))) await supprimerSource(id);
+}
+
+// Un passage avec sa source : pour ouvrir « le passage cité » depuis un compte rendu ou la vérification des seuils
+export async function lirePassage(id: number): Promise<Passage | null> {
+  const sql = await base();
+  const [l] = await sql`
+    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url, s.copie_id
+    FROM passages p JOIN sources s ON s.id = p.source_id WHERE p.id = ${id}`;
+  return l
+    ? {
+        id: l.id as number,
+        page: l.page as number | null,
+        texte: l.texte as string,
+        source: {
+          id: l.source_id as number,
+          titre: l.titre as string,
+          organisme: l.organisme as string,
+          annee: l.annee as number | null,
+          type: l.type as TypeSource,
+          url: l.url as string,
+          copieId: (l.copie_id as number | null) ?? null,
+        },
+      }
+    : null;
+}
+
+// Source déjà importée pour ce DOI (évite d'importer deux fois le même document)
+export async function sourceParDoi(doi: string) {
+  if (!doi) return null;
+  const sql = await base();
+  const [l] = await sql`SELECT id, titre, annee, statut FROM sources WHERE doi = ${doi} ORDER BY id DESC LIMIT 1`;
+  return l
+    ? { id: l.id as number, titre: l.titre as string, annee: l.annee as number | null, statut: l.statut as string }
+    : null;
+}
+
+// Versions plus anciennes à marquer « remplacée » quand une nouvelle édition est ajoutée : même organisme, même type,
+// année antérieure, au moins un thème clinique en commun et, pour une recommandation, le même sujet dans le titre.
+export async function sourcesRemplacables(id: number) {
+  const sql = await base();
+  const [neuve] = await sql`SELECT titre, organisme, annee, type FROM sources WHERE id = ${id}`;
+  if (!neuve || neuve.annee === null || neuve.type !== "recommandation") return [];
+  const anciennes = await sql`
+    SELECT id, titre, organisme, annee FROM sources
+    WHERE id <> ${id} AND statut = 'en_vigueur' AND type = 'recommandation'
+      AND lower(organisme) = lower(${neuve.organisme}) AND annee < ${neuve.annee}`;
+  const mots = (t: string) =>
+    new Set(
+      t
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "")
+        .match(/[a-z]{5,}/g) ?? [],
+    );
+  const communsNeuve = new Set(themesDe(neuve.titre as string));
+  const motsNeuve = mots(neuve.titre as string);
+  return anciennes
+    .filter((a) => {
+      const t = themesDe(a.titre as string);
+      const partages = [...mots(a.titre as string)].filter(
+        (m) => motsNeuve.has(m) && !["guidelines", "management", "diagnosis", "treatment"].includes(m),
+      );
+      return t.some((x) => communsNeuve.has(x)) && partages.length >= 1;
+    })
+    .map((a) => ({ id: a.id as number, titre: a.titre as string, annee: a.annee as number | null }));
 }

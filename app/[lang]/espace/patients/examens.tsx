@@ -5,6 +5,8 @@ import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Camera, CheckCircle2, FileUp, LoaderCircle, Save, Trash2, XCircle } from "lucide-react";
 import { changerConclusion, retirerExamen } from "./actions";
+import { ChoixConsultation } from "./choix-consultation";
+import type { OptionConsultation } from "../../../dossier/choix-consultation";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -36,12 +38,16 @@ export function EnvoiExamens({
   medical,
   tailleMax,
   aujourdhui,
+  consultations,
+  consultationDefaut,
 }: {
   patientId: number;
   types: string[];
   medical: boolean;
   tailleMax: number;
   aujourdhui: string;
+  consultations: OptionConsultation[];
+  consultationDefaut?: number;
 }) {
   const router = useRouter();
   const formulaire = useRef<HTMLFormElement>(null);
@@ -66,7 +72,7 @@ export function EnvoiExamens({
       }
       const corps = new FormData();
       corps.set("patient", String(patientId));
-      for (const cle of ["type", "date", "conclusion"]) corps.set(cle, String(donnees.get(cle) ?? ""));
+      for (const cle of ["type", "date", "conclusion", "consultationId"]) corps.set(cle, String(donnees.get(cle) ?? ""));
       corps.set("fichier", fichier);
       try {
         const reponse = await fetch("/api/examens", { method: "POST", body: corps });
@@ -117,6 +123,7 @@ export function EnvoiExamens({
           Date de l&apos;examen
           <input name="date" type="date" required max={aujourdhui} defaultValue={aujourdhui} className={champ} />
         </label>
+        <ChoixConsultation consultations={consultations} defaut={consultationDefaut} className="sm:col-span-2" />
         {medical && (
           <label className={`${etiquette} sm:col-span-2`}>
             Conclusion <span className="font-normal text-slate-400">(facultatif, peut être ajoutée plus tard)</span>

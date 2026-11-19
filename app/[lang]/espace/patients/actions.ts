@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
+import { rattacherRendezvous } from "../../../agenda/google";
 import { ajouterJours, estJour, jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../agenda/session";
 import {
@@ -14,6 +15,8 @@ import {
 } from "../../../dossier/consultations";
 import { mettreALaCorbeille } from "../../../dossier/drive";
 import { modifierConclusion, supprimerExamen } from "../../../dossier/examens";
+import { ajouterScorePatient, evaluerSaisie, supprimerScorePatient } from "../../../dossier/scores-patients";
+import { rattacher, typesLien, type TypeLien } from "../../../dossier/liens-consultation";
 import { ajouterSuivi, changerStatut, delais, supprimerSuivi, type Statut } from "../../../dossier/suivis";
 import { journaliser } from "../../../dossier/journal";
 import {
@@ -21,15 +24,18 @@ import {
   arreterTraitement,
   creerPatient,
   doublonsPossibles,
+  estLanguePatient,
   facteursRisque,
   libellePatient,
   lirePatient,
+  modifierMesures,
   modifierPatient,
   supprimerPatient,
   supprimerTraitement,
   type ContenuMedical,
   type Identite,
 } from "../../../dossier/patients";
+import { statutsTabac, type StatutTabac } from "../../../dossier/mode-de-vie";
 import { echec, texte, type EtatFormulaire } from "../formulaire";
 
 // Nombre saisi avec virgule ou point : null si vide, undefined si illisible
@@ -58,6 +64,7 @@ export async function enregistrerPatient(
   const utilisateur = await exigerUtilisateur(langue);
   const sexe = String(formData.get("sexe") ?? "");
   const naissance = String(formData.get("naissance") ?? "");
+  const languePatient = String(formData.get("languePatient") ?? "");
   const identite: Identite = {
     nom: texte(formData, "nom", 100),
     prenom: texte(formData, "prenom", 100),
@@ -69,6 +76,7 @@ export async function enregistrerPatient(
     adresse: texte(formData, "adresse", 300),
     couverture: texte(formData, "couverture", 100),
     medecinTraitant: texte(formData, "medecinTraitant", 100),
+    langue: estLanguePatient(languePatient) ? languePatient : "",
   };
   if (!identite.nom) return echecPatient("Le nom du patient est obligatoire.", formData);
   if (naissance && (!estJour(naissance) || naissance < "1900-01-01" || naissance > jourLocal(new Date()))) {
@@ -88,6 +96,32 @@ export async function enregistrerPatient(
     }
   }
 
+  // Poids et taille : facultatifs, mais s'ils sont saisis ils doivent être plausibles
+  const poids = decimalSaisi(formData, "poids");
+  const taille = decimalSaisi(formData, "taille");
+  if (accesMedical(utilisateur)) {
+    if (poids === undefined || (poids !== null && (poids < 1 || poids > 300))) {
+      return echecPatient("Poids : indiquez une valeur en kilos, entre 1 et 300.", formData);
+    }
+    if (taille === undefined || (taille !== null && (taille < 30 || taille > 250))) {
+      return echecPatient("Taille : indiquez une valeur en centimètres, entre 30 et 250.", formData);
+    }
+  }
+
+  // Mode de vie : facultatif, mais plausibles s'ils sont saisis
+  const tabacBrut = String(formData.get("tabac") ?? "");
+  const tabac = (statutsTabac.some((s) => s.valeur === tabacBrut) ? tabacBrut : "") as StatutTabac;
+  const paquetsAnnees = decimalSaisi(formData, "paquetsAnnees");
+  const alcoolBrut = decimalSaisi(formData, "alcoolVerres");
+  if (accesMedical(utilisateur)) {
+    if (paquetsAnnees === undefined || (paquetsAnnees !== null && (paquetsAnnees < 0 || paquetsAnnees > 300))) {
+      return echecPatient("Tabac : indiquez un nombre de paquets-années entre 0 et 300.", formData);
+    }
+    if (alcoolBrut === undefined || (alcoolBrut !== null && (alcoolBrut < 0 || alcoolBrut > 200))) {
+      return echecPatient("Alcool : indiquez un nombre de verres par semaine entre 0 et 200.", formData);
+    }
+  }
+
   // La secrétaire ne voit pas le contenu médical : il n'est ni lu ni modifié pour elle
   const medical: ContenuMedical | null = accesMedical(utilisateur)
     ? {
@@ -100,6 +134,11 @@ export async function enregistrerPatient(
         notes: texte(formData, "notes", 5000),
         inrMin: inrMin ?? null,
         inrMax: inrMax ?? null,
+        poids: poids ?? null,
+        taille: taille ?? null,
+        tabac,
+        paquetsAnnees: paquetsAnnees ?? null,
+        alcoolVerres: alcoolBrut === null || alcoolBrut === undefined ? null : Math.round(alcoolBrut),
       }
     : null;
 
@@ -118,6 +157,9 @@ export async function enregistrerPatient(
       }
       patientId = await creerPatient(identite, medical, utilisateur.identifiant);
       await journaliser(utilisateur.identifiant, "création", patientId, libellePatient(identite));
+      // Dossier créé depuis un rendez-vous de l'agenda : on les relie (sans bloquer la création en cas d'échec)
+      const rdv = texte(formData, "rdv", 1024);
+      if (/^[a-z0-9_-]{5,}$/i.test(rdv)) await rattacherRendezvous(rdv, patientId).catch(console.error);
     } else {
       await modifierPatient(patientId, identite, medical, utilisateur.identifiant);
       await journaliser(utilisateur.identifiant, "modification", patientId, medical ? "" : "identité seulement");
@@ -126,7 +168,55 @@ export async function enregistrerPatient(
     console.error(erreur);
     return echecPatient("Le dossier n'a pas pu être enregistré. Réessayez dans un instant.", formData);
   }
-  redirect(`/${langue}/espace/patients/${patientId}`);
+  // Modifié depuis l'onglet Fiche : on y reste (le formulaire s'y trouve), avec une confirmation
+  redirect(
+    id !== null && formData.get("retour") === "fiche"
+      ? `/${langue}/espace/patients/${patientId}?onglet=fiche&enregistre=1`
+      : `/${langue}/espace/patients/${patientId}`,
+  );
+}
+
+// Poids, taille et mode de vie, modifiés sur place depuis l'aperçu (médecins) : la page se rafraîchit, on n'en sort pas
+export type EtatMesures = (NonNullable<EtatFormulaire> | { ok: true }) | null;
+
+export async function mettreAJourMesures(
+  langue: string,
+  patientId: number,
+  _: EtatMesures,
+  formData: FormData,
+): Promise<EtatMesures> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  const poids = decimalSaisi(formData, "poids");
+  const taille = decimalSaisi(formData, "taille");
+  const paquetsAnnees = decimalSaisi(formData, "paquetsAnnees");
+  const alcool = decimalSaisi(formData, "alcoolVerres");
+  if (poids === undefined || (poids !== null && (poids < 1 || poids > 300))) {
+    return echec("Poids : indiquez une valeur en kilos, entre 1 et 300.", formData);
+  }
+  if (taille === undefined || (taille !== null && (taille < 30 || taille > 250))) {
+    return echec("Taille : indiquez une valeur en centimètres, entre 30 et 250.", formData);
+  }
+  if (paquetsAnnees === undefined || (paquetsAnnees !== null && (paquetsAnnees < 0 || paquetsAnnees > 300))) {
+    return echec("Tabac : indiquez un nombre de paquets-années entre 0 et 300.", formData);
+  }
+  if (alcool === undefined || (alcool !== null && (alcool < 0 || alcool > 200))) {
+    return echec("Alcool : indiquez un nombre de verres par semaine entre 0 et 200.", formData);
+  }
+  const tabacBrut = String(formData.get("tabac") ?? "");
+  const tabac = (statutsTabac.some((s) => s.valeur === tabacBrut) ? tabacBrut : "") as StatutTabac;
+  try {
+    await modifierMesures(
+      patientId,
+      { poids, taille, tabac, paquetsAnnees, alcoolVerres: alcool === null ? null : Math.round(alcool) },
+      utilisateur.identifiant,
+    );
+    await journaliser(utilisateur.identifiant, "modification", patientId, "poids, taille, mode de vie");
+  } catch (erreur) {
+    console.error(erreur);
+    return echec("Les mesures n'ont pas pu être enregistrées. Réessayez dans un instant.", formData);
+  }
+  refresh();
+  return { ok: true };
 }
 
 export async function supprimer(langue: string, id: number) {
@@ -236,6 +326,7 @@ export async function enregistrerConsultationPatient(
         motif: texte(formData, "motif", 1000),
         examen: texte(formData, "examen", 5000),
         ecg: texte(formData, "ecg", 2000),
+        echo: texte(formData, "echo", 3000),
         mesures: valeurs,
         autres: texte(formData, "autres", 2000),
         conclusion: texte(formData, "conclusion", 5000),
@@ -255,7 +346,7 @@ export async function enregistrerConsultationPatient(
     return echec("La consultation n'a pas pu être enregistrée. Réessayez dans un instant.", formData);
   }
   if (enregistre === null) return echec("Cette consultation n'existe plus.", formData);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 const libellesConstantes: Record<keyof Constantes, string> = {
@@ -271,7 +362,7 @@ export async function retirerConsultation(langue: string, patientId: number, id:
   const utilisateur = await exigerUtilisateur(langue, "medical");
   await supprimerConsultation(patientId, id);
   await journaliser(utilisateur.identifiant, "consultation supprimée", patientId);
-  redirect(`/${langue}/espace/patients/${patientId}#consultations`);
+  redirect(`/${langue}/espace/patients/${patientId}?onglet=consultations`);
 }
 
 // --- Suivis : tout le personnel (la secrétaire organise les relances) ---
@@ -319,5 +410,53 @@ export async function effacerSuivi(langue: string, patientId: number, id: number
   const utilisateur = await exigerUtilisateur(langue);
   await supprimerSuivi(patientId, id);
   await journaliser(utilisateur.identifiant, "suivi supprimé", patientId);
+  refresh();
+}
+
+// --- Calculateurs rattachés au dossier : médecins seulement ---
+
+// Enregistre le résultat d'un calcul à une date. Le score est recalculé sur le serveur à partir des réponses.
+export async function enregistrerScorePatient(
+  langue: string,
+  patientId: number,
+  slug: string,
+  date: string,
+  saisie: Record<string, unknown>,
+  // Calcul fait pendant une consultation ; sinon rattaché à la consultation du même jour si elle est unique
+  consultationId?: number,
+): Promise<string | null> {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!estJour(date)) return "Indiquez la date du calcul.";
+  if (!evaluerSaisie(slug, saisie)) return "Calculateur inconnu.";
+  const id = await ajouterScorePatient(patientId, slug, date, saisie, utilisateur.identifiant, consultationId);
+  await journaliser(utilisateur.identifiant, "calcul enregistré", patientId, `${slug} (n° ${id}) du ${date}`);
+  refresh();
+  return null;
+}
+
+export async function retirerScorePatient(langue: string, patientId: number, id: number) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  await supprimerScorePatient(patientId, id);
+  await journaliser(utilisateur.identifiant, "calcul supprimé", patientId, `n° ${id}`);
+  refresh();
+}
+
+// Rattache un élément du dossier (calcul, examen, ordonnance, facture) à une consultation, ou le détache (null)
+export async function rattacherElement(
+  langue: string,
+  patientId: number,
+  type: string,
+  id: number,
+  consultationId: number | null,
+) {
+  const utilisateur = await exigerUtilisateur(langue, "medical");
+  if (!(typesLien as readonly string[]).includes(type)) return;
+  if (!(await rattacher(type as TypeLien, patientId, id, consultationId))) return;
+  await journaliser(
+    utilisateur.identifiant,
+    consultationId === null ? "élément détaché d'une consultation" : "élément rattaché à une consultation",
+    patientId,
+    `${type} n° ${id}${consultationId === null ? "" : ` → consultation n° ${consultationId}`}`,
+  );
   refresh();
 }

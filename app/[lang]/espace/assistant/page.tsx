@@ -9,7 +9,7 @@ import { baseConfiguree } from "../../../dossier/base";
 import { claudeConfigure } from "../../../dossier/dictee";
 import { libellePatient, lirePatient } from "../../../dossier/patients";
 import { listerQuestions, resumeClinique, type Question } from "../../../dossier/questions";
-import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
+import { BaseNonConfiguree, ErreurLecture, Retour } from "../patients/commun";
 import { FormulaireQuestion } from "./formulaires";
 
 export const metadata: Metadata = {
@@ -67,7 +67,7 @@ async function Contenu({
     [questions, patient, contexte] = await Promise.all([
       listerQuestions(),
       patientId ? lirePatient(patientId) : null,
-      patientId ? resumeClinique(patientId) : null,
+      patientId ? resumeClinique(patientId, true) : null,
     ]);
   } catch (erreur) {
     console.error(erreur);
@@ -83,6 +83,11 @@ async function Contenu({
             DOSSIER.md).
           </p>
         )}
+        {patient && (
+          <p className="mb-3">
+            <Retour href={`/${langue}/espace/patients/${patient.id}`}>Retour au dossier de {libellePatient(patient)}</Retour>
+          </p>
+        )}
         {patient && contexte && (
           <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm">
             <p className="flex items-center gap-2 font-medium text-slate-800">
@@ -93,9 +98,9 @@ async function Contenu({
               </Link>
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              Ce résumé anonyme (sans nom ni coordonnées) est joint à la question :
+              Tout le dossier, sans nom ni coordonnées (consultations, examens et conclusions, traitements, scores, dates), est joint à la question :
             </p>
-            <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-slate-700">{contexte}</pre>
+            <pre className="mt-1 max-h-72 overflow-y-auto whitespace-pre-wrap font-sans text-xs text-slate-700">{contexte}</pre>
           </div>
         )}
         <FormulaireQuestion langue={langue} patientId={patient ? patient.id : null} />

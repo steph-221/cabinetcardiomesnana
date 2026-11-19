@@ -27,6 +27,17 @@ export function FormulaireConnexion({ langue }: { langue: string }) {
         Mot de passe
         <input name="motDePasse" type="password" required autoComplete="current-password" className={champ} />
       </label>
+      <label className="block text-sm font-medium text-slate-700">
+        Code de vérification <span className="font-normal text-slate-400">(administrateur, si activé)</span>
+        <input
+          name="code"
+          inputMode="numeric"
+          pattern="[0-9 ]*"
+          maxLength={7}
+          autoComplete="one-time-code"
+          className={champ}
+        />
+      </label>
       {etat && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
           {etat.erreur}

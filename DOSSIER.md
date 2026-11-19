@@ -10,7 +10,24 @@ l'agenda.
   facteurs de risque, antécédents, allergies (affichées en rouge), notes, traitements en cours et arrêtés.
 - **Doublons** : à la création, un dossier qui a le même téléphone, ou les mêmes nom, prénom et date de naissance,
   est signalé ; on peut l'ouvrir ou créer quand même un nouveau dossier.
-- **Journal** (administrateur seulement) : qui a ouvert, créé ou modifié chaque dossier, et quand.
+- **Journal** (administrateur seulement, dans **Cabinet → Journal**) : qui a ouvert, créé ou modifié chaque dossier, et quand.
+
+## Rendez-vous et dossiers
+
+- **Prénom et nom sont séparés** partout : formulaire de rendez-vous en ligne (4 langues), ajout d'un rendez-vous
+  par la secrétaire et fiche patient.
+- Dans l'**agenda**, chaque rendez-vous indique son dossier :
+  - *rattaché* : lien « Dossier de NOM Prénom » ;
+  - *dossier probable* (même téléphone, ou mêmes nom, prénom et date de naissance) : la secrétaire clique
+    **C'est le même patient** pour rattacher. La date de naissance, l'e-mail ou le téléphone donnés par le patient
+    complètent alors le dossier **seulement là où il est vide** (rien n'est écrasé) ;
+  - *aucun dossier* : **Créer le dossier** ouvre la fiche déjà remplie avec ce que le patient a indiqué (tout reste
+    modifiable) ; à l'enregistrement, le rendez-vous est rattaché au nouveau dossier.
+- En ajoutant un rendez-vous à la main, on peut **rechercher un dossier existant** : ses coordonnées remplissent le
+  formulaire et le rendez-vous lui est rattaché.
+- **Fiche papier** (agenda, liste des patients) : page A4 à imprimer, à faire remplir par le patient. Vierge,
+  préremplie avec ce que le patient a déjà indiqué, ou avec l'identité de son dossier. Le contenu médical n'est
+  jamais prérempli.
 
 ## 1. Activer la base de données (une seule fois)
 
@@ -73,7 +90,7 @@ invraisemblable (FC à 500…) est refusée.
 
 La fiche du patient affiche ensuite :
 
-- **les courbes d'évolution** de chaque valeur, avec la zone cible de l'INR (à régler dans **Modifier**, rubrique
+- **les courbes d'évolution** de chaque valeur, avec la zone cible de l'INR (à régler dans l'onglet **Fiche**, rubrique
   « Zone cible de l'INR ») ; le survol d'un point donne sa date et sa valeur, et chaque courbe a son tableau ;
 - **les calculs** : surface corporelle, IMC, DFG estimé (CKD-EPI 2021, d'après la dernière créatinine, l'âge et le
   sexe) ;
@@ -87,6 +104,42 @@ La fiche du patient affiche ensuite :
   - FEVG ≤ 40 % ou en baisse d'au moins 10 points.
 
 Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du médecin.
+
+## Un dossier où l'on agit sur place (médecins)
+
+- **Boutons du dossier** : *Nouvelle consultation*, *Ordonnance*, *Prescription*, *Certificat*, *Assistant* (la secrétaire a
+  *Facturer*). Plus de boutons « Fiche papier », « Modifier » ni « Journal » dans le dossier.
+- **Modification sur place** : l'onglet **Fiche** contient directement le formulaire du dossier (identité, antécédents,
+  allergies, zone cible de l'INR…) ; on y reste après l'enregistrement. Dans l'**Aperçu**, « Mettre à jour poids,
+  taille… » ouvre un petit formulaire (poids, taille, tabac, alcool) sans quitter la page. L'ancienne adresse `/modifier`
+  renvoie vers l'onglet Fiche.
+- **Onglets** : Aperçu · Consultations · Ordonnances · Prescriptions · Certificats · Examens · Évolution et calculs ·
+  Factures · Fiche. Chaque historique est à un clic (la secrétaire voit Aperçu, Examens, Factures, Fiche).
+- **Impression directe** : sur l'ordonnance, la prescription d'analyses et le certificat, **Enregistrer et imprimer**
+  enregistre, revient sur l'onglet du document et ouvre l'impression. **Enregistrer** seul ne l'imprime pas. Un bandeau
+  permet de relancer l'impression ou d'ouvrir le PDF.
+- **Demande d'examens en texte libre** : sur l'ordonnance, la case « Demande d'examens » (avec bouton **Dicter**) reçoit
+  par exemple « Merci de faire une coronarographie parce que… ». Elle s'imprime sur la même feuille, sous les
+  médicaments ; une feuille sans médicament est possible.
+- **Revenir à un dossier** : la ligne **Derniers dossiers** (sous la barre du haut, sur toutes les pages) garde les 5
+  derniers dossiers ouverts par le compte ; la page **Patients** les rappelle aussi. L'Assistant et les factures lancés
+  depuis un dossier ont un lien « Retour au dossier ».
+- **Alerte de tension** : le texte précise la valeur qui dépasse (« diastolique ≥ 90 », « systolique ≥ 140 »).
+
+## Prescription d'analyses et certificats (médecins)
+
+- **Prescription** (bouton à côté de **Ordonnance**) : cases à cocher groupées (hématologie, lipides, rénal, hépatique,
+  hémostase, marqueurs cardiaques…), bilans habituels en un clic (HTA initial, avant statine, suivi AVK…) et case libre
+  « Autres analyses ». Génère une ordonnance PDF A5 « Prescription d'analyses biologiques ». La liste des analyses se
+  modifie dans `app/dossier/analyses-biologie.ts`.
+- **Certificat** (bouton **Certificat**) : 17 modèles (arrêt de travail, reprise, bonne santé, aptitude, ALD, concours,
+  présence, sport, EPS, enfant malade, non-contagion, voyage, grossesse, TAP, pré-opératoire, coups et blessures/ITT,
+  libre) et **vos propres modèles** : « Nouveau modèle » (ou « Enregistrer ce texte comme modèle ») crée un modèle sans
+  quitter la page ; « Gérer mes modèles » permet de les modifier ou supprimer. En-tête légal et formule finale automatiques, dates de fin calculées, texte modifiable avant enregistrement,
+  impression A5 ou A4. Les modèles sont dans `app/dossier/certificats-modeles.ts`.
+- **Consultation** : rubrique **Échographie cardiaque** sous l'ECG, puis bloc **Biologie** (INR, LDL, créatinine, HbA1c,
+  hémoglobine, NT-proBNP) et grande case « Autres résultats biologiques ». Les « valeurs de base » (FEVG, créatinine)
+  ne figurent plus dans la fiche : les calculs utilisent les mesures de consultation et d'échographie.
 
 ## Ordonnances et comptes rendus en PDF (médecins)
 
@@ -164,6 +217,81 @@ Sans cette clé, le bouton n'apparaît pas et la dictée reste entièrement grat
 utilise Claude, le texte par ceux d'Anthropic, hors du Maroc. Ces transferts doivent figurer dans la demande
 d'autorisation à la CNDP (voir plus bas). L'audio n'est jamais enregistré par le site.
 
+## Rédiger un compte rendu par dictée (médecins)
+
+Dans un dossier, section **Examens** → **Rédiger par dictée**. Choisir le type d'examen (ETT, échographie d'effort,
+Doppler, ECG, Holter, MAPA, épreuve d'effort, coroscanner, coronarographie, biologie), **Dicter** (ou saisir les
+résultats), puis **Rédiger le compte rendu**.
+
+- Claude met la dictée en forme dans le modèle du cabinet, fait les calculs (masse VG, FMT, surface corporelle…),
+  propose le « AU TOTAL » avec les diagnostics différentiels et la conduite « à discuter ». Ce qui n'est pas dicté reste
+  « [À COMPLÉTER] ».
+- Un encadré **À vérifier** liste les incohérences et les données manquantes (5 au plus). Il n'est pas enregistré.
+- Le texte est modifiable ; **Enregistrer dans les examens** le range dans le dossier (rien n'est enregistré avant).
+- Les passages utiles de la bibliothèque (ESC, RCP) sont joints à la demande. Seuls le texte dicté et un résumé du
+  dossier sans nom ni coordonnées partent chez Claude. Même clé `ANTHROPIC_API_KEY` que la dictée.
+- Le prompt, les modèles par examen et les exemples sont dans `app/dossier/prompts/` (à adapter à votre style).
+
+## Comptes rendus d'ECG, Holter, MAPA, effort, Doppler, coroscanner et coronarographie (médecins)
+
+Dans un dossier, section **Examens** : boutons **ECG**, **Holter**, **MAPA**, **Épreuve d'effort**, **Doppler veineux**,
+**Doppler artériel MI**, **Doppler TSA**, **Coroscanner** et **Coronarographie**, comme pour l'ETT. On remplit
+les mesures ; les calculs et les propositions pour le « AU TOTAL » se mettent à jour pendant la saisie (un clic sur
+**Ajouter** les reprend, vous les corrigez). Le PDF est généré et rangé dans Drive si Drive est connecté.
+
+- **ECG** : QT corrigé (Fridericia et Bazett), bradycardie ou tachycardie, BAV du 1er degré, QRS élargis, axe, FA rapide.
+- **Holter** : nombre de complexes et charge d'extrasystoles ventriculaires, TV non soutenue, pauses de 3 secondes ou plus,
+  FA paroxystique (avec renvoi au CHA₂DS₂-VA), bradycardie, qualité du tracé.
+- **Doppler veineux** : thrombose (proximale, distale, musculaire, superficielle), reflux des saphènes et profond, œdème,
+  adénopathie, incohérence de compressibilité signalée.
+- **Doppler artériel MI** : IPS de chaque côté (cheville la plus haute sur brachiale la plus haute) et palier (normal,
+  limite, artériopathie, incompressible).
+- **Doppler TSA** : sténose de l'ACI d'après la vitesse systolique, flux vertébral inversé, épaisseur intima-média.
+- **Coroscanner** : score calcique (catégorie A0 à A3) et **CAD-RADS 2.0 calculé** d'après la sténose choisie pour chaque
+  artère (tronc commun, IVA, circonflexe, coronaire droite), avec la conduite « à discuter » de la catégorie ; une artère
+  non évaluable rend la catégorie provisoire.
+- **Coronarographie** : atteinte mono, bi ou tritronculaire, tronc commun, sténose intermédiaire à évaluer (FFR ≤ 0,80,
+  iFR ≤ 0,89), FEVG, geste réalisé et complications.
+- **MAPA** : baisse nocturne et profil (dipper, non-dipper, riser), HTA confirmée, blouse blanche ou masquée (non
+  traité), HTA contrôlée ou non (traité), validité de l'enregistrement.
+- **Épreuve d'effort** : FMT (220 − âge) et pourcentage atteint, test maximal ou sous-maximal, sous-décalage de ST, score
+  de Duke (tapis), double produit, réponse tensionnelle. Un test négatif mais sous-maximal est proposé « non concluant ».
+
+Chaque page rappelle l'origine des seuils (ESC/ESH 2018, AHA/ACCF/HRS 2009, ESC 2019…). **Relisez-les contre vos
+recommandations avant de vous y fier.** Les modèles sont dans `app/dossier/comptes-rendus/definitions/` : un fichier par
+examen, facile à ajuster ou à compléter (Holter, doppler…).
+
+### Références et validation par le médecin
+
+Principe : **tout ce que propose le site est une aide ; le médecin relit, corrige et valide.** Chaque proposition qui
+s'appuie sur une recommandation montre sa référence, et aucune référence n'est présentée comme vérifiée sans votre
+validation.
+
+- **Sous chaque proposition** (ETT, ECG, Holter, MAPA, effort, Doppler, coroscanner, coronarographie) : la phrase de la
+  recommandation, le document avec sa page, un lien **Voir le passage** (le texte de la source, la phrase surlignée) et un
+  lien **Ouvrir le document, page N**. Un badge dit si la règle est *validée par* un médecin, *proposée, à valider*,
+  *à corriger*, ou si la source dit autre chose. Sans passage trouvé, le site l'écrit : « Source non retrouvée dans la
+  bibliothèque » avec la source attendue.
+- **Dans le compte rendu** : chaque proposition ajoutée au « AU TOTAL » porte un repère [1], [2]… et la liste des
+  références (document, page, phrase citée, validée ou non) est imprimée sous le « AU TOTAL », dans l'écran, le PDF et le
+  dossier.
+- **Rédaction par dictée** : Claude cite les extraits de la bibliothèque par un repère [R1], [R2]… et n'invente aucune
+  référence ; chaque repère renvoie au passage et au document. Les références citées sont reprises à la fin du texte
+  enregistré. Un texte sans référence est signalé.
+- **Page Vérifier les seuils** (Bibliothèque → *Vérifier les seuils*) : pour chacune des règles de l'inventaire, **Chercher
+  dans la bibliothèque** fait proposer par Claude un verdict (la source confirme, dit autre chose, ou ne tranche pas) avec la
+  phrase recopiée. La phrase est contrôlée mot pour mot dans le texte du passage : si elle n'y est pas, aucun verdict n'est
+  retenu. Vous lisez le passage, puis **Je valide** ou **À corriger** (avec un commentaire). Relancer une recherche efface
+  la validation précédente.
+- Les documents doivent être dans la **Bibliothèque** (recommandations ESC, HAS, ASE…) : le texte est importé pour la
+  recherche et le lien renvoie à la version officielle, ouverte à la bonne page. Respectez les conditions d'usage de chaque
+  éditeur pour les documents que vous y chargez.
+
+Les règles sont listées dans `app/dossier/comptes-rendus/seuils.ts` (valeur exacte, source citée, degré de confiance).
+Un test (`seuils.test.ts`) contrôle chacune sur ses valeurs limites et exige que toute proposition appuyée sur une
+recommandation renvoie à une règle. Quand une valeur est corrigée, il faut la changer dans la définition de l'examen
+**et** dans l'inventaire.
+
 ## Bibliothèque et assistant à références (médecins)
 
 L'**Assistant** (bouton sur l'agenda, ou **Demander à l'assistant** dans un dossier) répond aux questions sur les
@@ -225,6 +353,24 @@ deviner.
   jamais lui-même aux revues : la connexion se fait dans le navigateur, avec ces identifiants. Si `SESSION_SECRET`
   change, il faut ressaisir les mots de passe.
 
+### Identifier les publications par leur DOI, thèmes, file de lecture
+
+- **DOI** : chaque publication suivie est identifiée (DOI lu dans le lien, sinon sur la page ; résumé et PDF en accès libre
+  par Europe PMC quand ils existent). Elle affiche alors **Version officielle (DOI)** et, si possible, **PDF en accès
+  libre**. Les éditeurs qui refusent les robots (cas de l'ESC chez Oxford University Press) restent sans PDF direct : le
+  DOI ouvre leur page dans votre navigateur.
+- **Plusieurs PDF à la fois** : sous **Ajouter une source**, « Ajouter plusieurs PDF à la fois ». Chaque fichier est reconnu par son DOI et ajouté
+  sans formulaire ; un fichier sans DOI, scanné, déjà présent ou dont le titre est introuvable est signalé et laissé à l'ajout à la main.
+- **Dépôt de PDF** : dans **Ajouter une source**, le DOI est lu sur la première page du PDF choisi. S'il correspond à une
+  publication suivie (ou à des métadonnées publiques), titre, année, organisme, type et lien se remplissent seuls ; un
+  document déjà importé est signalé. Après l'ajout d'une recommandation plus récente, l'ancienne édition du même sujet est
+  proposée pour être marquée « remplacée ».
+- **Par thème** : l'accueil de la bibliothèque classe documents et publications par thème clinique (FA, insuffisance
+  cardiaque, coronaires…), d'après leur titre. Chaque thème a sa page : en vigueur, à ajouter ou à lire, versions remplacées.
+- **File de lecture** : sur chaque publication, **À lire** l'épingle en tête et **Écarter** la masque (récupérable).
+- **Veille de nuit** : `vercel.json` appelle chaque nuit `/api/taches/veille`. Ajouter la variable `CRON_SECRET` (16
+  caractères au moins) sur Vercel puis redéployer ; sans elle la tâche répond « non activée ».
+
 **Contrôle de qualité** : chaque réponse se note **Juste** ou **À revoir**, avec un commentaire. Une réponse juste peut
 devenir une **fiche validée** de la bibliothèque, citée ensuite comme « Dr Taouab », avec ses sources d'origine. Les
 questions, les réponses et les sources citées sont conservées et journalisées.
@@ -237,6 +383,77 @@ réponse en ne citant que ces passages. Comptez environ 5 à 15 centimes de doll
 **Depuis un dossier**, un résumé **sans nom ni coordonnées** est joint à la question : âge, sexe, poids, facteurs de
 risque, antécédents, allergies, traitements en cours, dernières valeurs et DFG. Il est affiché avant l'envoi et
 conservé avec la réponse. Les antécédents sont recopiés tels quels : n'y écrivez pas de nom.
+
+## Fin de consultation, courrier, vérification d'ordonnance et population (médecins)
+
+- **Fin de consultation** : sur la page d'une consultation, un bandeau réunit **Ordonnance**, **Facture proposée**,
+  **Courrier au confrère** et **Rapport PDF**. La facture s'ouvre avec ses lignes déjà remplies : la consultation, plus un
+  acte par examen fait le même jour (ECG, ETT, Holter, MAPA, effort), d'après les tarifs de Comptabilité → Réglages ; on
+  corrige avant d'enregistrer. Une facture déjà liée à la consultation est montrée à la place.
+- **Courrier au confrère** : modèle fixe rempli avec la consultation (motif, antécédents, traitement, examen, ECG,
+  conclusion, conduite), adressé au médecin traitant de la fiche. **Rien n'est ajouté** : les rubriques vides sont omises ;
+  le texte est modifiable avant d'imprimer le PDF.
+- **Vérification de l'ordonnance** : pendant la rédaction, le site signale une allergie notée au dossier (avec les
+  synonymes courants : aspirine = Kardégic, pénicilline = amoxicilline…), un médicament en double, deux médicaments de la
+  même famille et quelques associations à surveiller (IEC + ARA II, bêtabloquant + diltiazem/vérapamil, deux
+  anticoagulants…). C'est une aide à la vigilance, **les règles sont à relire par le médecin** (`securite-prescription.ts`).
+- **Population** (Patients → Population) : INR hors zone cible d'après le dernier INR de chaque patient qui a une zone dans
+  sa fiche, et patients traités pas revus depuis plus d'un an.
+
+## Navigation, « À valider » et « Ma journée »
+
+- **Cinq espaces** en haut de l'espace cabinet, avec leurs pages juste dessous : **Aujourd'hui** (Ma journée, À valider,
+  Suivis, Résultats), **Patients**, **Agenda**, et **Cabinet**
+  (Comptabilité, Bibliothèque, Calculateurs, Lexique, Reprise Word, puis pour l'administrateur Modèles IA, Drive, Journal, Comptes). Les adresses des pages ne
+  changent pas. L'**Assistant** s'ouvre depuis le bouton du dossier patient. La secrétaire ne voit ni la bibliothèque, ni le lexique, ni la reprise Word.
+- **À valider** réunit au même endroit ce que le site a préparé : résultats d'analyses à classer ou à relire, suivis en
+  retard, anciens comptes rendus Word, médicaments prescrits modifiés, seuils proposés par l'assistant. Une pastille rouge
+  indique le nombre d'éléments en attente.
+- **Ma journée** liste les rendez-vous du jour. Pour les médecins, chaque patient dont le dossier est connu affiche sa
+  préparation : allergies, alertes du dossier (INR, FC, TA, DFG, FEVG), dernière consultation (motif, conclusion, conduite),
+  examens depuis, résultats à relire, suivis dus et traitements en cours. La secrétaire voit les rendez-vous et les dossiers.
+
+## Consultation écoutée (médecins)
+
+Dans la dictée d'une consultation, **Qui parle ? → Toute la consultation (médecin et patient)** écoute la conversation (une heure
+au plus), puis range ce qui a été dit dans les rubriques du rapport : ce que dit le patient dans « Motif », les constats et
+décisions du médecin dans les autres rubriques. Le modèle (Sonnet, puis Opus si la note ne passe pas son contrôle) **n'ajoute
+rien** et signale ce qu'il ne peut pas attribuer (« [passage non attribué] »). Vous relisez avant toute insertion.
+
+- **Accord du patient obligatoire** : une case à cocher (« le patient a été informé et il est d'accord ») conditionne le départ ;
+  l'accord est inscrit au journal. Affichez l'information dans la salle d'attente.
+- **Le son n'est jamais enregistré ni conservé.** La reconnaissance se fait dans le navigateur (gratuite) ; seul le texte transcrit
+  part chez Claude, sans le nom du patient ni sa date de naissance.
+- **Limite honnête** : la reconnaissance du navigateur ne distingue pas les voix et gère une seule langue à la fois. Un mélange
+  français-arabe dans la même conversation est mal reconnu ; essayez avec de vraies consultations avant de vous y fier. Si la
+  qualité ne suffit pas, le moteur de reconnaissance se remplace (`app/voix/moteur.ts`) sans toucher aux écrans.
+
+## La voix partout (médecins)
+
+- **Micro sur chaque champ de texte** : cliquer dans un champ (antécédents, notes, conclusions, remarques, question à
+  l'assistant…) fait apparaître un micro à son coin ; **Ctrl+M** dicte sans la souris, **Échap** arrête. Le texte est
+  corrigé à la volée (ponctuation dictée, lexique, sigles, médicaments) et inséré **à la position du curseur**, sans
+  limite de 5 minutes. Gratuit : reconnaissance du navigateur (Chrome, Edge, Safari).
+- **Note vocale** (bouton rouge en bas à droite, ou Ctrl+M hors d'un champ) : on dicte librement, le site range la
+  dictée en actions (note au dossier, suivi à prévoir, traitement à ajouter ou arrêter, ordonnance à préparer). Le nom du
+  patient est masqué avant l'envoi à Claude ; **chaque action se relit et se coche avant d'être enregistrée**. Sans clé
+  Anthropic, la dictée devient une simple note. Une ordonnance s'ouvre préremplie dans son formulaire.
+- **Langue du patient** : champ de la fiche (français ou arabe). Dans la dictée de consultation, « Qui parle ? » permet
+  d'écouter le patient en arabe ou en français : sa parole est rapportée **en français** dans « Motif » et « Autres »,
+  à relire. La reconnaissance gratuite de l'arabe marocain parlé est incertaine : à essayer avec de vrais patients.
+- **Le lexique apprend** : après l'enregistrement d'un formulaire, les mots corrigés à la main depuis la dictée sont
+  proposés au lexique (un clic). Les noms de médicaments et sigles connus ne sont jamais proposés.
+- Le moteur de voix est remplaçable (`app/voix/moteur.ts`) sans toucher aux écrans.
+- L'espace cabinet s'installe sur téléphone (« Ajouter à l'écran d'accueil »).
+
+## Modèles IA par tâche (administrateur)
+
+**Modèles IA** (onglet) liste chaque tâche confiée à Claude avec son modèle et son effort : Haiku pour les tâches
+étroites (mots-clés, correction de dictée, note vocale, reprise Word), Sonnet pour la rédaction et la mise en français,
+Opus pour l'assistant à références et la vérification des seuils. Quand la réponse ne passe pas son contrôle (valeur
+hors bornes, texte vide, référence inconnue…), elle est redemandée une fois au modèle supérieur. Les réglages sont
+modifiables sans redéploiement ; la page montre jetons et coût estimé par mois et par tâche. Valeurs de départ :
+`app/dossier/ia/taches.ts`. Ce sont des points de départ : surveillez la colonne « Secondes tentatives ».
 
 ## Reprise des anciens comptes rendus Word (médecins)
 

@@ -59,6 +59,7 @@ export async function verifierIdentifiants(saisi: string, motDePasse: string) {
   const identifiant = normaliser(saisi);
   const a = admin();
   if (a && identifiant === a.identifiant) {
+    if (a.motDePasse.length < 12) console.warn("COMPTE_ADMIN : mot de passe de moins de 12 caractères, à renforcer");
     return timingSafeEqual(sha256(a.motDePasse), sha256(motDePasse)) ? { identifiant, version: "admin" } : null;
   }
   const compte = await lireCompte(identifiant);
@@ -134,6 +135,16 @@ export async function listerComptes() {
     comptes.push({ identifiant: brut[i], creePar, creeLe, role: role ?? "secretaire" });
   }
   return comptes.sort((a, b) => a.identifiant.localeCompare(b.identifiant));
+}
+
+// Médecins auxquels rattacher un rendez-vous : l'administrateur et les comptes au rôle « médecin »
+export async function listerMedecins() {
+  const medecins = admin() ? [admin()!.identifiant] : [];
+  if (stockageConfigure()) {
+    const comptes = await listerComptes();
+    medecins.push(...comptes.filter((c) => c.role === "medecin").map((c) => c.identifiant));
+  }
+  return [...new Set(medecins)].sort((a, b) => a.localeCompare(b));
 }
 
 export const identifiantValide = (identifiant: string) => /^[a-z0-9._-]{2,30}$/.test(identifiant);

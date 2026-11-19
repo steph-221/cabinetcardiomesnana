@@ -1,24 +1,17 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import {
-  BookA,
-  CalendarClock,
-  CalendarDays,
-  FileInput,
-  FolderOpen,
-  HardDrive,
-  History,
-  Library,
-  LogOut,
-  MessagesSquare,
-  Users,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { jourLocal } from "../../agenda/creneaux";
 import { accesMedical, utilisateurConnecte } from "../../agenda/session";
 import { baseConfiguree } from "../../dossier/base";
-import { compterEnRetard } from "../../dossier/suivis";
+import { groupesAValider, total } from "../../dossier/a-valider";
+import { espacesVisibles } from "../../dossier/navigation";
 import { deconnexion } from "./actions";
-import { Onglet } from "./onglet";
+import { lireLexique } from "../../dossier/lexique";
+import { derniersDossiers } from "../../dossier/journal";
+import { libellePatient } from "../../dossier/patients";
+import { Navigation } from "./navigation";
+import { Voix } from "./voix/voix";
 
 // Les onglets restent en haut de chaque page de l'espace, pour passer d'une rubrique à l'autre
 export default async function LayoutEspace({ children, params }: LayoutProps<"/[lang]/espace">) {
@@ -38,94 +31,58 @@ async function Onglets({ langue }: { langue: string }) {
   // Pas d'onglets sur la page de connexion
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) return null;
+  const medical = accesMedical(utilisateur);
 
-  let enRetard = 0;
+  // Éléments en attente : pastilles sur « À valider » et « Suivis »
+  const pastilles: Record<string, number> = {};
+  let lexique: { entendu: string; correct: string }[] = [];
+  // Derniers dossiers ouverts par ce compte : on y revient en un clic depuis n'importe quelle page
+  let recents: { id: number; libelle: string }[] = [];
   if (baseConfiguree()) {
     try {
-      enRetard = await compterEnRetard(jourLocal(new Date()));
+      recents = (await derniersDossiers(utilisateur.identifiant, 5)).map((d) => ({ id: d.id, libelle: libellePatient(d) }));
     } catch (erreur) {
       console.error(erreur);
     }
+    try {
+      const groupes = await groupesAValider(jourLocal(new Date()), medical);
+      pastilles["a-valider"] = total(groupes);
+      pastilles.suivis = groupes.find((g) => g.cle === "suivis")?.n ?? 0;
+      pastilles.messages = groupes.find((g) => g.cle === "messages")?.n ?? 0;
+    } catch (erreur) {
+      console.error(erreur);
+    }
+    if (medical) {
+      try {
+        lexique = (await lireLexique()).map(({ entendu, correct }) => ({ entendu, correct }));
+      } catch (erreur) {
+        console.error(erreur);
+      }
+    }
   }
 
-  const base = `/${langue}/espace`;
   return (
-    <div className="sticky top-16 z-40 border-b border-slate-200 bg-white/90 backdrop-blur" lang="fr" dir="ltr">
-      <nav aria-label="Espace cabinet" className="mx-auto flex max-w-6xl items-center gap-1.5 overflow-x-auto px-4 py-2 sm:px-6">
-        <Onglet href={base} exact>
-          <CalendarDays className="h-4 w-4" aria-hidden />
-          Agenda
-        </Onglet>
-        <Onglet href={`${base}/patients`}>
-          <FolderOpen className="h-4 w-4" aria-hidden />
-          Patients
-        </Onglet>
-        <Onglet href={`${base}/suivis`}>
-          <CalendarClock className="h-4 w-4" aria-hidden />
-          Suivis
-          {enRetard > 0 && (
-            <span
-              title={`${enRetard} en retard`}
-              className="rounded-full bg-red-600 px-2 text-xs font-semibold text-white group-aria-[current=page]:bg-white group-aria-[current=page]:text-red-700"
+    <>
+      <Voix langue={langue} medical={medical} lexique={lexique} />
+      <Navigation
+        langue={langue}
+        espaces={espacesVisibles({ medical, admin: utilisateur.admin })}
+        secretaire={!medical}
+        pastilles={pastilles}
+        recents={recents}
+        fin={
+          <form action={deconnexion.bind(null, langue)}>
+            <button
+              type="submit"
+              title={`Se déconnecter (${utilisateur.identifiant})`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
             >
-              {enRetard}
-              <span className="sr-only"> en retard</span>
-            </span>
-          )}
-        </Onglet>
-        {accesMedical(utilisateur) && (
-          <Onglet href={`${base}/lexique`}>
-            <BookA className="h-4 w-4" aria-hidden />
-            Lexique
-          </Onglet>
-        )}
-        {accesMedical(utilisateur) && (
-          <Onglet href={`${base}/assistant`}>
-            <MessagesSquare className="h-4 w-4" aria-hidden />
-            Assistant
-          </Onglet>
-        )}
-        {accesMedical(utilisateur) && (
-          <Onglet href={`${base}/bibliotheque`}>
-            <Library className="h-4 w-4" aria-hidden />
-            Bibliothèque
-          </Onglet>
-        )}
-        {accesMedical(utilisateur) && (
-          <Onglet href={`${base}/reprise`}>
-            <FileInput className="h-4 w-4" aria-hidden />
-            Reprise Word
-          </Onglet>
-        )}
-        {utilisateur.admin && (
-          <Onglet href={`${base}/drive`}>
-            <HardDrive className="h-4 w-4" aria-hidden />
-            Drive
-          </Onglet>
-        )}
-        {utilisateur.admin && (
-          <Onglet href={`${base}/journal`}>
-            <History className="h-4 w-4" aria-hidden />
-            Journal
-          </Onglet>
-        )}
-        {utilisateur.admin && (
-          <Onglet href={`${base}/comptes`}>
-            <Users className="h-4 w-4" aria-hidden />
-            Comptes
-          </Onglet>
-        )}
-        <form action={deconnexion.bind(null, langue)} className="ms-auto shrink-0">
-          <button
-            type="submit"
-            title={`Se déconnecter (${utilisateur.identifiant})`}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Se déconnecter
-          </button>
-        </form>
-      </nav>
-    </div>
+              <LogOut className="h-4 w-4" aria-hidden />
+              Se déconnecter
+            </button>
+          </form>
+        }
+      />
+    </>
   );
 }

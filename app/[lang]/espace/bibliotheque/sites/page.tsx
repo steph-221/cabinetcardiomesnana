@@ -2,7 +2,17 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { after, connection } from "next/server";
-import { BookCheck, ExternalLink, FileDown, FilePlus2, Globe, ShieldAlert } from "lucide-react";
+import {
+  BookCheck,
+  ExternalLink,
+  FileDown,
+  FilePlus2,
+  FileText,
+  Globe,
+  Headphones,
+  Search,
+  ShieldAlert,
+} from "lucide-react";
 import { estLangue } from "../../../../cabinet";
 import { exigerUtilisateur } from "../../../../agenda/session";
 import { baseConfiguree } from "../../../../dossier/base";
@@ -11,15 +21,26 @@ import { compteDrive, driveConfigure } from "../../../../dossier/drive";
 import { typesSource } from "../../../../dossier/sources";
 import { listerSites, sitesARelire, verifierSite, type SiteSuivi } from "../../../../dossier/veille";
 import { BaseNonConfiguree, ErreurLecture, Retour } from "../../patients/commun";
+import { Categories } from "../categories";
 import { CopieSite, type ResumeCopie } from "./copie";
-import { AccesAbonne, BoutonsSite, FormulaireSite, SuivreEsc, ToutVerifier } from "./formulaires";
+import { SITES_PROPOSES } from "../../../../dossier/sites-proposes";
+import {
+  AccesAbonne,
+  BoutonsLecture,
+  BoutonsSite,
+  FormulaireSite,
+  SuivreSitePropose,
+  ToutVerifier,
+} from "./formulaires";
+import { lienDoi } from "../../../../dossier/resolution";
+import { libelleTheme, themesDe } from "../../../../dossier/themes";
 
 export const metadata: Metadata = {
   title: "Sites et revues suivis",
   robots: { index: false, follow: false },
 };
 
-export default async function Sites({ params }: PageProps<"/[lang]/espace/bibliotheque/sites">) {
+export default async function Sites({ params, searchParams }: PageProps<"/[lang]/espace/bibliotheque/sites">) {
   const { lang } = await params;
   if (!estLangue(lang)) return null;
 
@@ -35,10 +56,12 @@ export default async function Sites({ params }: PageProps<"/[lang]/espace/biblio
         Nouveau ». Avec la <strong>copie privée</strong>, le site entier (pages HTML, images, PDF, diaporamas) est
         recopié dans le Google Drive du cabinet, pour votre usage personnel seulement, et son texte entre dans la
         bibliothèque. Un document que le site refuse de laisser copier (page protégée contre les robots) s&apos;ajoute à
-        la main : ouvrez la version officielle, téléchargez le PDF, puis « Ajouter à la bibliothèque ».
+        la main : ouvrez la version officielle (avec l&apos;accès abonné du cabinet si besoin), téléchargez le PDF, puis
+        « Ajouter à la bibliothèque ».
       </p>
+      <Categories langue={lang} active="sites" />
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
-        <Contenu langue={lang} />
+        <Contenu langue={lang} searchParams={searchParams} />
       </Suspense>
     </div>
   );
@@ -46,8 +69,17 @@ export default async function Sites({ params }: PageProps<"/[lang]/espace/biblio
 
 const date = (d: Date) => d.toLocaleDateString("fr-FR", { timeZone: "Africa/Casablanca" });
 
-async function Contenu({ langue }: { langue: string }) {
+async function Contenu({
+  langue,
+  searchParams,
+}: {
+  langue: string;
+  searchParams: PageProps<"/[lang]/espace/bibliotheque/sites">["searchParams"];
+}) {
   await connection();
+  const { q, ecartees } = await searchParams;
+  const theme = (Array.isArray(q) ? q[0] : q)?.trim().slice(0, 80) ?? "";
+  const voirEcartees = (Array.isArray(ecartees) ? ecartees[0] : ecartees) === "1";
   await exigerUtilisateur(langue, "medical");
   if (!baseConfiguree()) return <BaseNonConfiguree />;
   let sites: SiteSuivi[] | null = null;
@@ -63,6 +95,7 @@ async function Contenu({ langue }: { langue: string }) {
     console.error(erreur);
   }
   if (sites === null) return <ErreurLecture />;
+  const suivis: SiteSuivi[] = sites;
 
   // Les sites pas relus depuis un jour le sont après l'affichage : les nouveautés apparaîtront à la visite suivante
   after(async () => {
@@ -73,14 +106,50 @@ async function Contenu({ langue }: { langue: string }) {
     }
   });
 
-  const suitEsc = sites.some((s) => s.adresse.includes("escardio.org/guidelines/clinical-practice-guidelines"));
+  const proposes = Object.entries(SITES_PROPOSES).filter(([, p]) => !suivis.some((s) => s.adresse === p.adresse));
+  // Recherche par thème (« fibrillation », « TAVI »…) dans les titres et résumés de toutes les publications suivies
+  const mots = theme.toLowerCase().split(/\s+/).filter(Boolean);
+  const correspond = (p: SiteSuivi["publications"][number]) =>
+    mots.every((m) => `${p.titre} ${p.resume}`.toLowerCase().includes(m));
+  // File de lecture : les publications « à lire » en tête, les écartées masquées (sauf demande)
+  const nbEcartees = suivis.reduce((n, s) => n + s.publications.filter((p) => p.etat === "ecartee").length, 0);
+  const rang = (p: SiteSuivi["publications"][number]) => (p.etat === "a_lire" ? 0 : 1);
+  const visibles = suivis.map((s) => ({
+    ...s,
+    publications: s.publications
+      .filter((p) => voirEcartees || p.etat !== "ecartee")
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => rang(a.p) - rang(b.p) || a.i - b.i)
+      .map(({ p }) => p),
+  }));
+  const affiches = mots.length
+    ? visibles
+        .map((s) => ({ ...s, publications: s.publications.filter(correspond) }))
+        .filter((s) => s.publications.length > 0)
+    : visibles;
   const libelleType = (t: string) => typesSource.find((x) => x.cle === t)?.libelle ?? t;
 
   return (
     <>
       <section className="mt-6 space-y-6 rounded-2xl border border-slate-200 p-6">
         <h2 className="font-semibold text-slate-900">Suivre un site ou une revue</h2>
-        {!suitEsc && <SuivreEsc langue={langue} />}
+        {proposes
+          .filter(([, p]) => p.groupe === "esc")
+          .map(([cle, p]) => (
+            <SuivreSitePropose key={cle} langue={langue} cle={cle} libelle={p.bouton} />
+          ))}
+        {proposes.some(([, p]) => p.groupe === "revue") && (
+          <details open>
+            <summary className="cursor-pointer text-sm font-medium text-slate-700">Revues cardio (flux RSS)</summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {proposes
+                .filter(([, p]) => p.groupe === "revue")
+                .map(([cle, p]) => (
+                  <SuivreSitePropose key={cle} langue={langue} cle={cle} libelle={p.bouton} />
+                ))}
+            </div>
+          </details>
+        )}
         <details>
           <summary className="cursor-pointer text-sm text-slate-700">Autre site, revue ou flux RSS…</summary>
           <div className="mt-4">
@@ -89,13 +158,45 @@ async function Contenu({ langue }: { langue: string }) {
         </details>
       </section>
 
-      {sites.length > 0 && (
-        <div className="mt-8 flex justify-end">
+      <form role="search" className="mt-6 flex gap-2">
+        <label className="sr-only" htmlFor="theme">
+          Chercher un thème dans les publications suivies
+        </label>
+        <input
+          id="theme"
+          name="q"
+          defaultValue={theme}
+          placeholder="Chercher un thème : fibrillation, TAVI, débat…"
+          className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+        />
+        <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          <Search className="h-4 w-4" aria-hidden />
+          Chercher
+        </button>
+      </form>
+      {theme && affiches.length === 0 && (
+        <p className="mt-4 text-sm text-slate-500">Aucune publication ne correspond à « {theme} ».</p>
+      )}
+
+      {affiches.length > 0 && (
+        <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+          {nbEcartees > 0 && (
+            <Link
+              href={
+                voirEcartees
+                  ? `/${langue}/espace/bibliotheque/sites`
+                  : `/${langue}/espace/bibliotheque/sites?ecartees=1`
+              }
+              className="text-xs text-slate-500 underline"
+            >
+              {voirEcartees ? "Masquer les publications écartées" : `Voir les ${nbEcartees} publication(s) écartée(s)`}
+            </Link>
+          )}
           <ToutVerifier langue={langue} />
         </div>
       )}
 
-      {sites.map((site) => {
+      {affiches.map((site) => {
         const nouvelles = site.publications.filter((p) => p.nouvelle).length;
         const ajoutees = site.publications.filter((p) => p.importee).length;
         const copiesSite = copies.filter((c) => c.siteId === site.id);
@@ -165,6 +266,22 @@ async function Contenu({ langue }: { langue: string }) {
                         >
                           {p.titre}
                         </a>
+                        {p.media && (
+                          <a
+                            href={p.media}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ms-2 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900 hover:bg-sky-200"
+                          >
+                            <Headphones className="h-3 w-3" aria-hidden />
+                            Écouter
+                          </a>
+                        )}
+                        {p.etat === "a_lire" && (
+                          <span className="ms-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">
+                            À lire
+                          </span>
+                        )}
                         {p.nouvelle && (
                           <span className="ms-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
                             Nouveau
@@ -173,22 +290,56 @@ async function Contenu({ langue }: { langue: string }) {
                         <p className="text-xs text-slate-500">
                           {p.publieLe ? `publié le ${date(p.publieLe)}` : `relevé le ${date(p.vueLe)}`}
                         </p>
+                        {p.resume && <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">{p.resume}</p>}
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                          {themesDe(`${p.titre} ${p.resume}`)
+                            .slice(0, 2)
+                            .map((t) => (
+                              <span key={t} className="rounded-full bg-slate-100 px-2 py-0.5">
+                                {libelleTheme(t)}
+                              </span>
+                            ))}
+                          {p.pdfUrl && (
+                            <a
+                              href={p.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-red-700 underline"
+                            >
+                              <FileText className="h-3 w-3" aria-hidden />
+                              PDF en accès libre
+                            </a>
+                          )}
+                          {p.doi && (
+                            <a
+                              href={lienDoi(p.doi)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-red-700 underline"
+                            >
+                              Version officielle (DOI)
+                            </a>
+                          )}
+                        </p>
                         {page && <LiensCopie copies={[page, ...fichiers]} />}
                       </div>
-                      {p.importee ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                          <BookCheck className="h-3.5 w-3.5" aria-hidden />
-                          Dans la bibliothèque
-                        </span>
-                      ) : (
-                        <Link
-                          href={`/${langue}/espace/bibliotheque?publication=${p.id}#ajouter`}
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                        >
-                          <FilePlus2 className="h-3.5 w-3.5" aria-hidden />
-                          Ajouter à la bibliothèque
-                        </Link>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1">
+                        {!p.importee && <BoutonsLecture langue={langue} id={p.id} etat={p.etat} />}
+                        {p.importee ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                            <BookCheck className="h-3.5 w-3.5" aria-hidden />
+                            Dans la bibliothèque
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/${langue}/espace/bibliotheque?publication=${p.id}#ajouter`}
+                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                          >
+                            <FilePlus2 className="h-3.5 w-3.5" aria-hidden />
+                            Ajouter à la bibliothèque
+                          </Link>
+                        )}
+                      </div>
                     </li>
                   );
                 })}

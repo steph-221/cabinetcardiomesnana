@@ -8,6 +8,8 @@
 // Aucun accès à la base ni à Google Drive ici.
 
 import { lookup } from "node:dns/promises";
+import type { IncomingMessage } from "node:http";
+import { request } from "node:https";
 import { isIP } from "node:net";
 import type { Browser } from "playwright-core";
 import { adresseInterne, verifierAdresse } from "./lecture-site";
@@ -102,63 +104,74 @@ function estProtection(statut: number, entetes: Record<string, string>, titre = 
   return (statut === 403 || statut === 429) && /cloudflare|akamai/i.test(entetes["server"] ?? "");
 }
 
-async function lireAvecLimite(reponse: Response, limite: number) {
-  const lecteur = reponse.body?.getReader();
-  if (!lecteur) return new Uint8Array();
-  const morceaux: Uint8Array[] = [];
+// Requête GET en https directement sur l'adresse déjà vérifiée (le nom de domaine ne sert qu'à la validation du
+// certificat) : une seconde résolution DNS pourrait donner une adresse interne (« DNS rebinding »).
+function obtenir(url: URL, cible: { address: string; family: number }) {
+  return new Promise<IncomingMessage>((resolve, reject) => {
+    const requete = request(
+      url,
+      {
+        method: "GET",
+        timeout: 30_000,
+        lookup: (_hote, options, rappel) =>
+          options.all
+            ? (rappel as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [cible])
+            : rappel(null, cible.address, cible.family),
+        headers: { accept: "*/*", "user-agent": "Mozilla/5.0 (compatible; cabinet-bibliotheque/1.0)" },
+      },
+      resolve,
+    );
+    requete.on("timeout", () => requete.destroy(new Error("Le site ne répond pas.")));
+    requete.on("error", reject);
+    requete.end();
+  });
+}
+
+async function lireAvecLimite(reponse: IncomingMessage, limite: number) {
+  const morceaux: Buffer[] = [];
   let total = 0;
-  for (;;) {
-    const { done, value } = await lecteur.read();
-    if (done) break;
-    total += value.length;
+  for await (const morceau of reponse as AsyncIterable<Buffer>) {
+    total += morceau.length;
     if (total > limite) {
-      await lecteur.cancel();
+      reponse.destroy();
       throw new Error("Fichier trop volumineux (plus de 80 Mo).");
     }
-    morceaux.push(value);
+    morceaux.push(morceau);
   }
-  const donnees = new Uint8Array(total);
-  let i = 0;
-  for (const m of morceaux) {
-    donnees.set(m, i);
-    i += m.length;
-  }
-  return donnees;
+  return new Uint8Array(Buffer.concat(morceaux));
 }
 
 // Télécharge un document. Renvoie null si l'adresse donne en fait une page HTML (à ouvrir dans le navigateur).
 export async function telechargerFichier(adresse: string): Promise<FichierCopie | null> {
   let url = new URL(adresse);
   for (let i = 0; i <= 5; i++) {
-    await verifierAdresse(url);
-    const reponse = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(120_000),
-      headers: { accept: "*/*", "user-agent": "Mozilla/5.0 (compatible; cabinet-bibliotheque/1.0)" },
-      cache: "no-store",
-    });
-    const suite = reponse.headers.get("location");
-    if (reponse.status >= 300 && reponse.status < 400 && suite) {
-      await reponse.body?.cancel();
+    const reponse = await obtenir(url, await verifierAdresse(url));
+    const statut = reponse.statusCode ?? 0;
+    const suite = reponse.headers.location;
+    if (statut >= 300 && statut < 400 && suite) {
+      reponse.resume();
       url = new URL(suite, url);
       continue;
     }
-    const entetes = Object.fromEntries(reponse.headers);
+    const entetes: Record<string, string> = {};
+    for (const [cle, valeur] of Object.entries(reponse.headers)) {
+      if (valeur !== undefined) entetes[cle] = Array.isArray(valeur) ? valeur.join(", ") : valeur;
+    }
     const mime = (entetes["content-type"] ?? "").split(";")[0].trim().toLowerCase();
-    if (estProtection(reponse.status, entetes)) {
-      await reponse.body?.cancel();
+    if (estProtection(statut, entetes)) {
+      reponse.resume();
       throw new CopieBloquee();
     }
-    if (!reponse.ok) {
-      await reponse.body?.cancel();
-      throw new Error(`Le site a répondu ${reponse.status}.`);
+    if (statut < 200 || statut >= 300) {
+      reponse.resume();
+      throw new Error(`Le site a répondu ${statut}.`);
     }
     if (mime === "text/html" || mime === "application/xhtml+xml") {
-      await reponse.body?.cancel();
+      reponse.resume();
       return null;
     }
     if (Number(entetes["content-length"] ?? 0) > TAILLE_FICHIER_MAX) {
-      await reponse.body?.cancel();
+      reponse.resume();
       throw new Error("Fichier trop volumineux (plus de 80 Mo).");
     }
     const donnees = await lireAvecLimite(reponse, TAILLE_FICHIER_MAX);

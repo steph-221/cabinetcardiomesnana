@@ -2,14 +2,17 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { ExternalLink, FileDown, Globe, Library, MessagesSquare } from "lucide-react";
+import { ExternalLink, FileDown, Library, MessagesSquare, ShieldCheck } from "lucide-react";
 import { estLangue } from "../../../cabinet";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { baseConfiguree } from "../../../dossier/base";
 import { libelleSource, listerSources, typesSource, type Source } from "../../../dossier/bibliotheque";
 import { BaseNonConfiguree, ErreurLecture } from "../patients/commun";
-import { compterNouveautes, lirePublication } from "../../../dossier/veille";
-import { BoutonsSource, ImportSource, type Preremplissage } from "./import";
+import { compterNouveautes, lirePublication, listerSites } from "../../../dossier/veille";
+import { compterAlertesPrescrits } from "../../../dossier/veille-medicaments";
+import { Categories } from "./categories";
+import { GrilleThemes } from "./themes";
+import { BoutonsSource, ImportParLot, ImportSource, type Preremplissage } from "./import";
 
 export const metadata: Metadata = {
   title: "Bibliothèque de références",
@@ -29,11 +32,11 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
         </h1>
         <div className="flex flex-wrap gap-2">
           <Link
-            href={`/${lang}/espace/bibliotheque/sites`}
+            href={`/${lang}/espace/seuils`}
             className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
-            <Globe className="h-4 w-4" aria-hidden />
-            Sites et revues suivis
+            <ShieldCheck className="h-4 w-4" aria-hidden />
+            Vérifier les seuils
           </Link>
           <Link
             href={`/${lang}/espace/assistant`}
@@ -59,6 +62,7 @@ export default async function Bibliotheque({ params, searchParams }: PageProps<"
         </a>{" "}
         (usage interne au cabinet).
       </p>
+      <Categories langue={lang} active="documents" />
       <Suspense fallback={<p className="mt-8 text-slate-500">Chargement…</p>}>
         <Contenu langue={lang} searchParams={searchParams} />
       </Suspense>
@@ -80,22 +84,41 @@ async function Contenu({
   let sources: Source[] | null = null;
   let nouveautes = 0;
   let initial: Preremplissage | undefined;
+  let aLire: string[] = [];
   try {
-    const [liste, nombre, p] = await Promise.all([
+    const [liste, nombre, p, sites] = await Promise.all([
       listerSources(),
       compterNouveautes(),
       Number.isInteger(publicationId) && publicationId > 0 ? lirePublication(publicationId) : null,
+      listerSites().catch(() => []),
     ]);
     [sources, nouveautes] = [liste, nombre];
+    aLire = sites.flatMap((s) => s.publications.filter((x) => !x.importee && x.etat !== "ecartee").map((x) => `${x.titre} ${x.resume}`));
     if (p) initial = { ...p, publication: p.id };
   } catch (erreur) {
     console.error(erreur);
   }
   if (sources === null) return <ErreurLecture />;
+  let alertes = 0;
+  try {
+    alertes = await compterAlertesPrescrits();
+  } catch (erreur) {
+    console.error(erreur);
+  }
   const libelleType = (t: string) => typesSource.find((x) => x.cle === t)?.libelle ?? t;
 
   return (
     <>
+      {alertes > 0 && (
+        <p role="alert" className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {alertes === 1
+            ? "1 médicament prescrit a changé sur medicament.ma. "
+            : `${alertes} médicaments prescrits ont changé sur medicament.ma. `}
+          <Link href={`/${langue}/espace/bibliotheque/medicaments`} className="font-medium underline">
+            Voir les patients concernés
+          </Link>
+        </p>
+      )}
       {nouveautes > 0 && (
         <p role="status" className="mt-6 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
           {nouveautes === 1
@@ -106,6 +129,7 @@ async function Contenu({
           </Link>
         </p>
       )}
+      <GrilleThemes langue={langue} titres={sources.filter((s) => s.statut === "en_vigueur").map((s) => s.titre)} aLire={aLire} />
       <section id="ajouter" className="mt-6 scroll-mt-6 rounded-2xl border border-slate-200 p-6">
         <h2 className="mb-4 font-semibold text-slate-900">Ajouter une source</h2>
         {initial && (
@@ -119,6 +143,12 @@ async function Contenu({
           </p>
         )}
         <ImportSource key={initial?.publication ?? 0} langue={langue} initial={initial} />
+        <details className="mt-6 border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-sm font-medium text-slate-700">Ajouter plusieurs PDF à la fois</summary>
+          <div className="mt-4">
+            <ImportParLot langue={langue} />
+          </div>
+        </details>
       </section>
       <section className="mt-8">
         <h2 className="font-semibold text-slate-900">

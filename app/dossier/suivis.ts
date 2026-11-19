@@ -1,7 +1,7 @@
 // Suivis à prévoir : prochain contrôle, ETT, Holter, bilan… avec leur échéance, et les relances des patients
 
-import { cabinet } from "../cabinet";
 import { base } from "./base";
+import { texteRelance } from "../agenda/rappel";
 import { lienWhatsApp } from "./patients";
 
 export const suivisCourants = [
@@ -37,7 +37,7 @@ export type Suivi = {
   relancePar: string | null;
 };
 
-export type SuiviPatient = Suivi & { nom: string; prenom: string; sexe: "" | "F" | "M"; telephone: string };
+export type SuiviPatient = Suivi & { nom: string; prenom: string; sexe: "" | "F" | "M"; telephone: string; email?: string };
 
 const versSuivi = (l: Record<string, unknown>): SuiviPatient => ({
   id: l.id as number,
@@ -51,6 +51,7 @@ const versSuivi = (l: Record<string, unknown>): SuiviPatient => ({
   prenom: (l.prenom as string) ?? "",
   sexe: ((l.sexe as string) ?? "") as SuiviPatient["sexe"],
   telephone: (l.telephone as string) ?? "",
+  email: (l.email as string) ?? "",
 });
 
 export async function listerSuivisPatient(patientId: number) {
@@ -68,6 +69,16 @@ export async function suivisAvant(jour: string) {
     SELECT s.*, p.nom, p.prenom, p.sexe, p.telephone FROM suivis s JOIN patients p ON p.id = s.patient_id
     WHERE s.statut <> 'fait' AND s.echeance <= ${jour}
     ORDER BY s.echeance, p.nom`;
+  return lignes.map(versSuivi);
+}
+
+// Suivis dus, jamais relancés, dont le patient a une adresse e-mail : relance automatique possible
+export async function suivisARelancerParEmail(jour: string, limite = 50) {
+  const sql = await base();
+  const lignes = await sql`
+    SELECT s.*, p.nom, p.prenom, p.sexe, p.telephone, p.email FROM suivis s JOIN patients p ON p.id = s.patient_id
+    WHERE s.statut = 'a_faire' AND s.echeance <= ${jour} AND p.email <> ''
+    ORDER BY s.echeance, s.id LIMIT ${limite}`;
   return lignes.map(versSuivi);
 }
 
@@ -111,11 +122,6 @@ export async function patientsParTelephone(finsTelephone: string[]) {
 export function relanceWhatsApp(s: SuiviPatient) {
   const lien = lienWhatsApp(s.telephone);
   if (!lien) return null;
-  const civilite = s.sexe === "F" ? "Madame" : s.sexe === "M" ? "Monsieur" : "";
-  const message = [
-    `Bonjour ${[civilite, s.nom.toUpperCase()].filter(Boolean).join(" ")},`,
-    `le cabinet de cardiologie du ${cabinet.medecin} vous rappelle votre suivi (${s.quoi}), prévu vers le ${s.echeance.split("-").reverse().join("/")}.`,
-    `Pour prendre rendez-vous : ${cabinet.telephones.fixe.numero}, ou en ligne sur ${cabinet.site}/fr/rendez-vous`,
-  ].join("\n");
+  const message = texteRelance(s);
   return `${lien}?text=${encodeURIComponent(message)}`;
 }

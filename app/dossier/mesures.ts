@@ -8,6 +8,7 @@ export const mesures = [
   { cle: "ldl", libelle: "LDL-c", unite: "g/L", min: 0.1, max: 6 },
   { cle: "creatinine", libelle: "Créatinine", unite: "mg/L", min: 1, max: 200 },
   { cle: "hba1c", libelle: "HbA1c", unite: "%", min: 3, max: 20 },
+  { cle: "hemoglobine", libelle: "Hémoglobine", unite: "g/dL", min: 3, max: 25 },
   { cle: "ntprobnp", libelle: "NT-proBNP", unite: "pg/mL", min: 1, max: 100000 },
 ] as const;
 

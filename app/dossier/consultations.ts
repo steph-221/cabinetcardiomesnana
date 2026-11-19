@@ -2,6 +2,8 @@
 // conclusion), plus les valeurs chiffrées qui alimentent les courbes et les alertes.
 
 import { base } from "./base";
+import type { OptionConsultation } from "./choix-consultation";
+import { rattacherElementsDuJour } from "./liens-consultation";
 import type { CleMesure, Constantes } from "./mesures";
 
 export { bornesConstantes, mesures, type CleMesure, type Constantes } from "./mesures";
@@ -12,6 +14,7 @@ export type Consultation = Constantes & {
   motif: string;
   examen: string;
   ecg: string;
+  echo: string;
   mesures: Partial<Record<CleMesure, number>>;
   autres: string;
   conclusion: string;
@@ -36,6 +39,7 @@ const versConsultation = (l: Record<string, unknown>): Consultation => ({
   taille: nombre(l.taille),
   examen: l.examen as string,
   ecg: l.ecg as string,
+  echo: (l.echo as string | null | undefined) ?? "",
   mesures: l.mesures as Consultation["mesures"],
   autres: l.autres as string,
   conclusion: l.conclusion as string,
@@ -49,6 +53,13 @@ export async function listerConsultations(patientId: number) {
   const sql = await base();
   const lignes = await sql`SELECT * FROM consultations WHERE patient_id = ${patientId} ORDER BY date DESC, id DESC`;
   return lignes.map(versConsultation);
+}
+
+// Liste légère pour choisir une consultation dans un formulaire : numéro, date et motif seulement
+export async function consultationsPourChoix(patientId: number): Promise<OptionConsultation[]> {
+  const sql = await base();
+  const lignes = await sql`SELECT id, date, motif FROM consultations WHERE patient_id = ${patientId} ORDER BY date DESC, id DESC LIMIT 60`;
+  return lignes.map((l) => ({ id: l.id as number, date: l.date as string, motif: l.motif as string }));
 }
 
 export async function lireConsultation(patientId: number, id: number) {
@@ -74,15 +85,15 @@ export async function enregistrerConsultation(
   const mesuresJson = JSON.stringify(c.mesures);
   const ecriture =
     id === null
-      ? sql`INSERT INTO consultations (patient_id, date, motif, ta_sys, ta_dia, fc, spo2, poids, taille, examen, ecg,
+      ? sql`INSERT INTO consultations (patient_id, date, motif, ta_sys, ta_dia, fc, spo2, poids, taille, examen, ecg, echo,
                                        mesures, autres, conclusion, conduite, cree_par, modifie_par)
             VALUES (${patientId}, ${c.date}, ${c.motif}, ${c.taSys}, ${c.taDia}, ${c.fc}, ${c.spo2}, ${c.poids},
-                    ${c.taille}, ${c.examen}, ${c.ecg}, ${mesuresJson}::jsonb, ${c.autres}, ${c.conclusion},
+                    ${c.taille}, ${c.examen}, ${c.ecg}, ${c.echo}, ${mesuresJson}::jsonb, ${c.autres}, ${c.conclusion},
                     ${c.conduite}, ${par}, ${par})
             RETURNING id`
       : sql`UPDATE consultations SET date = ${c.date}, motif = ${c.motif}, ta_sys = ${c.taSys}, ta_dia = ${c.taDia},
               fc = ${c.fc}, spo2 = ${c.spo2}, poids = ${c.poids}, taille = ${c.taille}, examen = ${c.examen},
-              ecg = ${c.ecg}, mesures = ${mesuresJson}::jsonb, autres = ${c.autres}, conclusion = ${c.conclusion},
+              ecg = ${c.ecg}, echo = ${c.echo}, mesures = ${mesuresJson}::jsonb, autres = ${c.autres}, conclusion = ${c.conclusion},
               conduite = ${c.conduite}, modifie_le = now(), modifie_par = ${par}
             WHERE id = ${id} AND patient_id = ${patientId}
             RETURNING id`;
@@ -90,7 +101,10 @@ export async function enregistrerConsultation(
     ecriture,
     sql`UPDATE patients SET modifie_le = now(), modifie_par = ${par} WHERE id = ${patientId}`,
   ]);
-  return (lignes[0]?.id as number | undefined) ?? null;
+  const idEnregistre = (lignes[0]?.id as number | undefined) ?? null;
+  // Création : ce qui a déjà été fait ce jour-là (ordonnance, examen, facture, calcul) se rattache à la consultation
+  if (id === null && idEnregistre !== null) await rattacherElementsDuJour(patientId, c.date, idEnregistre);
+  return idEnregistre;
 }
 
 export async function supprimerConsultation(patientId: number, id: number) {
