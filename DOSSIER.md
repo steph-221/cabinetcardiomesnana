@@ -117,7 +117,10 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
   Factures · Fiche. Chaque historique est à un clic (la secrétaire voit Aperçu, Examens, Factures, Fiche).
 - **Impression directe** : sur l'ordonnance, la prescription d'analyses et le certificat, **Enregistrer et imprimer**
   enregistre, revient sur l'onglet du document et ouvre l'impression. **Enregistrer** seul ne l'imprime pas. Un bandeau
-  permet de relancer l'impression ou d'ouvrir le PDF.
+  permet de relancer l'impression ou d'ouvrir le PDF. **Papier et en-tête** : sous chaque formulaire, on choisit **A5 ou A4**
+  et **Imprimer l'en-tête / Sans en-tête (papier à en-tête)** — sans en-tête, le haut de la feuille reste libre pour le papier
+  à en-tête du cabinet et le pied de page n'est pas imprimé. Le dernier choix est retenu sur l'ordinateur. Dans les listes,
+  **Imprimer** propose les quatre combinaisons. La copie rangée dans Drive garde toujours l'en-tête.
 - **Demande d'examens en texte libre** : sur l'ordonnance, la case « Demande d'examens » (avec bouton **Dicter**) reçoit
   par exemple « Merci de faire une coronarographie parce que… ». Elle s'imprime sur la même feuille, sous les
   médicaments ; une feuille sans médicament est possible.

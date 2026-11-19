@@ -22,7 +22,7 @@ import {
   retirerModeleCertificat,
 } from "./actions-documents";
 import { ChoixConsultation } from "./choix-consultation";
-import { BoutonsEnregistrer } from "./boutons-document";
+import { BoutonsEnregistrer, ChoixImpression } from "./boutons-document";
 
 const champ =
   "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
@@ -168,16 +168,8 @@ export function FormulaireCertificat({
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className={etiquette}>
-          Format de papier
-          <select name="format" defaultValue="A5" className={champ}>
-            <option value="A5">A5</option>
-            <option value="A4">A4</option>
-          </select>
-        </label>
-        <ChoixConsultation consultations={consultations} defaut={consultationDefaut} />
-      </div>
+      <ChoixImpression />
+      <ChoixConsultation consultations={consultations} defaut={consultationDefaut} />
 
       {etat && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">
