@@ -28,6 +28,12 @@ export async function lire(cle: string): Promise<number> {
   }
 }
 
+// Retire un essai (par exemple après une connexion réussie : seuls les échecs doivent compter)
+export async function retirerUn(cle: string) {
+  if (!stockageConfigure()) return;
+  await commande("DECR", `limite:${cle}`).catch(console.error);
+}
+
 export async function effacer(cle: string) {
   if (!stockageConfigure()) return;
   await commande("DEL", `limite:${cle}`).catch(console.error);

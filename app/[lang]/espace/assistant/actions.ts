@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
+import { budgetIaEpuise, MESSAGE_IA_EPUISEE } from "../../../agenda/budget-ia";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
 import { repondre } from "../../../dossier/assistant";
@@ -19,6 +20,7 @@ import { echec, texte, type EtatFormulaire } from "../formulaire";
 export async function poserQuestion(langue: string, _: EtatFormulaire, formData: FormData): Promise<EtatFormulaire> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   if (!claudeConfigure()) return echec("L'assistant n'est pas configuré (clé ANTHROPIC_API_KEY).", formData);
+  if (await budgetIaEpuise(utilisateur.identifiant)) return echec(MESSAGE_IA_EPUISEE, formData);
   const question = texte(formData, "question", 2000);
   if (question.length < 5) return echec("Posez votre question.", formData);
   const patient = Number(formData.get("patient"));
