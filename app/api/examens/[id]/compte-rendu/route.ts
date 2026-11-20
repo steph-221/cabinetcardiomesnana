@@ -6,10 +6,11 @@ import type { DonneesETT } from "../../../../dossier/ett";
 import { lireExamen } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
 import { lirePatient } from "../../../../dossier/patients";
+import { optionsDemandees } from "../../../../dossier/impression";
 import { pdfCompteRendu, pdfETT } from "../../../../dossier/pdf";
 import { nomFichier, reponsePdf } from "../../../../dossier/reponse-pdf";
 
-export async function GET(_: Request, ctx: RouteContext<"/api/examens/[id]/compte-rendu">) {
+export async function GET(requete: Request, ctx: RouteContext<"/api/examens/[id]/compte-rendu">) {
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) return new Response("Session expirée : reconnectez-vous.", { status: 401 });
   if (!accesMedical(utilisateur)) return new Response("Réservé aux médecins.", { status: 403 });
@@ -19,10 +20,11 @@ export async function GET(_: Request, ctx: RouteContext<"/api/examens/[id]/compt
   const cr = examen?.valeurs.cr as DonneesExamen | undefined;
   const patient = examen && (ett || cr) ? await lirePatient(examen.patientId) : null;
   if (!examen || !(ett || cr) || !patient) return new Response("Compte rendu introuvable.", { status: 404 });
+  const options = optionsDemandees(requete);
   if (cr) {
     await journaliser(utilisateur.identifiant, `compte rendu ${examen.type} imprimé`, patient.id, examen.date);
-    return reponsePdf(await pdfCompteRendu(cr, examen.date, patient), nomFichier(examen.type, patient, examen.date));
+    return reponsePdf(await pdfCompteRendu(cr, examen.date, patient, options), nomFichier(examen.type, patient, examen.date));
   }
   await journaliser(utilisateur.identifiant, "compte rendu d'ETT imprimé", patient.id, examen.date);
-  return reponsePdf(await pdfETT(ett!, examen.date, patient), nomFichier("ETT", patient, examen.date));
+  return reponsePdf(await pdfETT(ett!, examen.date, patient, options), nomFichier("ETT", patient, examen.date));
 }

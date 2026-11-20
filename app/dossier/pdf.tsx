@@ -1,7 +1,8 @@
-// Documents PDF du cabinet : ordonnance (A5), rapport de consultation et compte rendu d'ETT (A4),
-// avec l'en-tête du cabinet. Ils reprennent la présentation des documents Word du cabinet.
+// Documents PDF du cabinet (ordonnance, certificat, courrier, rapport de consultation, comptes rendus, facture).
+// Par défaut en A5 sans en-tête, pour le papier à en-tête du médecin ; A4 et en-tête du cabinet sur demande
+// (voir ./impression). Ils reprennent la présentation des documents Word du cabinet.
 
-import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { cabinet } from "../cabinet";
 import { surfaceCorporelle } from "./calculs";
 import type { Facture, Paiement } from "./compta";
@@ -12,6 +13,7 @@ import { lignesExamen, type DonneesExamen } from "./comptes-rendus/types";
 import { lignesETT, type DonneesETT } from "./ett";
 import { mesures } from "./mesures";
 import type { LigneOrdonnance, TypeOrdonnance } from "./ordonnances";
+import { impressionParDefaut, margeHautePapierEntete, type OptionsImpression } from "./impression";
 import type { ElementsRapport } from "./rapport-consultation";
 import { age, libellePatient, type Patient } from "./patients";
 
@@ -23,6 +25,13 @@ export function propre(texte: string) {
     .map((c) => REMPLACEMENTS[c] ?? (AUTORISES.test(c) ? c : c.normalize("NFD").replace(/[^ -ÿ]/g, "")))
     .join("");
 }
+
+// Pas de mot coupé en fin de ligne (« car-diaque ») : un terme médical reste lisible d'un seul tenant
+Font.registerHyphenationCallback((mot) => [mot]);
+
+// Style des paragraphes de texte suivi. react-pdf multiplie tout interligne chiffré par la taille de police du texte
+// lui-même (18 points s'il n'en a pas) : la taille est donc donnée ici, sinon les lignes sont deux fois trop espacées.
+const paragraphe = (o: OptionsImpression) => ({ fontSize: o.format === "A5" ? 9.5 : 10, lineHeight: 1.35 });
 
 const jourLong = (jour: string) =>
   new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(
@@ -80,6 +89,12 @@ const s = StyleSheet.create({
   },
 });
 
+// Style de page selon le format ; sans en-tête, le haut reste libre pour le papier à en-tête et le pied n'est pas imprimé
+function stylePage(o: OptionsImpression) {
+  const base = o.format === "A5" ? s.petitePage : s.page;
+  return o.entete ? base : [base, { paddingTop: margeHautePapierEntete[o.format] }];
+}
+
 // Sur une ordonnance A5, l'adresse passe sous le nom faute de place
 function Entete({ compact = false }: { compact?: boolean }) {
   const { adresse, telephones } = cabinet;
@@ -118,11 +133,24 @@ function Entete({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Pied() {
+function Pied({ petit }: { petit: boolean }) {
   return (
-    <Text style={s.pied} fixed>
+    <Text style={[s.pied, petit ? { left: 28, right: 28 } : {}]} fixed>
       Cabinet de Cardiologie Mesnana — {cabinet.site.replace("https://", "")}
     </Text>
+  );
+}
+
+// Une feuille du cabinet dans le format demandé. L'en-tête et le pied de page ne sont imprimés que sur demande :
+// par défaut, le document part sur le papier à en-tête du médecin.
+function Feuille({ options, children }: { options: OptionsImpression; children: React.ReactNode }) {
+  const petit = options.format === "A5";
+  return (
+    <Page size={options.format} style={stylePage(options)}>
+      {options.entete && <Entete compact={petit} />}
+      {children}
+      {options.entete && <Pied petit={petit} />}
+    </Page>
   );
 }
 
@@ -154,13 +182,13 @@ function Ligne({ libelle, children }: { libelle: string; children: React.ReactNo
 export function pdfOrdonnance(
   o: { date: string; lignes: LigneOrdonnance[]; remarque: string; examens?: string; type?: TypeOrdonnance },
   patient: Patient,
+  options: OptionsImpression = impressionParDefaut,
 ) {
   const biologie = o.type === "biologie";
   const ans = age(patient.naissance, o.date);
   return renderToBuffer(
     <Document title={`${biologie ? "Prescription d'analyses" : "Ordonnance"} ${libellePatient(patient)} ${jour(o.date)}`} author={cabinet.medecin}>
-      <Page size="A5" style={s.petitePage}>
-        <Entete compact />
+      <Feuille options={options}>
         <Text style={{ textAlign: "right" }}>
           {propre(cabinet.adresse.ville)}, le {jourLong(o.date)}
         </Text>
@@ -201,16 +229,18 @@ export function pdfOrdonnance(
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
 
 // --- Certificat médical ---
 
-export function pdfCertificat(c: { date: string; modele: string; texte: string }, patient: Patient, format: "A5" | "A4" = "A5") {
-  const petit = format === "A5";
+export function pdfCertificat(
+  c: { date: string; modele: string; texte: string },
+  patient: Patient,
+  options: OptionsImpression = impressionParDefaut,
+) {
   // Un paragraphe par bloc séparé d'une ligne vide ; les retours à la ligne simples sont conservés (liste de lésions)
   const blocs = propre(c.texte)
     .split(/\n{2,}/)
@@ -219,8 +249,7 @@ export function pdfCertificat(c: { date: string; modele: string; texte: string }
   const dernier = blocs.length - 1;
   return renderToBuffer(
     <Document title={`Certificat ${libellePatient(patient)} ${jour(c.date)}`} author={cabinet.medecin}>
-      <Page size={format} style={petit ? s.petitePage : s.page}>
-        <Entete compact={petit} />
+      <Feuille options={options}>
         <Text style={{ textAlign: "right" }}>
           {propre(cabinet.adresse.ville)}, le {jourLong(c.date)}
         </Text>
@@ -228,26 +257,27 @@ export function pdfCertificat(c: { date: string; modele: string; texte: string }
         {blocs.map((b, i) => (
           <View key={i} style={{ marginBottom: 8 }} wrap={i !== dernier}>
             {b.split("\n").map((l, j) => (
-              <Text key={j} style={{ lineHeight: 1.1 }}>
+              <Text key={j} style={paragraphe(options)}>
                 {l}
               </Text>
             ))}
           </View>
         ))}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
 
 // --- Courrier au confrère ---
 
-export function pdfCourrier(c: { date: string; destinataire: string; objet: string; texte: string }) {
+export function pdfCourrier(
+  c: { date: string; destinataire: string; objet: string; texte: string },
+  options: OptionsImpression = impressionParDefaut,
+) {
   return renderToBuffer(
     <Document title={propre(c.objet)} author={cabinet.medecin}>
-      <Page size="A4" style={s.page}>
-        <Entete />
+      <Feuille options={options}>
         <Text style={{ textAlign: "right" }}>
           {propre(cabinet.adresse.ville)}, le {jourLong(c.date)}
         </Text>
@@ -259,13 +289,12 @@ export function pdfCourrier(c: { date: string; destinataire: string; objet: stri
           .split(/\n{2,}/)
           .filter((p) => p.trim())
           .map((p, i) => (
-            <Text key={i} style={{ marginBottom: 8, lineHeight: 1.4 }}>
+            <Text key={i} style={[paragraphe(options), { marginBottom: 8 }]}>
               {p.trim()}
             </Text>
           ))}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
@@ -278,6 +307,7 @@ export function pdfConsultation(
   traitements: string[],
   // Examens, calculs, ordonnances et facture rattachés à la consultation
   rattaches: ElementsRapport = { calculs: [], examens: [], ordonnances: [], factures: [] },
+  options: OptionsImpression = impressionParDefaut,
 ) {
   const ans = age(patient.naissance, c.date);
   const sc = surfaceCorporelle(c.poids, c.taille);
@@ -296,8 +326,7 @@ export function pdfConsultation(
 
   return renderToBuffer(
     <Document title={`Consultation ${libellePatient(patient)} ${jour(c.date)}`} author={cabinet.medecin}>
-      <Page size="A4" style={s.page}>
-        <Entete />
+      <Feuille options={options}>
         <Text style={{ textAlign: "right" }}>Date : {jour(c.date)}</Text>
         <Text style={s.titre}>RAPPORT DE CONSULTATION DE CARDIOLOGIE</Text>
         <Ligne libelle="Nom, prénom">
@@ -384,23 +413,21 @@ export function pdfConsultation(
           </Ligne>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
 
 // --- Compte rendu d'échocardiographie-Doppler ---
 
-export function pdfETT(d: DonneesETT, date: string, patient: Patient) {
+export function pdfETT(d: DonneesETT, date: string, patient: Patient, options: OptionsImpression = impressionParDefaut) {
   const ans = age(patient.naissance, date);
   const { mesures2D, doppler, sc } = lignesETT(d);
   return renderToBuffer(
     <Document title={`ETT ${libellePatient(patient)} ${jour(date)}`} author={cabinet.medecin}>
-      <Page size="A4" style={s.page}>
-        <Entete />
+      <Feuille options={options}>
         <Text style={s.titre}>COMPTE RENDU D&apos;ÉCHOCARDIOGRAPHIE-DOPPLER</Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 12, marginBottom: 6 }}>
           <Text>
             <Text style={s.gras}>Malade : </Text>
             {propre(libellePatient(patient))}
@@ -467,25 +494,28 @@ export function pdfETT(d: DonneesETT, date: string, patient: Patient) {
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
 
 // --- Compte rendu d'ECG, de MAPA ou d'épreuve d'effort ---
 
-export function pdfCompteRendu(d: DonneesExamen, date: string, patient: Patient) {
+export function pdfCompteRendu(
+  d: DonneesExamen,
+  date: string,
+  patient: Patient,
+  options: OptionsImpression = impressionParDefaut,
+) {
   const modele = trouverModele(d.modele);
   if (!modele) throw new Error(`Modèle inconnu : ${d.modele}`);
   const ans = age(patient.naissance, date);
   const { sections, calculs } = lignesExamen(modele, d);
   return renderToBuffer(
     <Document title={`${modele.bouton} ${libellePatient(patient)} ${jour(date)}`} author={cabinet.medecin}>
-      <Page size="A4" style={s.page}>
-        <Entete />
+      <Feuille options={options}>
         <Text style={s.titre}>{propre(modele.titre)}</Text>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 12, marginBottom: 6 }}>
           <Text>
             <Text style={s.gras}>Malade : </Text>
             {propre(libellePatient(patient))}
@@ -550,22 +580,25 @@ export function pdfCompteRendu(d: DonneesExamen, date: string, patient: Patient)
           </View>
         )}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }
 
 // --- Facture (honoraires) ---
 
-export function pdfFacture(f: Facture, paiements: Paiement[], patient: Patient | null) {
+export function pdfFacture(
+  f: Facture,
+  paiements: Paiement[],
+  patient: Patient | null,
+  options: OptionsImpression = impressionParDefaut,
+) {
   const reste = f.totalCts - f.payeCts;
   const colonnes = { designation: { width: "52%" }, quantite: { width: "10%", textAlign: "right" as const }, prix: { width: "19%", textAlign: "right" as const }, total: { width: "19%", textAlign: "right" as const } };
   const mad = (cts: number) => `${montant(cts)} MAD`;
   return renderToBuffer(
     <Document title={`Facture ${f.numero}`} author={cabinet.medecin}>
-      <Page size="A4" style={s.page}>
-        <Entete />
+      <Feuille options={options}>
         {cabinet.ice && <Text style={[s.gris, { fontSize: 8 }]}>ICE : {propre(cabinet.ice)}</Text>}
         <Text style={s.titre}>FACTURE N° {f.numero}</Text>
         {f.annulee && (
@@ -573,7 +606,7 @@ export function pdfFacture(f: Facture, paiements: Paiement[], patient: Patient |
             ANNULEE{f.motifAnnulation ? ` — ${propre(f.motifAnnulation)}` : ""}
           </Text>
         )}
-        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 14 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", columnGap: 12, rowGap: 6, marginBottom: 14 }}>
           <View>
             <Text style={s.gris}>Patient</Text>
             <Text style={s.gras}>{propre(f.patientNom)}</Text>
@@ -646,8 +679,7 @@ export function pdfFacture(f: Facture, paiements: Paiement[], patient: Patient |
         )}
         {f.note && <Text style={[s.gris, { marginTop: 6 }]}>{propre(f.note)}</Text>}
         <Text style={s.signature}>Signature et cachet</Text>
-        <Pied />
-      </Page>
+      </Feuille>
     </Document>,
   );
 }

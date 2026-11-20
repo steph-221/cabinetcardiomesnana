@@ -1,7 +1,7 @@
 // Suivi médical du dossier : alertes, calculs, courbes d'évolution et consultations (médecins seulement)
 
 import Link from "next/link";
-import { Activity, ClipboardPlus, OctagonAlert, Printer, Stethoscope, TriangleAlert } from "lucide-react";
+import { Activity, ClipboardPlus, OctagonAlert, Stethoscope, TriangleAlert } from "lucide-react";
 import type { Alerte } from "../../../../dossier/calculs";
 import { mesures, type Consultation } from "../../../../dossier/consultations";
 import type { Patient } from "../../../../dossier/patients";
@@ -12,6 +12,7 @@ import type { Ordonnance } from "../../../../dossier/ordonnances";
 import type { ScorePatient } from "../../../../dossier/scores-patients";
 import { couleurStatut } from "../../comptabilite/commun";
 import { Courbe, couleurs, type Serie } from "../courbe";
+import { MenuImpression } from "../boutons-document";
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 const fr = (n: number, chiffres = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
@@ -216,15 +217,7 @@ export function ListeConsultations({
                   </p>
                   <span className="flex items-center gap-2 text-xs text-slate-400">
                     {c.creePar}
-                    <a
-                      href={`/api/consultations/${c.id}/pdf`}
-                      target="_blank"
-                      rel="noopener"
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100"
-                    >
-                      <Printer className="h-3 w-3" aria-hidden />
-                      Rapport PDF
-                    </a>
+                    <MenuImpression adresse={`/api/consultations/${c.id}/pdf`} libelle="Rapport PDF" />
                   </span>
                 </div>
                 <p className="mt-1 text-slate-700">

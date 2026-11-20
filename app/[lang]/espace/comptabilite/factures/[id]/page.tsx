@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { lang as langueRacine } from "next/root-params";
-import { FileText, FolderOpen } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { estLangue } from "../../../../../cabinet";
 import { jourLocal } from "../../../../../agenda/creneaux";
 import { accesMedical, exigerUtilisateur } from "../../../../../agenda/session";
@@ -13,6 +13,7 @@ import { lireFacture } from "../../../../../dossier/compta";
 import { libelleMode, libelleStatut, mad, totalLignes } from "../../../../../dossier/compta-calculs";
 import { BaseNonConfiguree, Retour } from "../../../patients/commun";
 import { BoutonRetirerPaiement, FormulaireAnnulation, FormulairePaiement } from "../../formulaires";
+import { MenuImpression } from "../../../patients/boutons-document";
 import { couleurStatut } from "../../commun";
 
 export const metadata: Metadata = {
@@ -65,15 +66,11 @@ async function Detail({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
-        <a
-          href={`/api/factures/${f.id}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <MenuImpression
+          adresse={`/api/factures/${f.id}/pdf`}
+          libelle="Facture en PDF"
           className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800"
-        >
-          <FileText className="h-4 w-4" aria-hidden />
-          Facture en PDF
-        </a>
+        />
         {f.patientId && medecin && (
           <Link
             href={`/${langue}/espace/patients/${f.patientId}`}

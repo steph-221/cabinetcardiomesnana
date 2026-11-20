@@ -56,7 +56,8 @@ async function Formulaire({
       <p className="mt-1 mb-6 text-sm text-slate-500">
         Les traitements en cours sont repris : retirez ou complétez les lignes. Pour une radio, une coronarographie,
         une épreuve d&apos;effort…, écrivez ou dictez simplement la demande dans la case « Demande d&apos;examens ».
-        « Enregistrer et imprimer » lance l&apos;impression tout de suite, avec l&apos;en-tête du cabinet.
+        « Enregistrer et imprimer » lance l&apos;impression tout de suite, en A5 sur votre papier à en-tête (l&apos;en-tête
+        du cabinet ne s&apos;imprime que si vous cochez la case).
       </p>
       {patient.allergies && (
         <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm font-medium text-red-800">

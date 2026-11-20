@@ -8,6 +8,7 @@ import { exigerUtilisateur } from "../../../../../agenda/session";
 import { consultationsPourChoix, lireConsultation } from "../../../../../dossier/consultations";
 import { objetCourrier, texteCourrier } from "../../../../../dossier/courrier";
 import { age, libellePatient, lirePatient, listerTraitements } from "../../../../../dossier/patients";
+import { ChoixImpression } from "../../boutons-document";
 import { Retour } from "../../../patients/commun";
 
 export const metadata: Metadata = {
@@ -106,6 +107,7 @@ async function Contenu({
           Courrier (modifiable)
           <textarea name="texte" defaultValue={texteCourrier(donnees)} rows={22} maxLength={8000} className={champ} />
         </label>
+        <ChoixImpression />
         <button type="submit" className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700">
           <Printer className="h-4 w-4" aria-hidden />
           Imprimer le PDF

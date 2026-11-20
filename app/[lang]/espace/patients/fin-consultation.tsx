@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, FileText, Mail, Pill, Receipt } from "lucide-react";
+import { Check, Mail, Pill, Receipt } from "lucide-react";
+import { MenuImpression } from "./boutons-document";
 
 // Gestes de fin de consultation, en un clic chacun : l'ordonnance, la facture déjà préparée d'après les actes du jour, le
 // courrier au confrère et le rapport PDF. Rien n'est créé ici : chaque lien ouvre l'écran où le médecin vérifie.
@@ -46,10 +47,7 @@ export function FinConsultation({
           <Mail className="h-4 w-4" aria-hidden />
           Courrier au confrère
         </Link>
-        <a href={`/api/consultations/${consultationId}/pdf`} target="_blank" rel="noopener noreferrer" className={lien}>
-          <FileText className="h-4 w-4" aria-hidden />
-          Rapport PDF
-        </a>
+        <MenuImpression adresse={`/api/consultations/${consultationId}/pdf`} libelle="Rapport PDF" className={lien} />
       </div>
     </section>
   );

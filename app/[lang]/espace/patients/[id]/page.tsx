@@ -45,6 +45,7 @@ import { ScoresDossier, ValeursCalculees } from "../scores-dossier";
 import { BoutonSupprimerPatient, FormulairePatient } from "../formulaires";
 import { Apercu } from "./apercu";
 import { NavOnglets } from "./onglets";
+import { lireImpression, paramsImpression } from "../../../../dossier/impression";
 import { ImpressionAuto } from "./impression-auto";
 import { Examens, Certificats, FacturesPatient, Ordonnances, Traitements } from "./sections";
 import { Alertes, CourbesEvolution, ListeConsultations } from "./suivi";
@@ -134,15 +135,16 @@ async function Dossier({
   const impression = (() => {
     const brut = Number(Array.isArray(demande.imprimer) ? demande.imprimer[0] : demande.imprimer);
     if (!medical || !Number.isInteger(brut) || brut <= 0) return null;
+    const un = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+    const choix = paramsImpression(lireImpression(un(demande.format), un(demande.entete)));
     if (onglet === "certificats" && certificats.some((c) => c.id === brut)) {
-      const format = demande.format === "A4" ? "A4" : "A5";
-      return { message: "Certificat enregistré.", adresse: `/api/certificats/${brut}/pdf?format=${format}` };
+      return { message: "Certificat enregistré.", adresse: `/api/certificats/${brut}/pdf?${choix}` };
     }
     const o = ordonnances.find((x) => x.id === brut);
     if (o && (onglet === "ordonnances" || onglet === "prescriptions")) {
       return {
         message: o.type === "biologie" ? "Prescription enregistrée." : "Ordonnance enregistrée.",
-        adresse: `/api/ordonnances/${brut}/pdf`,
+        adresse: `/api/ordonnances/${brut}/pdf?${choix}`,
       };
     }
     return null;

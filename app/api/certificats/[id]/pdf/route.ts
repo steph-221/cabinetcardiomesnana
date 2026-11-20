@@ -1,9 +1,10 @@
-// Certificat médical en PDF (A5 par défaut, ?format=A4), médecins seulement
+// Certificat médical en PDF (A5 sans en-tête par défaut, ?format=A4 et ?entete=1 sur demande), médecins seulement
 
 import { accesMedical, utilisateurConnecte } from "../../../../agenda/session";
 import { lireCertificat } from "../../../../dossier/certificats";
 import { journaliser } from "../../../../dossier/journal";
 import { lirePatient } from "../../../../dossier/patients";
+import { optionsDemandees } from "../../../../dossier/impression";
 import { pdfCertificat } from "../../../../dossier/pdf";
 import { nomFichier, reponsePdf } from "../../../../dossier/reponse-pdf";
 
@@ -15,7 +16,7 @@ export async function GET(requete: Request, ctx: RouteContext<"/api/certificats/
   const certificat = Number.isInteger(id) ? await lireCertificat(id) : null;
   const patient = certificat ? await lirePatient(certificat.patientId) : null;
   if (!certificat || !patient) return new Response("Certificat introuvable.", { status: 404 });
-  const format = new URL(requete.url).searchParams.get("format") === "A4" ? "A4" : "A5";
+  const options = optionsDemandees(requete);
   await journaliser(utilisateur.identifiant, "certificat imprimé", patient.id, certificat.date);
-  return reponsePdf(await pdfCertificat(certificat, patient, format), nomFichier("Certificat", patient, certificat.date));
+  return reponsePdf(await pdfCertificat(certificat, patient, options), nomFichier("Certificat", patient, certificat.date));
 }

@@ -1,4 +1,5 @@
-// Rapport de consultation en PDF, médecins seulement (toujours à jour : regénéré à chaque ouverture)
+// Rapport de consultation en PDF, médecins seulement (toujours à jour : regénéré à chaque ouverture).
+// A5 sans en-tête par défaut ; ?format=A4 et ?entete=1 sur demande.
 
 import { accesMedical, utilisateurConnecte } from "../../../../agenda/session";
 import { listerFactures } from "../../../../dossier/compta";
@@ -7,12 +8,13 @@ import { listerExamens } from "../../../../dossier/examens";
 import { journaliser } from "../../../../dossier/journal";
 import { listerOrdonnances } from "../../../../dossier/ordonnances";
 import { listerTraitements, lirePatient } from "../../../../dossier/patients";
+import { optionsDemandees } from "../../../../dossier/impression";
 import { pdfConsultation } from "../../../../dossier/pdf";
 import { elementsRapport } from "../../../../dossier/rapport-consultation";
 import { nomFichier, reponsePdf } from "../../../../dossier/reponse-pdf";
 import { listerScoresPatient } from "../../../../dossier/scores-patients";
 
-export async function GET(_: Request, ctx: RouteContext<"/api/consultations/[id]/pdf">) {
+export async function GET(requete: Request, ctx: RouteContext<"/api/consultations/[id]/pdf">) {
   const utilisateur = await utilisateurConnecte();
   if (!utilisateur) return new Response("Session expirée : reconnectez-vous.", { status: 401 });
   if (!accesMedical(utilisateur)) return new Response("Réservé aux médecins.", { status: 403 });
@@ -38,7 +40,7 @@ export async function GET(_: Request, ctx: RouteContext<"/api/consultations/[id]
   const rattaches = elementsRapport(consultation, { scores, examens, ordonnances, factures });
   await journaliser(utilisateur.identifiant, "rapport de consultation imprimé", patient.id, consultation.date);
   return reponsePdf(
-    await pdfConsultation(consultation, patient, traitements, rattaches),
+    await pdfConsultation(consultation, patient, traitements, rattaches, optionsDemandees(requete)),
     nomFichier("Consultation", patient, consultation.date),
   );
 }

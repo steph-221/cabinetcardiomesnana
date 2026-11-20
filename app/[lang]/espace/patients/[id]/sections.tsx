@@ -12,7 +12,6 @@ import {
   MessageCircle,
   Phone,
   Pill,
-  Printer,
   Receipt,
   ScrollText,
   Sparkles,
@@ -30,6 +29,7 @@ import { couleurStatut } from "../../comptabilite/commun";
 import { BoutonSupprimerExamen, ConclusionExamen, EnvoiExamens } from "../examens";
 import { BoutonSupprimerOrdonnance } from "../documents";
 import { BoutonSupprimerCertificat } from "../certificats";
+import { MenuImpression } from "../boutons-document";
 import { titreCertificat } from "../../../../dossier/certificats-modeles";
 import type { Certificat } from "../../../../dossier/certificats";
 import { BoutonsTraitement, FormulaireTraitement } from "../formulaires";
@@ -298,15 +298,7 @@ export function Examens({
                 {medical && (
                   <div className="flex items-center gap-1">
                     {ett && (
-                      <a
-                        href={`/api/examens/${e.id}/compte-rendu`}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                      >
-                        <Printer className="h-3 w-3" aria-hidden />
-                        Compte rendu
-                      </a>
+                      <MenuImpression adresse={`/api/examens/${e.id}/compte-rendu`} libelle="Compte rendu" />
                     )}
                     {e.fichierDrive && !ett && (
                       <a
@@ -431,15 +423,7 @@ export function Ordonnances({
                 />
               </div>
               <div className="flex items-center gap-1">
-                <a
-                  href={`/api/ordonnances/${o.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                >
-                  <Printer className="h-3 w-3" aria-hidden />
-                  Imprimer
-                </a>
+                <MenuImpression adresse={`/api/ordonnances/${o.id}/pdf`} />
                 <BoutonSupprimerOrdonnance langue={langue} patientId={patientId} id={o.id} />
               </div>
             </li>
@@ -506,15 +490,7 @@ export function FacturesPatient({
               <div className="flex items-center gap-3">
                 <span className="tabular-nums text-slate-900">{mad(f.totalCts)}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${couleurStatut[f.statut]}`}>{libelleStatut[f.statut]}</span>
-                <a
-                  href={`/api/factures/${f.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                >
-                  <Printer className="h-3 w-3" aria-hidden />
-                  PDF
-                </a>
+                <MenuImpression adresse={`/api/factures/${f.id}/pdf`} libelle="PDF" />
               </div>
             </li>
           ))}
@@ -568,18 +544,7 @@ export function Certificats({
                 />
               </div>
               <div className="flex items-center gap-1">
-                {(["A5", "A4"] as const).map((format) => (
-                  <a
-                    key={format}
-                    href={`/api/certificats/${c.id}/pdf?format=${format}`}
-                    target="_blank"
-                    rel="noopener"
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                  >
-                    <Printer className="h-3 w-3" aria-hidden />
-                    Imprimer {format}
-                  </a>
-                ))}
+                <MenuImpression adresse={`/api/certificats/${c.id}/pdf`} />
                 <BoutonSupprimerCertificat langue={langue} patientId={patientId} id={c.id} />
               </div>
             </li>
