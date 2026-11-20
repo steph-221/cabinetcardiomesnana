@@ -3,7 +3,7 @@
 
 import { ModifierMesures } from "../formulaires";
 import Link from "next/link";
-import { ClipboardPlus, Pill, Printer, Stethoscope } from "lucide-react";
+import { ClipboardPlus, Pill, Stethoscope } from "lucide-react";
 import { dfg, imc, surfaceCorporelle } from "../../../../dossier/calculs";
 import type { DonneesDossier } from "../../../../dossier/calculateurs/preremplissage";
 import type { Facture } from "../../../../dossier/compta";
@@ -14,6 +14,7 @@ import type { Patient, Traitement } from "../../../../dossier/patients";
 import type { SuiviPatient } from "../../../../dossier/suivis";
 import { ChipsConsultation, type Liens } from "./suivi";
 import { Coordonnees, Suivis } from "./sections";
+import { MenuImpression } from "../boutons-document";
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 const fr = (n: number, chiffres = 1) => n.toLocaleString("fr-FR", { maximumFractionDigits: chiffres });
@@ -117,15 +118,7 @@ function DerniereConsultation({ langue, patient, consultation, liens }: {
               </Link>
               {consultation.motif && <span className="ms-2 text-slate-600">{consultation.motif}</span>}
             </p>
-            <a
-              href={`/api/consultations/${consultation.id}/pdf`}
-              target="_blank"
-              rel="noopener"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-            >
-              <Printer className="h-3 w-3" aria-hidden />
-              Rapport PDF
-            </a>
+            <MenuImpression adresse={`/api/consultations/${consultation.id}/pdf`} libelle="Rapport PDF" />
           </div>
           {consultation.conclusion && (
             <p className="mt-2 whitespace-pre-line text-slate-700">

@@ -27,7 +27,7 @@ import { trouverModele } from "../../../dossier/comptes-rendus";
 import { referencesCitees } from "../../../dossier/comptes-rendus/references";
 import { trouverSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { lireReferences } from "../../../dossier/verification-seuils";
-import { lireImpression, paramsImpression } from "../../../dossier/impression";
+import { copieArchive, lireImpression, paramsImpression } from "../../../dossier/impression";
 import { pdfCertificat, pdfCompteRendu, pdfETT, pdfOrdonnance } from "../../../dossier/pdf";
 import { analysesValides } from "../../../dossier/analyses-biologie";
 import {
@@ -168,7 +168,7 @@ export async function nouvelleOrdonnance(
     const copie = await archiver(
       patient,
       nomFichier("Ordonnance", patient, ordonnance.date),
-      await pdfOrdonnance(ordonnance, patient, { ...lireImpression(formData.get("format"), "1") }),
+      await pdfOrdonnance(ordonnance, patient, copieArchive(lireImpression(formData.get("format"), null).format)),
     );
     if (copie) await rangerOrdonnance(id, copie.drive);
   } catch (erreur) {
@@ -215,7 +215,7 @@ export async function nouvellePrescriptionBiologie(
     const copie = await archiver(
       patient,
       nomFichier("Prescription analyses", patient, prescription.date),
-      await pdfOrdonnance(prescription, patient, { ...lireImpression(formData.get("format"), "1") }),
+      await pdfOrdonnance(prescription, patient, copieArchive(lireImpression(formData.get("format"), null).format)),
     );
     if (copie) await rangerOrdonnance(id, copie.drive);
   } catch (erreur) {
@@ -264,7 +264,7 @@ export async function nouveauCertificat(
     const copie = await archiver(
       patient,
       nomFichier("Certificat", patient, certificat.date),
-      await pdfCertificat(certificat, patient, lireImpression(formData.get("format"), "1")),
+      await pdfCertificat(certificat, patient, copieArchive(lireImpression(formData.get("format"), null).format)),
     );
     if (copie) await rangerCertificat(id, copie.drive);
   } catch (erreur) {
@@ -412,7 +412,7 @@ export async function nouveauCompteRenduETT(
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, "compte rendu d'ETT rédigé", patientId, date);
-    const copie = await archiver(patient, nomFichier("ETT", patient, date), await pdfETT(donnees, date, patient));
+    const copie = await archiver(patient, nomFichier("ETT", patient, date), await pdfETT(donnees, date, patient, copieArchive("A4")));
     if (copie) await rangerFichierExamen(id, copie);
   } catch (erreur) {
     console.error(erreur);
@@ -520,7 +520,7 @@ export async function nouveauCompteRenduExamen(
       utilisateur.identifiant,
     );
     await journaliser(utilisateur.identifiant, `compte rendu ${modele.bouton} rédigé`, patientId, date);
-    const copie = await archiver(patient, nomFichier(modele.bouton, patient, date), await pdfCompteRendu(donnees, date, patient));
+    const copie = await archiver(patient, nomFichier(modele.bouton, patient, date), await pdfCompteRendu(donnees, date, patient, copieArchive("A4")));
     if (copie) await rangerFichierExamen(id, copie);
   } catch (erreur) {
     console.error(erreur);

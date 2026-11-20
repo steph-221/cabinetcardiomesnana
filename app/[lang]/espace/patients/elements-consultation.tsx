@@ -2,7 +2,7 @@
 // ordonnances, facture. Tout se rattache seul au jour même ; ici on vérifie, on rattache ou on détache.
 
 import Link from "next/link";
-import { Calculator, ExternalLink, FilePlus2, FileText, Printer, Receipt, ScrollText } from "lucide-react";
+import { Calculator, ExternalLink, FilePlus2, FileText, Receipt, ScrollText } from "lucide-react";
 import { catalogueScores, type ScorePatient } from "../../../dossier/scores-patients";
 import type { DonneesDossier } from "../../../dossier/calculateurs/preremplissage";
 import type { Consultation } from "../../../dossier/consultations";
@@ -14,6 +14,7 @@ import type { Resultat } from "../../../dossier/resultats";
 import { couleurStatut } from "../comptabilite/commun";
 import { BoutonDetacher, RattacherExistant, type ChoixRattachement } from "./liens-formulaire";
 import { FormulaireScore } from "./scores-formulaire";
+import { MenuImpression } from "./boutons-document";
 
 const jour = (d: string) => d.split("-").reverse().join("/");
 const lien =
@@ -173,10 +174,7 @@ export function ElementsConsultation({
                     </div>
                     <div className="flex items-center gap-1">
                       {compteRendu && (
-                        <a href={`/api/examens/${e.id}/compte-rendu`} target="_blank" rel="noopener" className={lien}>
-                          <Printer className="h-3 w-3" aria-hidden />
-                          Compte rendu
-                        </a>
+                        <MenuImpression adresse={`/api/examens/${e.id}/compte-rendu`} libelle="Compte rendu" className={lien} />
                       )}
                       {e.fichierDrive && !compteRendu && (
                         <a href={`/api/fichiers/${e.id}`} target="_blank" rel="noopener" className={lien}>
@@ -208,10 +206,7 @@ export function ElementsConsultation({
                     <span className="ms-2 text-slate-900">{o.lignes.map((l) => l.medicament).join(" · ")}</span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <a href={`/api/ordonnances/${o.id}/pdf`} target="_blank" rel="noopener" className={lien}>
-                      <Printer className="h-3 w-3" aria-hidden />
-                      Imprimer
-                    </a>
+                    <MenuImpression adresse={`/api/ordonnances/${o.id}/pdf`} libelle="Imprimer" className={lien} />
                     <BoutonDetacher langue={langue} patientId={patientId} type="ordonnance" id={o.id} />
                   </span>
                 </li>
@@ -240,10 +235,7 @@ export function ElementsConsultation({
                     </span>
                   </span>
                   <span className="flex items-center gap-1">
-                    <a href={`/api/factures/${f.id}/pdf`} target="_blank" rel="noopener" className={lien}>
-                      <Printer className="h-3 w-3" aria-hidden />
-                      PDF
-                    </a>
+                    <MenuImpression adresse={`/api/factures/${f.id}/pdf`} libelle="PDF" className={lien} />
                     <BoutonDetacher langue={langue} patientId={patientId} type="facture" id={f.id} />
                   </span>
                 </li>

@@ -4,6 +4,7 @@ import { jourLocal } from "../../../agenda/creneaux";
 import { accesMedical, utilisateurConnecte } from "../../../agenda/session";
 import { journaliser } from "../../../dossier/journal";
 import { lirePatient } from "../../../dossier/patients";
+import { lireImpression } from "../../../dossier/impression";
 import { pdfCourrier } from "../../../dossier/pdf";
 import { nomFichier, reponsePdf } from "../../../dossier/reponse-pdf";
 
@@ -20,7 +21,10 @@ export async function POST(request: Request) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(champ("date", 10)) ? champ("date", 10) : jourLocal(new Date());
   await journaliser(utilisateur.identifiant, "courrier au confrère imprimé", patient.id, date);
   return reponsePdf(
-    await pdfCourrier({ date: jourLocal(new Date()), destinataire: champ("destinataire", 150), objet: champ("objet", 250), texte }),
+    await pdfCourrier(
+      { date: jourLocal(new Date()), destinataire: champ("destinataire", 150), objet: champ("objet", 250), texte },
+      lireImpression(f.get("format"), f.get("entete")),
+    ),
     nomFichier("Courrier", patient, date),
   );
 }

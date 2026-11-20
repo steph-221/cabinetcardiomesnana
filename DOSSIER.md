@@ -117,10 +117,15 @@ Ces calculs et alertes sont des aides : ils ne remplacent pas le jugement du mé
   Factures · Fiche. Chaque historique est à un clic (la secrétaire voit Aperçu, Examens, Factures, Fiche).
 - **Impression directe** : sur l'ordonnance, la prescription d'analyses et le certificat, **Enregistrer et imprimer**
   enregistre, revient sur l'onglet du document et ouvre l'impression. **Enregistrer** seul ne l'imprime pas. Un bandeau
-  permet de relancer l'impression ou d'ouvrir le PDF. **Papier et en-tête** : sous chaque formulaire, on choisit **A5 ou A4**
-  et **Imprimer l'en-tête / Sans en-tête (papier à en-tête)** — sans en-tête, le haut de la feuille reste libre pour le papier
-  à en-tête du cabinet et le pied de page n'est pas imprimé. Le dernier choix est retenu sur l'ordinateur. Dans les listes,
-  **Imprimer** propose les quatre combinaisons. La copie rangée dans Drive garde toujours l'en-tête.
+  permet de relancer l'impression ou d'ouvrir le PDF.
+- **Papier et en-tête (toutes les impressions)** : ordonnance, prescription d'analyses, certificat, courrier, rapport de
+  consultation, comptes rendus et facture sortent par défaut en **A5 sans en-tête**, sur le papier à en-tête du médecin :
+  le haut de la feuille reste libre (39 mm en A5, 46 mm en A4, réglables dans `app/dossier/impression.ts`) et le pied de
+  page n'est pas imprimé. L'en-tête du cabinet n'est qu'une option : case **Imprimer l'en-tête du cabinet** sous les
+  formulaires (jamais retenue d'une fois sur l'autre), et flèche à côté de chaque bouton **Imprimer** des listes
+  (A5 avec en-tête, A4 sans ou avec en-tête). La copie rangée dans Drive garde toujours l'en-tête. Contrôle visuel :
+  `ECHANTILLONS_PDF=<dossier> npx vitest run app/dossier/impression.test.ts` enregistre chaque document dans les quatre
+  présentations.
 - **Demande d'examens en texte libre** : sur l'ordonnance, la case « Demande d'examens » (avec bouton **Dicter**) reçoit
   par exemple « Merci de faire une coronarographie parce que… ». Elle s'imprime sur la même feuille, sous les
   médicaments ; une feuille sans médicament est possible.
@@ -150,13 +155,13 @@ Tous les documents portent l'en-tête du cabinet (nom du médecin, « Cardiologu
 emplacement « Signature et cachet ». Le numéro INPE s'ajoute dans `app/cabinet.ts` (champ `inpe`) s'il doit
 figurer. Une copie PDF est rangée automatiquement dans le dossier Drive du patient quand Drive est connecté.
 
-- **Ordonnance** (format A5) : bouton **Nouvelle ordonnance** dans le dossier. Les traitements en cours sont repris
+- **Ordonnance** (A5 par défaut) : bouton **Nouvelle ordonnance** dans le dossier. Les traitements en cours sont repris
   d'emblée ; on retire, complète (posologie, durée) ou ajoute des lignes, avec une remarque facultative. Les
   ordonnances restent dans la liste du dossier : **Imprimer** ouvre le PDF.
-- **Rapport de consultation** (A4) : lien **Rapport PDF** sur chaque consultation, avec la présentation du rapport
+- **Rapport de consultation** (A5 par défaut, A4 au choix) : lien **Rapport PDF** sur chaque consultation, avec la présentation du rapport
   Word du cabinet (antécédents, allergies, traitement en cours, motif, examen physique, ECG, autres, conclusion,
   conduite à tenir). Il est regénéré à chaque ouverture : une consultation corrigée donne un rapport à jour.
-- **Compte rendu d'échocardiographie-Doppler** (A4) : bouton **Compte rendu d'ETT** dans la section Examens. Les
+- **Compte rendu d'échocardiographie-Doppler** (A5 par défaut, A4 au choix ; copie Drive en A4) : bouton **Compte rendu d'ETT** dans la section Examens. Les
   champs suivent le modèle du cabinet (mesures 2D puis Doppler) ; seuls ceux remplis apparaissent dans le PDF.
   - Calculs pendant la saisie : surface corporelle, masse VG (Devereux) et masse indexée, épaisseur pariétale
     relative, gradient VD-OD et PAPS (avec la pression OD estimée), gradient maximal et surface aortique indexée.

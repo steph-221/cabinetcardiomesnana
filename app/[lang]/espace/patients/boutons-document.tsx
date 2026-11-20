@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Printer, Save } from "lucide-react";
+import { ChevronDown, Printer, Save } from "lucide-react";
+import {
+  adresseImpression,
+  impressionParDefaut,
+  libelleImpression,
+  type OptionsImpression,
+} from "../../../dossier/impression";
 
 // Deux façons d'enregistrer un document : l'impression part tout de suite (bouton principal), ou on enregistre seulement
 export function BoutonsEnregistrer({ document: nom }: { document: string }) {
@@ -31,95 +36,83 @@ export function BoutonsEnregistrer({ document: nom }: { document: string }) {
   );
 }
 
-const STOCKAGE = "impression-choix";
-
-function lireChoix(): { format?: string; entete?: string } {
-  try {
-    const retenu = JSON.parse(globalThis.localStorage?.getItem(STOCKAGE) ?? "{}") as { format?: string; entete?: string };
-    return {
-      format: retenu.format === "A4" || retenu.format === "A5" ? retenu.format : undefined,
-      entete: retenu.entete === "0" || retenu.entete === "1" ? retenu.entete : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
 const selecteur =
   "mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
 
-// Papier et en-tête pour l'impression. Le dernier choix est retenu sur cet ordinateur (le papier à en-tête ne change pas).
-// Sans en-tête : le haut de la page reste libre pour le papier à en-tête du cabinet.
+// Papier et en-tête pour l'impression. Par défaut : A5 sans en-tête, sur le papier à en-tête du médecin.
+// L'en-tête du cabinet est une option, à cocher à chaque fois (il n'est jamais imprimé d'office).
 export function ChoixImpression() {
-  // Lecture du stockage local à l'initialisation (le formulaire n'est affiché que dans le navigateur, après chargement)
-  const [format, setFormat] = useState(() => lireChoix().format ?? "A5");
-  const [entete, setEntete] = useState(() => lireChoix().entete ?? "1");
-  const retenir = (f: string, e: string) => {
-    try {
-      localStorage.setItem(STOCKAGE, JSON.stringify({ format: f, entete: e }));
-    } catch {
-      // sans importance
-    }
-  };
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-2 sm:items-end">
+      <legend className="px-1 text-sm font-medium text-slate-700">Impression</legend>
       <label className="text-sm font-medium text-slate-700">
         Format de papier
-        <select
-          name="format"
-          suppressHydrationWarning
-          value={format}
-          onChange={(e) => {
-            setFormat(e.target.value);
-            retenir(e.target.value, entete);
-          }}
-          className={selecteur}
-        >
-          <option value="A5">A5</option>
+        <select name="format" defaultValue={impressionParDefaut.format} className={selecteur}>
+          <option value="A5">A5 (papier du médecin)</option>
           <option value="A4">A4</option>
         </select>
       </label>
-      <label className="text-sm font-medium text-slate-700">
-        En-tête du cabinet
-        <select
-          name="entete"
-          suppressHydrationWarning
-          value={entete}
-          onChange={(e) => {
-            setEntete(e.target.value);
-            retenir(format, e.target.value);
-          }}
-          className={selecteur}
-        >
-          <option value="1">Imprimer l&apos;en-tête</option>
-          <option value="0">Sans en-tête (papier à en-tête)</option>
-        </select>
+      <label className="flex items-center gap-2 py-2 text-sm text-slate-700">
+        <input type="checkbox" name="entete" value="1" className="h-4 w-4 rounded border-slate-300 accent-red-600" />
+        Imprimer l&apos;en-tête du cabinet (papier blanc)
       </label>
-    </div>
+    </fieldset>
   );
 }
 
-// Liste des documents : imprimer dans le format voulu, avec ou sans en-tête
-export function MenuImpression({ adresse }: { adresse: string }) {
-  const formats = ["A5", "A4"] as const;
-  const lien = (f: string, e: number) => `${adresse}${adresse.includes("?") ? "&" : "?"}format=${f}&entete=${e}`;
+// Les autres façons d'imprimer, proposées dans le menu à côté du bouton principal
+const autresChoix: OptionsImpression[] = [
+  { format: "A5", entete: true },
+  { format: "A4", entete: false },
+  { format: "A4", entete: true },
+];
+
+// Bouton d'impression d'un document : un clic imprime en A5 sans en-tête (papier à en-tête du médecin) ;
+// la flèche propose l'en-tête du cabinet ou l'A4.
+export function MenuImpression({
+  adresse,
+  libelle = "Imprimer",
+  className = "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100",
+}: {
+  adresse: string;
+  libelle?: string;
+  className?: string;
+}) {
   return (
-    <details className="relative">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100">
+    <span className="relative inline-flex items-center">
+      <a
+        href={adresseImpression(adresse, impressionParDefaut)}
+        target="_blank"
+        rel="noopener"
+        title={`Imprimer en ${libelleImpression(impressionParDefaut)} (papier à en-tête du médecin)`}
+        className={className}
+      >
         <Printer className="h-3 w-3" aria-hidden />
-        Imprimer
-      </summary>
-      <ul className="absolute end-0 z-10 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg">
-        {formats.flatMap((f) => [
-          [f, 1, `${f} avec en-tête`],
-          [f, 0, `${f} sans en-tête`],
-        ] as const).map(([f, e, texte]) => (
-          <li key={texte}>
-            <a href={lien(f, e)} target="_blank" rel="noopener" className="block px-3 py-1.5 text-slate-700 hover:bg-slate-50">
-              {texte}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </details>
+        {libelle}
+      </a>
+      <details className="relative">
+        <summary
+          aria-label={`Autres formats pour : ${libelle}`}
+          title="Avec en-tête ou en A4"
+          className="inline-flex cursor-pointer list-none items-center rounded-md px-1 py-1 text-xs text-slate-500 hover:bg-slate-100 [&::-webkit-details-marker]:hidden"
+        >
+          <ChevronDown className="h-3 w-3" aria-hidden />
+        </summary>
+        <ul className="absolute end-0 z-10 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg">
+          {autresChoix.map((o) => (
+            <li key={libelleImpression(o)}>
+              <a
+                href={adresseImpression(adresse, o)}
+                target="_blank"
+                rel="noopener"
+                className="block px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+              >
+                {libelleImpression(o)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </span>
   );
 }

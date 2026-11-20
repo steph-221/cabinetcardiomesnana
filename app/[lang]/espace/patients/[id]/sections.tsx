@@ -12,7 +12,6 @@ import {
   MessageCircle,
   Phone,
   Pill,
-  Printer,
   Receipt,
   ScrollText,
   Sparkles,
@@ -299,15 +298,7 @@ export function Examens({
                 {medical && (
                   <div className="flex items-center gap-1">
                     {ett && (
-                      <a
-                        href={`/api/examens/${e.id}/compte-rendu`}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                      >
-                        <Printer className="h-3 w-3" aria-hidden />
-                        Compte rendu
-                      </a>
+                      <MenuImpression adresse={`/api/examens/${e.id}/compte-rendu`} libelle="Compte rendu" />
                     )}
                     {e.fichierDrive && !ett && (
                       <a
@@ -499,15 +490,7 @@ export function FacturesPatient({
               <div className="flex items-center gap-3">
                 <span className="tabular-nums text-slate-900">{mad(f.totalCts)}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${couleurStatut[f.statut]}`}>{libelleStatut[f.statut]}</span>
-                <a
-                  href={`/api/factures/${f.id}/pdf`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
-                >
-                  <Printer className="h-3 w-3" aria-hidden />
-                  PDF
-                </a>
+                <MenuImpression adresse={`/api/factures/${f.id}/pdf`} libelle="PDF" />
               </div>
             </li>
           ))}
