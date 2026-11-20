@@ -5,6 +5,7 @@
 
 import { base } from "./base";
 import { chiffrer, dechiffrer } from "./chiffrement";
+import { mettreEnFile } from "./copies";
 import { lireSite, telecharger } from "./lecture-site";
 import { doiDePage, extraireDoi, metadonneesCrossref, pdfDePage, resumeEuropePmc } from "./resolution";
 import type { TypeSource } from "./sources";
@@ -40,6 +41,7 @@ export type SiteSuivi = {
   motDePasse: boolean;
   verifieLe: Date | null;
   erreur: string;
+  copie: boolean;
   publications: Publication[];
 };
 
@@ -73,6 +75,7 @@ export async function listerSites(): Promise<SiteSuivi[]> {
     motDePasse: Boolean(s.mot_de_passe),
     verifieLe: s.verifie_le as Date | null,
     erreur: s.erreur as string,
+    copie: s.copie as boolean,
     publications: publications
       .filter((p) => p.site_id === s.id)
       .map((p) => ({
@@ -203,6 +206,8 @@ export async function verifierSite(id: number): Promise<{ trouvees: number; nouv
     await sql`UPDATE sites_suivis SET verifie_le = now(), erreur = '' WHERE id = ${id}`;
     // Les nouveautés sont identifiées tout de suite ; sans succès, la publication reste affichée sans DOI
     await resoudrePublications(id).catch((e) => console.error(e));
+    // Site copié dans Drive : les nouvelles publications entrent dans la file de copie
+    await mettreEnFile(id).catch((e) => console.error(e));
     return { trouvees: lues.length, nouvelles: premiere ? 0 : (n as number) };
   } catch (erreur) {
     const message = erreur instanceof Error && erreur.message.length < 200 ? erreur.message : "Lecture impossible.";

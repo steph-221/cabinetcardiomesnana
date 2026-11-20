@@ -51,7 +51,7 @@ export function adresseInterne(ip: string): boolean {
 
 // Vérifie l'adresse et renvoie celle à laquelle se connecter. La connexion se fait directement sur cette adresse
 // (voir `telecharger`) : une seconde résolution DNS pourrait donner une autre réponse (« DNS rebinding »).
-async function verifierAdresse(url: URL) {
+export async function verifierAdresse(url: URL) {
   if (url.protocol !== "https:") throw new Error("Le site doit être en https.");
   const hote = url.hostname.replace(/^\[|\]$/g, "");
   const resolues = isIP(hote) ? [{ address: hote, family: isIP(hote) }] : await lookup(hote, { all: true });
