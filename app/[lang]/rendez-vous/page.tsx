@@ -24,8 +24,8 @@ export default async function PageRendezvous({ params }: PageProps<"/[lang]/rend
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1 className="text-3xl font-bold text-slate-900">{r.titre}</h1>
-      <p className="mt-2 text-slate-600">{r.intro}</p>
+      <h1 className="titre-section text-encre">{r.titre}</h1>
+      <p className="mt-2 text-gris">{r.intro}</p>
 
       <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
         <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
@@ -34,7 +34,7 @@ export default async function PageRendezvous({ params }: PageProps<"/[lang]/rend
         </p>
       </div>
 
-      <Suspense fallback={<p className="mt-10 text-slate-500">{r.chargement}</p>}>
+      <Suspense fallback={<p className="mt-10 text-gris">{r.chargement}</p>}>
         <Formulaire langue={lang} t={t} />
       </Suspense>
     </div>
@@ -46,11 +46,11 @@ async function Formulaire({ langue, t }: { langue: Langue; t: Dictionnaire }) {
   await connection();
   if (!agendaConfigure()) {
     return (
-      <div className="mt-10 rounded-2xl border border-slate-200 p-6">
-        <p className="text-slate-700">{t.reservation.indisponible}</p>
+      <div className="mt-10 rounded-3xl bg-brume p-6">
+        <p className="text-encre">{t.reservation.indisponible}</p>
         <a
           href={`tel:${cabinet.telephones.fixe.lien}`}
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+          className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 font-medium text-white hover:bg-accent-fonce"
         >
           <Phone className="h-5 w-5" aria-hidden />
           <span dir="ltr">{cabinet.telephones.fixe.numero}</span>

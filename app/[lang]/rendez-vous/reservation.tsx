@@ -63,7 +63,7 @@ function VerificationRobot({ etat }: { etat: EtatReservation }) {
 }
 
 const champ =
-  "mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
+  "mt-1 block w-full rounded-xl border border-filet bg-white px-4 py-3 text-base text-encre focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 
 export function Reservation({
   langue,
@@ -117,7 +117,7 @@ export function Reservation({
   return (
     <form action={envoyer} className="mt-10 space-y-8">
       <fieldset>
-        <legend className="text-lg font-semibold text-slate-900">1. {t.choisirJour}</legend>
+        <legend className="text-lg font-semibold text-encre">1. {t.choisirJour}</legend>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
           {/* Seuls les jours avec au moins un horaire libre sont affichés */}
           {(dispos ?? [])
@@ -128,10 +128,10 @@ export function Reservation({
                 type="button"
                 onClick={() => choisirJour(j)}
                 aria-pressed={j === jour}
-                className={`rounded-lg border px-2 py-2 text-sm ${
+                className={`rounded-xl border px-2 py-2.5 text-sm ${
                   j === jour
-                    ? "border-red-600 bg-red-600 text-white"
-                    : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
+                    ? "border-accent bg-accent text-white"
+                    : "border-filet text-encre hover:bg-brume"
                 }`}
               >
                 <span className="block capitalize">{formaterJour(j, langue, { weekday: "short" })}</span>
@@ -140,18 +140,18 @@ export function Reservation({
             ))}
         </div>
         {dispos === null && <p className="mt-3 text-sm text-red-700">{t.erreurs.technique}</p>}
-        {dispos && !premier && <p className="mt-3 text-sm text-slate-500">{t.aucunJour}</p>}
+        {dispos && !premier && <p className="mt-3 text-sm text-gris">{t.aucunJour}</p>}
       </fieldset>
 
       {jour && (
         <fieldset>
-          <legend className="text-lg font-semibold text-slate-900">2. {t.choisirHeure}</legend>
+          <legend className="text-lg font-semibold text-encre">2. {t.choisirHeure}</legend>
           {chargement ? (
-            <p className="mt-3 text-sm text-slate-500">{t.chargement}</p>
+            <p className="mt-3 text-sm text-gris">{t.chargement}</p>
           ) : creneaux === null ? (
             <p className="mt-3 text-sm text-red-700">{t.erreurs.technique}</p>
           ) : creneaux.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">{t.complet}</p>
+            <p className="mt-3 text-sm text-gris">{t.complet}</p>
           ) : (
             <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6" dir="ltr">
               {creneaux.map((h) => (
@@ -160,10 +160,10 @@ export function Reservation({
                   type="button"
                   onClick={() => setHeure(h)}
                   aria-pressed={h === heure}
-                  className={`rounded-lg border px-2 py-2 text-sm font-medium ${
+                  className={`rounded-xl border px-2 py-2.5 text-sm font-medium ${
                     h === heure
-                      ? "border-red-600 bg-red-600 text-white"
-                      : "border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50"
+                      ? "border-accent bg-accent text-white"
+                      : "border-filet text-encre hover:bg-brume"
                   }`}
                 >
                   {h}
@@ -176,14 +176,14 @@ export function Reservation({
 
       {jour && heure && (
         <fieldset className="space-y-4">
-          <legend className="text-lg font-semibold text-slate-900">3. {t.vosCoordonnees}</legend>
+          <legend className="text-lg font-semibold text-encre">3. {t.vosCoordonnees}</legend>
           <input type="hidden" name="jour" value={jour} />
           <input type="hidden" name="heure" value={heure} />
           <input type="hidden" name="jeton" value={jeton} />
           {/* Piège à robots, invisible pour les visiteurs */}
           <input type="text" name="site" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden />
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-encre">
               {t.prenom}
               <input
                 name="prenom"
@@ -195,7 +195,7 @@ export function Reservation({
                 className={champ}
               />
             </label>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-encre">
               {t.nom}
               <input
                 name="nom"
@@ -208,7 +208,7 @@ export function Reservation({
               />
             </label>
           </div>
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-encre">
             {t.telephone}
             <input
               name="telephone"
@@ -222,8 +222,8 @@ export function Reservation({
             />
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-medium text-slate-700">
-              {t.dateNaissance} <span className="font-normal text-slate-400">({t.facultatif})</span>
+            <label className="block text-sm font-medium text-encre">
+              {t.dateNaissance} <span className="font-normal text-gris/70">({t.facultatif})</span>
               <input
                 name="dateNaissance"
                 type="date"
@@ -233,8 +233,8 @@ export function Reservation({
                 className={champ}
               />
             </label>
-            <label className="block text-sm font-medium text-slate-700">
-              {t.email} <span className="font-normal text-slate-400">({t.facultatif})</span>
+            <label className="block text-sm font-medium text-encre">
+              {t.email} <span className="font-normal text-gris/70">({t.facultatif})</span>
               <input
                 name="email"
                 type="email"
@@ -246,12 +246,12 @@ export function Reservation({
               />
             </label>
           </div>
-          <label className="block text-sm font-medium text-slate-700">
-            {t.motif} <span className="font-normal text-slate-400">({t.facultatif})</span>
+          <label className="block text-sm font-medium text-encre">
+            {t.motif} <span className="font-normal text-gris/70">({t.facultatif})</span>
             <textarea name="motif" rows={3} maxLength={300} defaultValue={saisi?.motif} className={champ} />
           </label>
           <VerificationRobot etat={etat} />
-          <label className="flex items-start gap-2 text-sm text-slate-600">
+          <label className="flex items-start gap-2 text-sm text-gris">
             <input type="checkbox" name="consentement" required className="mt-1" />
             <span>{t.consentement}</span>
           </label>
@@ -265,7 +265,7 @@ export function Reservation({
           <button
             type="submit"
             disabled={envoi}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3 font-medium text-white hover:bg-accent-fonce disabled:opacity-60"
           >
             <CalendarCheck className="h-5 w-5" aria-hidden />
             {envoi ? t.envoi : t.confirmer}
