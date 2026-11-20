@@ -238,7 +238,9 @@ describe("Coroscanner : CAD-RADS", () => {
   });
   it("sans artère renseignée : pas de CAD-RADS", () => {
     expect(cad({ agatston: 120 })).not.toContain("CAD-RADS");
-    expect(cad({ agatston: 120 })).toContain("catégorie A2");
+    expect(cad({ agatston: 120 })).toContain("charge de plaque P2");
+    expect(textes(scanner.propositions({ tc: "modérée (50 à 69 %)" }, homme))).toContain("coronarographie recommandée");
+    expect(textes(scanner.propositions({ tc: "modérée (50 à 69 %)" }, homme))).not.toContain("équipe");
   });
   it("propose la conduite à discuter", () => {
     expect(textes(scanner.propositions({ iva: "modérée (50 à 69 %)", agatston: 250 }, homme))).toContain("test fonctionnel");
