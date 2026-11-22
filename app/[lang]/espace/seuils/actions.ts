@@ -1,5 +1,6 @@
 "use server";
 
+import { budgetIaEpuise, MESSAGE_IA_EPUISEE } from "../../../agenda/budget-ia";
 import { exigerUtilisateur } from "../../../agenda/session";
 import type { ReferenceSeuil } from "../../../dossier/comptes-rendus/seuils";
 import { claudeConfigure } from "../../../dossier/dictee";
@@ -12,6 +13,7 @@ type Resultat = { reference: ReferenceSeuil } | { erreur: string };
 export async function chercherReference(langue: string, id: string): Promise<Resultat> {
   const utilisateur = await exigerUtilisateur(langue, "medical");
   if (!claudeConfigure()) return { erreur: "Claude n'est pas configuré (clé ANTHROPIC_API_KEY)." };
+  if (await budgetIaEpuise(utilisateur.identifiant)) return { erreur: MESSAGE_IA_EPUISEE };
   try {
     const reference = await verifierSeuil(id);
     await journaliser(utilisateur.identifiant, "seuil recherché dans la bibliothèque", null, `${id} : ${reference.verdict}`);

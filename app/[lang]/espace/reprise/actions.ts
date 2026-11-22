@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { jourLocal } from "../../../agenda/creneaux";
+import { budgetIaEpuise, MESSAGE_IA_EPUISEE } from "../../../agenda/budget-ia";
 import { exigerUtilisateur } from "../../../agenda/session";
 import { cabinet } from "../../../cabinet";
 import { enregistrerConsultation } from "../../../dossier/consultations";
@@ -48,7 +49,10 @@ export async function analyserFichier(
 
   const identite = identiteLocale(brut, nom);
   let proposition = propositionVide(identite);
-  if (claudeConfigure()) {
+  if (claudeConfigure() && (await budgetIaEpuise(utilisateur.identifiant))) {
+    // Plafond atteint : le document est quand même enregistré, à remplir à la main (ou à relire plus tard)
+    proposition.aVerifier = [MESSAGE_IA_EPUISEE];
+  } else if (claudeConfigure()) {
     try {
       proposition = await extraire(masquer(brut, identite));
     } catch (erreur) {
