@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { propositionsETT } from "../ett";
-import { categorieCalcique } from "./definitions/coronaires";
+import { chargePlaque } from "./definitions/coronaires";
 import { duke } from "./definitions/effort";
 import { trouverModele } from "./index";
 import { avecSeuils, SANS_REFERENCE } from "./references-propositions";
@@ -220,7 +220,9 @@ const verifs: Record<string, () => void> = {
     expect(prop("coroscanner", { iva: "modérée (50 à 69 %)", agatston: 250 })).toContain("test fonctionnel");
   },
   calcique: () => {
-    expect([0, 1, 99, 100, 299, 300].map(categorieCalcique)).toEqual(["A0", "A1", "A1", "A2", "A2", "A3"]);
+    expect([0, 1, 100, 101, 300, 301, 999, 1000].map(chargePlaque)).toEqual([null, "P1", "P1", "P2", "P2", "P3", "P3", "P4"]);
+    expect(prop("coroscanner", { agatston: 250 })).toContain("charge de plaque modérée (P2)");
+    expect(prop("coroscanner", { agatston: 0 })).toContain("Score calcique nul");
   },
   "coro-significatif": () => {
     expect(prop("coronarographie", { iva: grave })).toContain("monotronculaire");
@@ -272,15 +274,30 @@ const verifs: Record<string, () => void> = {
     expect(ett({ vmaxAo: 3.5 })).toContain("moyennement serré");
     expect(ett({ vmaxAo: 2.5, gmAo: 15, surfAo: 2 })).toBe("");
   },
+  "ett-og-volume": () => {
+    expect(ett({ ogVolume: 35 })).toContain("Dilatation de l'oreillette gauche (volume indexé 35 mL/m²)");
+    expect(ett({ ogVolume: 34 })).toBe("");
+    // le volume remplace la surface pour l'OG
+    expect(ett({ ogVolume: 34, ogSurf: 25 })).toBe("");
+    expect(ett({ ogVolume: 35, ogSurf: 15 })).toContain("volume indexé");
+  },
   "ett-oreillettes": () => {
     expect(ett({ ogSurf: 21 })).toContain("oreillette gauche");
     expect(ett({ ogSurf: 20 })).not.toContain("oreillette");
     expect(ett({ odSurf: 19 })).toContain("oreillette droite");
     expect(ett({ odSurf: 18 })).not.toContain("oreillette");
+    expect(ett({ ogSurf: 21, odSurf: 19 })).toContain("deux oreillettes");
+    expect(ett({ ogVolume: 35, odSurf: 19 })).toContain("deux oreillettes (OG volume indexé 35 mL/m², OD 19 cm²)");
   },
   "ett-eee": () => {
-    expect(ett({ eSurEPrime: 15 })).toContain("Pressions de remplissage VG élevées");
-    expect(ett({ eSurEPrime: 14 })).not.toContain("Pressions de remplissage");
+    // E/e' seul : un argument à confirmer
+    expect(ett({ eSurEPrime: 15 })).toContain("argument en faveur");
+    expect(ett({ eSurEPrime: 14 })).toBe("");
+    // plus de la moitié des critères : élevées ; la moitié : à confirmer
+    expect(ett({ eSurEPrime: 15, ogVolume: 36 })).toContain("Pressions de remplissage VG élevées (2 critères sur 2");
+    expect(ett({ eSurEPrime: 15, ogVolume: 30 })).toContain("argument en faveur");
+    expect(ett({ eSurEPrime: 15, vmaxIt: 2.5, ogVolume: 36 })).toContain("2 critères sur 3");
+    expect(ett({ eSurEPrime: 15, vmaxIt: 3 })).toContain("2 critères sur 2");
   },
   "ett-tapse": () => {
     expect(ett({ tapse: 16 })).toContain("Dysfonction systolique du VD");

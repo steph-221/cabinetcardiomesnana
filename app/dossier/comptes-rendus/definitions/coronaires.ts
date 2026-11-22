@@ -59,8 +59,11 @@ export function cadRads(v: ValeursExamen): string | null {
   return "0";
 }
 
-// Catégorie du score calcique (CAC-DRS)
-export const categorieCalcique = (agatston: number) => (agatston === 0 ? "A0" : agatston < 100 ? "A1" : agatston < 300 ? "A2" : "A3");
+// Charge de plaque d'après le score calcique d'Agatston (CAD-RADS 2.0, tableau 1) : P1 de 1 à 100, P2 de 101 à 300,
+// P3 de 301 à 999, P4 à partir de 1000 (le texte écrit « > 1000 » : la valeur 1000 exacte n'est pas couverte)
+export const chargePlaque = (agatston: number) =>
+  agatston <= 0 ? null : agatston <= 100 ? "P1" : agatston <= 300 ? "P2" : agatston < 1000 ? "P3" : "P4";
+const LIBELLE_PLAQUE: Record<string, string> = { P1: "légère", P2: "modérée", P3: "sévère", P4: "extensive" };
 
 const CONDUITE: Record<string, string> = {
   "0": "Pas de maladie coronaire athéromateuse visible (CAD-RADS 0).",
@@ -68,7 +71,7 @@ const CONDUITE: Record<string, string> = {
   "2": "Sténose légère de 25 à 49 % (CAD-RADS 2) : à discuter, prévention et contrôle des facteurs de risque.",
   "3": "Sténose modérée de 50 à 69 % (CAD-RADS 3) : à discuter, test fonctionnel (FFR-CT, imagerie de perfusion) et prévention.",
   "4A": "Sténose sévère de 70 à 99 % sur une ou deux artères (CAD-RADS 4A) : à discuter, test fonctionnel ou coronarographie.",
-  "4B": "Sténose du tronc commun d'au moins 50 % ou atteinte des trois artères d'au moins 70 % (CAD-RADS 4B) : à discuter, coronarographie et avis de l'équipe cardiologique.",
+  "4B": "Sténose du tronc commun d'au moins 50 % ou atteinte des trois artères d'au moins 70 % (CAD-RADS 4B) : coronarographie recommandée.",
   "5": "Occlusion coronaire complète (CAD-RADS 5) : à discuter, coronarographie et recherche de viabilité.",
 };
 
@@ -103,7 +106,10 @@ export const coroscanner: ModeleExamen = {
   calculs(v) {
     const lignes: string[] = [];
     const agatston = nombre(v, "agatston");
-    if (agatston !== null) lignes.push(`Score calcique ${fr(agatston)} (catégorie ${categorieCalcique(agatston)})`);
+    if (agatston !== null) {
+      const plaque = chargePlaque(agatston);
+      lignes.push(`Score calcique ${fr(agatston)}${plaque ? ` (charge de plaque ${plaque})` : ""}`);
+    }
     const c = cadRads(v);
     if (c !== null) {
       const a = atteinte(v);
@@ -121,9 +127,12 @@ export const coroscanner: ModeleExamen = {
       p.push({ texte: "Qualité de l'examen médiocre : analyse limitée, à interpréter avec prudence.", source: "Critère usuel" });
     }
     if (agatston !== null) {
+      const plaque = chargePlaque(agatston);
       p.push({
-        texte: agatston === 0 ? "Score calcique nul." : `Score calcique à ${fr(agatston)} (catégorie ${categorieCalcique(agatston)}).`,
-        source: "CAC-DRS (SCCT 2018, Hecht et al.)",
+        texte: plaque
+          ? `Score calcique à ${fr(agatston)} : charge de plaque ${LIBELLE_PLAQUE[plaque]} (${plaque}).`
+          : "Score calcique nul.",
+        source: SOURCE,
       });
     }
     const c = cadRads(v);
