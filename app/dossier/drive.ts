@@ -50,7 +50,9 @@ export class ErreurDrive extends Error {
 }
 
 type CorpsErreur = {
-  error?: string | { message?: string; status?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] };
+  error?:
+    | string
+    | { message?: string; status?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] };
   error_description?: string;
 };
 
@@ -60,9 +62,16 @@ async function erreurGoogle(reponse: Response, contexte: string) {
   const raisons =
     typeof e === "string"
       ? [e]
-      : [...(e?.errors ?? []), ...(e?.details ?? [])].map((x) => x.reason ?? "").concat(e?.status ?? "").filter(Boolean);
+      : [...(e?.errors ?? []), ...(e?.details ?? [])]
+          .map((x) => x.reason ?? "")
+          .concat(e?.status ?? "")
+          .filter(Boolean);
   const detail = typeof e === "string" ? corps?.error_description : e?.message;
-  return new ErreurDrive(reponse.status, raisons, `${contexte} : erreur ${reponse.status} ${raisons.join(", ")} ${detail ?? ""}`);
+  return new ErreurDrive(
+    reponse.status,
+    raisons,
+    `${contexte} : erreur ${reponse.status} ${raisons.join(", ")} ${detail ?? ""}`,
+  );
 }
 
 // Message affiché au personnel quand un envoi échoue
@@ -82,7 +91,8 @@ export function expliquerErreurDrive(erreur: unknown) {
     return "Google n'a pas donné l'accès aux fichiers : l'administrateur doit reconnecter Google Drive en cochant la case d'accès à Google Drive.";
   }
   if (a("storageQuotaExceeded")) return "Le Google Drive du cabinet est plein.";
-  if (erreur.statut === 429 || erreur.statut >= 500) return "Google Drive est momentanément indisponible. Réessayez dans un instant.";
+  if (erreur.statut === 429 || erreur.statut >= 500)
+    return "Google Drive est momentanément indisponible. Réessayez dans un instant.";
   return `Google Drive a refusé l'envoi (erreur ${erreur.statut}${erreur.raisons.length ? ` ${erreur.raisons[0]}` : ""}).`;
 }
 
@@ -262,3 +272,63 @@ export async function mettreALaCorbeille(id: string) {
     body: JSON.stringify({ trashed: true }),
   });
 }
+
+// --- Bibliothèque : copies privées des sites suivis ---
+// Un dossier « Cabinet — Bibliothèque (copies privées) », puis un sous-dossier par site suivi. Ces copies sont à
+// l'usage du cabinet seulement : rien n'est partagé ni publié.
+
+const NOM_BIBLIOTHEQUE = "Cabinet — Bibliothèque (copies privées)";
+
+async function racineBibliotheque(recreer = false) {
+  const racine = recreer ? null : await lireParametre("drive_bibliotheque");
+  if (racine) return racine;
+  const id = await creerDossier(NOM_BIBLIOTHEQUE);
+  await ecrireParametre("drive_bibliotheque", id);
+  return id;
+}
+
+async function dossierSite(site: { id: number; nom: string }, recreer = false) {
+  const sql = await base();
+  if (!recreer) {
+    const [ligne] = await sql`SELECT drive_dossier FROM sites_suivis WHERE id = ${site.id}`;
+    if (ligne?.drive_dossier) return ligne.drive_dossier as string;
+  }
+  const nom = nomPropre(site.nom) || `Site n° ${site.id}`;
+  const id = await creerDossier(nom, await racineBibliotheque()).catch(async (e) => {
+    if (!introuvable(e)) throw e;
+    return creerDossier(nom, await racineBibliotheque(true));
+  });
+  await sql`UPDATE sites_suivis SET drive_dossier = ${id} WHERE id = ${site.id}`;
+  return id;
+}
+
+// Envoi « reprenable » : nécessaire au-delà de 5 Mo (recommandations, diaporamas)
+async function envoyerGrosFichier(dossier: string, nom: string, fichier: Blob) {
+  const type = fichier.type || "application/octet-stream";
+  const debut = await appel(`${ENVOI}?uploadType=resumable&fields=id`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": type,
+      "X-Upload-Content-Length": String(fichier.size),
+    },
+    body: JSON.stringify({ name: nomPropre(nom), parents: [dossier] }),
+  });
+  const session = debut.headers.get("location");
+  if (!session) throw new ErreurDrive(502, ["session"], "Google Drive n'a pas ouvert l'envoi");
+  const reponse = await appel(session, { method: "PUT", headers: { "Content-Type": type }, body: fichier });
+  return ((await reponse.json()) as { id: string }).id;
+}
+
+// Range la copie dans le dossier du site ; si ce dossier a disparu du Drive, il est recréé
+export async function envoyerCopie(site: { id: number; nom: string }, nom: string, fichier: Blob) {
+  try {
+    return await envoyerGrosFichier(await dossierSite(site), nom, fichier);
+  } catch (e) {
+    if (!introuvable(e)) throw e;
+    return envoyerGrosFichier(await dossierSite(site, true), nom, fichier);
+  }
+}
+
+// Ouverture dans Google Drive (compte Google du cabinet)
+export const lienDrive = (id: string) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;

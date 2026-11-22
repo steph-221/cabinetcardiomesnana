@@ -1,7 +1,8 @@
 // Bibliothèque de références de l'assistant : recommandations (ESC…), RCP des médicaments, articles, protocoles
 // et fiches validées par le médecin. Le texte est importé page par page, découpé en passages et indexé en plein
-// texte (Postgres) dans la langue de la source. Les PDF eux-mêmes ne sont pas conservés : chaque source garde le
-// lien vers sa version officielle, ouvert à la bonne page.
+// texte (Postgres) dans la langue de la source. Une source ajoutée à la main ne garde que son texte et le lien vers
+// sa version officielle, ouvert à la bonne page ; une source venue de la copie d'un site suivi renvoie aussi à sa
+// copie privée, rangée dans le Google Drive du cabinet (voir copies.ts).
 
 import { base } from "./base";
 import { decouper, requeteRecherche } from "./decoupage";
@@ -22,6 +23,7 @@ export type Source = {
   pages: number;
   complete: boolean;
   passages: number;
+  copieId: number | null;
   doi: string;
   creeLe: Date;
   creePar: string;
@@ -29,6 +31,7 @@ export type Source = {
 
 export type NouvelleSource = Pick<Source, "titre" | "organisme" | "annee" | "type" | "langue" | "url"> & {
   publicationId: number | null;
+  copieId?: number | null;
   doi?: string;
 };
 
@@ -36,7 +39,7 @@ export type Passage = {
   id: number;
   page: number | null;
   texte: string;
-  source: Pick<Source, "id" | "titre" | "organisme" | "annee" | "type" | "url">;
+  source: Pick<Source, "id" | "titre" | "organisme" | "annee" | "type" | "url" | "copieId">;
 };
 
 const configuration = (langue: "fr" | "en") => (langue === "en" ? "english" : "french");
@@ -58,6 +61,7 @@ export async function listerSources(): Promise<Source[]> {
     pages: l.pages as number,
     complete: l.complete as boolean,
     passages: l.nb as number,
+    copieId: (l.copie_id as number | null) ?? null,
     doi: (l.doi as string) ?? "",
     creeLe: l.cree_le as Date,
     creePar: l.cree_par as string,
@@ -67,9 +71,9 @@ export async function listerSources(): Promise<Source[]> {
 export async function creerSource(s: NouvelleSource, par: string) {
   const sql = await base();
   const [ligne] = await sql`
-    INSERT INTO sources (titre, organisme, annee, type, langue, url, publication_id, doi, cree_par)
+    INSERT INTO sources (titre, organisme, annee, type, langue, url, publication_id, copie_id, doi, cree_par)
     VALUES (${s.titre}, ${s.organisme}, ${s.annee}, ${s.type}, ${s.langue}, ${s.url},
-      (SELECT id FROM publications WHERE id = ${s.publicationId}), ${s.doi ?? ""}, ${par})
+      (SELECT id FROM publications WHERE id = ${s.publicationId}), ${s.copieId ?? null}, ${s.doi ?? ""}, ${par})
     RETURNING id`;
   return ligne.id as number;
 }
@@ -116,7 +120,7 @@ export async function rechercherPassages(termes: { en: string[]; fr: string[] },
   if (!en && !fr) return [];
   const sql = await base();
   const lignes = await sql`
-    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url,
+    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url, s.copie_id,
       ts_rank_cd(p.tsv, q.requete, 1) AS rang
     FROM passages p
     JOIN sources s ON s.id = p.source_id AND s.complete AND s.statut = 'en_vigueur'
@@ -140,15 +144,39 @@ export async function rechercherPassages(termes: { en: string[]; fr: string[] },
       annee: l.annee as number | null,
       type: l.type as TypeSource,
       url: l.url as string,
+      copieId: (l.copie_id as number | null) ?? null,
     },
   }));
+}
+
+// --- Sources venues de la copie d'un site suivi ---
+
+// Vrai si la publication a déjà été ajoutée à la main : sa copie n'est alors pas indexée une seconde fois
+export async function sourceManuelle(publicationId: number) {
+  const sql = await base();
+  const [ligne] = await sql`SELECT 1 FROM sources WHERE publication_id = ${publicationId} AND copie_id IS NULL LIMIT 1`;
+  return Boolean(ligne);
+}
+
+// Indexe (ou réindexe, quand la page a changé) le texte d'une copie. L'ancienne version est retirée.
+export async function remplacerSourceCopie(
+  copieId: number,
+  source: Omit<NouvelleSource, "copieId">,
+  pages: { page: number | null; texte: string }[],
+) {
+  const sql = await base();
+  await sql`DELETE FROM sources WHERE copie_id = ${copieId}`;
+  const id = await creerSource({ ...source, copieId }, "copie automatique");
+  // Par lots, pour ne pas envoyer en une fois le texte d'une recommandation entière
+  for (let i = 0; i < pages.length; i += 40) await ajouterPages(id, pages.slice(i, i + 40));
+  if (!(await terminerSource(id, pages.length))) await supprimerSource(id);
 }
 
 // Un passage avec sa source : pour ouvrir « le passage cité » depuis un compte rendu ou la vérification des seuils
 export async function lirePassage(id: number): Promise<Passage | null> {
   const sql = await base();
   const [l] = await sql`
-    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url
+    SELECT p.id, p.page, p.texte, s.id AS source_id, s.titre, s.organisme, s.annee, s.type, s.url, s.copie_id
     FROM passages p JOIN sources s ON s.id = p.source_id WHERE p.id = ${id}`;
   return l
     ? {
@@ -162,6 +190,7 @@ export async function lirePassage(id: number): Promise<Passage | null> {
           annee: l.annee as number | null,
           type: l.type as TypeSource,
           url: l.url as string,
+          copieId: (l.copie_id as number | null) ?? null,
         },
       }
     : null;
@@ -172,7 +201,9 @@ export async function sourceParDoi(doi: string) {
   if (!doi) return null;
   const sql = await base();
   const [l] = await sql`SELECT id, titre, annee, statut FROM sources WHERE doi = ${doi} ORDER BY id DESC LIMIT 1`;
-  return l ? { id: l.id as number, titre: l.titre as string, annee: l.annee as number | null, statut: l.statut as string } : null;
+  return l
+    ? { id: l.id as number, titre: l.titre as string, annee: l.annee as number | null, statut: l.statut as string }
+    : null;
 }
 
 // Versions plus anciennes à marquer « remplacée » quand une nouvelle édition est ajoutée : même organisme, même type,
@@ -185,13 +216,22 @@ export async function sourcesRemplacables(id: number) {
     SELECT id, titre, organisme, annee FROM sources
     WHERE id <> ${id} AND statut = 'en_vigueur' AND type = 'recommandation'
       AND lower(organisme) = lower(${neuve.organisme}) AND annee < ${neuve.annee}`;
-  const mots = (t: string) => new Set(t.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").match(/[a-z]{5,}/g) ?? []);
+  const mots = (t: string) =>
+    new Set(
+      t
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/\p{M}/gu, "")
+        .match(/[a-z]{5,}/g) ?? [],
+    );
   const communsNeuve = new Set(themesDe(neuve.titre as string));
   const motsNeuve = mots(neuve.titre as string);
   return anciennes
     .filter((a) => {
       const t = themesDe(a.titre as string);
-      const partages = [...mots(a.titre as string)].filter((m) => motsNeuve.has(m) && !["guidelines", "management", "diagnosis", "treatment"].includes(m));
+      const partages = [...mots(a.titre as string)].filter(
+        (m) => motsNeuve.has(m) && !["guidelines", "management", "diagnosis", "treatment"].includes(m),
+      );
       return t.some((x) => communsNeuve.has(x)) && partages.length >= 1;
     })
     .map((a) => ({ id: a.id as number, titre: a.titre as string, annee: a.annee as number | null }));
