@@ -17,11 +17,11 @@ export default async function MentionsLegales({ params }: PageProps<"/[lang]/men
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-bold text-slate-900">{m.titre}</h1>
+      <h1 className="titre-section text-encre">{m.titre}</h1>
 
-      <div className="mt-8 space-y-8 text-sm leading-relaxed text-slate-700">
+      <div className="mt-8 space-y-8 text-sm leading-relaxed text-encre">
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{m.editeur}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-encre">{m.editeur}</h2>
           <p>
             {t.nom} — {cabinet.medecin}
             <br />
@@ -35,22 +35,22 @@ export default async function MentionsLegales({ params }: PageProps<"/[lang]/men
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{m.hebergement}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-encre">{m.hebergement}</h2>
           <p dir="ltr" className="text-start">
             {m.hebergeur} —{" "}
-            <a href="https://vercel.com" className="text-red-600 hover:underline">
+            <a href="https://vercel.com" className="text-accent hover:underline">
               vercel.com
             </a>
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{m.informatif}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-encre">{m.informatif}</h2>
           <p>{m.informatifTexte}</p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-semibold text-slate-900">{m.donnees}</h2>
+          <h2 className="mb-2 text-lg font-semibold text-encre">{m.donnees}</h2>
           <p>{m.donneesTexte}</p>
         </section>
       </div>

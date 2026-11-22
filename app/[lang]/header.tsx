@@ -34,7 +34,7 @@ function Langues({
 }) {
   return (
     <div className="flex items-center gap-1" role="group" aria-label={label}>
-      <Globe className="h-4 w-4 text-slate-400" aria-hidden />
+      <Globe className="h-4 w-4 text-gris" aria-hidden />
       {langues.map((l) => (
         <Link
           key={l}
@@ -42,8 +42,8 @@ function Langues({
           hrefLang={l}
           lang={l}
           aria-current={l === langue ? "true" : undefined}
-          className={`rounded px-1.5 py-0.5 text-sm ${
-            l === langue ? "bg-red-50 font-semibold text-red-700" : "text-slate-500 hover:text-slate-900"
+          className={`rounded-full px-2 py-0.5 text-xs ${
+            l === langue ? "bg-brume font-semibold text-encre" : "text-gris hover:text-encre"
           }`}
         >
           {l === "ar" ? nomsLangues.ar : l.toUpperCase()}
@@ -64,16 +64,16 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href={`/${langue}`} className="flex shrink-0 items-center gap-2 font-semibold text-slate-900">
-          <HeartPulse className="h-7 w-7 text-red-600" aria-hidden />
+    <header className="sticky top-0 z-50 verre border-b border-black/10">
+      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href={`/${langue}`} className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-encre">
+          <HeartPulse className="h-5 w-5 text-accent" aria-hidden />
           <span>{t.nomCourt}</span>
         </Link>
 
         <nav className="hidden items-center gap-5 lg:flex" aria-label={t.nom}>
           {liens.map((l) => (
-            <Link key={l.href} href={l.href} className="text-sm text-slate-600 hover:text-slate-900">
+            <Link key={l.href} href={l.href} className="text-xs text-encre/80 transition-colors hover:text-encre">
               {l.label}
             </Link>
           ))}
@@ -83,14 +83,14 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
           <SelecteurLangue langue={langue} label={t.nav.langue} />
           <a
             href={`tel:${fixe.lien}`}
-            className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-accent hover:bg-brume"
           >
             <Phone className="h-4 w-4" aria-hidden />
             <span dir="ltr">{fixe.numero}</span>
           </a>
           <Link
             href={`/${langue}/rendez-vous`}
-            className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-fonce"
           >
             <CalendarCheck className="h-4 w-4" aria-hidden />
             {t.nav.rdv}
@@ -99,7 +99,7 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
 
         <button
           type="button"
-          className="rounded-md p-2 text-slate-700 lg:hidden"
+          className="rounded-md p-2 text-encre lg:hidden"
           aria-label={ouvert ? t.nav.fermerMenu : t.nav.ouvrirMenu}
           aria-expanded={ouvert}
           onClick={() => setOuvert(!ouvert)}
@@ -109,11 +109,11 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
       </div>
 
       {ouvert && (
-        <nav className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden" aria-label={t.nom}>
+        <nav className="verre border-t border-black/10 px-4 py-4 lg:hidden" aria-label={t.nom}>
           <ul className="flex flex-col gap-3">
             {liens.map((l) => (
               <li key={l.href}>
-                <Link href={l.href} onClick={() => setOuvert(false)} className="block py-1 text-slate-700">
+                <Link href={l.href} onClick={() => setOuvert(false)} className="block py-1.5 text-lg font-medium text-encre">
                   {l.label}
                 </Link>
               </li>
@@ -125,14 +125,14 @@ export function Header({ langue, t }: { langue: Langue; t: Dictionnaire }) {
               <Link
                 href={`/${langue}/rendez-vous`}
                 onClick={() => setOuvert(false)}
-                className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white"
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
               >
                 <CalendarCheck className="h-4 w-4" aria-hidden />
                 {t.nav.rdv}
               </Link>
               <a
                 href={`tel:${fixe.lien}`}
-                className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700"
+                className="inline-flex items-center gap-2 rounded-full bg-brume px-4 py-2 text-sm font-medium text-accent"
               >
                 <Phone className="h-4 w-4" aria-hidden />
                 {t.nav.appeler}
