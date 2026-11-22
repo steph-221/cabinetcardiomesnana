@@ -8,7 +8,7 @@ prod: https://www.cabinetcardiomesnana.com
 staging:
 projet: cardio
 local: C:\Sites et APP\cabinetcardiomesnana
-claude_projet: VERCEL Cardio TAOUAB (cible : Cabinet cardio)
+claude_projet: "VERCEL Cardio TAOUAB (cible : Cabinet cardio)"
 env_local: cardio
 env_cloud: cabinetcardio
 ssh:
