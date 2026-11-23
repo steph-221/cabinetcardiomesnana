@@ -64,4 +64,4 @@ Aucun (déploiement par plateforme).
 - D'après le registre du 19/11 : `CRON_SECRET` absent sur Vercel, donc les deux crons (veille 02h, secrétariat 15h) renvoient 503 ; à re-vérifier.
 - D'après le registre : 2 tests échouent en local (fuseau horaire Casablanca) et les scripts guide ne passent pas le lint.
 - Le README est celui, par défaut, de create-next-app : à remplacer.
-- ⚠ `CRON_SECRET` absent des variables Vercel (constaté le 22/11) : les crons répondent 503. À ajouter : https://vercel.com/cabinet-cardio-mesnana/cabinetcardiomesnana/settings/environment-variables
+- `CRON_SECRET` posé en production le 23/11 (les deux crons répondent 401 sans jeton au lieu de 503) ; valeur non lisible dans Vercel : à régénérer depuis Bitwarden si une copie est voulue.
