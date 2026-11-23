@@ -42,6 +42,7 @@ Application du cabinet de cardiologie : dossier patient, consultation, ordonnanc
 | Production | https://www.cabinetcardiomesnana.com |
 | Admin / back-office | https://www.cabinetcardiomesnana.com/fr/espace/connexion (connexion du médecin) |
 | Console hébergeur | https://vercel.com/cabinet-cardio-mesnana/cabinetcardiomesnana · Neon : https://console.neon.tech/app/projects/round-block-76931875 · DNS : https://admin.gandi.net/domain |
+| Supervision | https://dashboard.uptimerobot.com (UptimeRobot, alerte e-mail, contrôle toutes les 5 min) |
 
 ## Variables d'environnement
 > Noms uniquement. Les valeurs restent chez l'hébergeur ou dans le gestionnaire de mots de passe.
